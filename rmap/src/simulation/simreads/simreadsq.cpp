@@ -86,15 +86,9 @@ score_against_sequence(const vector<vector<double> > &quality_scores,
 
 void
 simreads(const Runif &rng,
-	 const size_t n_reads, 
-	 const size_t read_width, 
-	 const size_t max_errors, 
-	 
-	 const string &name, 
-	 const string &sequence,
-	 
-	 vector<string> &read_names, 
-	 vector<string> &reads,
+	 const size_t n_reads, const size_t read_width, const size_t max_errors, 
+	 const string &name, const string &sequence,
+	 vector<string> &read_names, vector<string> &reads,
 	 vector<vector<vector<double> > > &probs) {
   
   const size_t lim = sequence.length() - read_width + 1;
