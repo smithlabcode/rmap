@@ -145,7 +145,8 @@ bool
 Option::option_match(const string &other) {
   return (long_name == other || 
 	  (other.length() > 1 && other[0] == '-' && 
-	   (other.substr(1) == long_name || other[1] == short_name)));
+	   (other.substr(1) == long_name || 
+	    other[1] == short_name && other.length() == 2)));
 }
 
 bool
