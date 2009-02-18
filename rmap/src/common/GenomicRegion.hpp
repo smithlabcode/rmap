@@ -326,6 +326,25 @@ genomic_region_intersection(const T& a, const T& b) {
 
 template <class T> 
 void
+genomic_region_intersection(const std::vector<T>& regions_a, 
+			    const std::vector<T>& regions_b,
+			    std::vector<T>& regions_c) {
+  typename std::vector<T>::const_iterator a(regions_a.begin());
+  typename std::vector<T>::const_iterator a_lim(regions_a.end());
+  typename std::vector<T>::const_iterator b(regions_b.begin());
+  typename std::vector<T>::const_iterator b_lim(regions_b.end());
+  while (a != a_lim && b != b_lim) {
+    if (a->overlaps(*b))
+      regions_c.push_back(*b);
+    if (a == b) {++a; ++b;}
+    else if (*a < *b) ++a;
+    else ++b; //  if (*b < *a)
+  }
+}
+
+
+template <class T> 
+void
 genomic_region_intersection_by_base(const std::vector<T>& regions_a, 
 				    const std::vector<T>& regions_b,
 				    std::vector<T>& regions_c) {
