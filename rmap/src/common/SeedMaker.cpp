@@ -104,6 +104,12 @@ SeedMaker::SeedMaker(const size_t r, const size_t s, const size_t w,
     for (size_t j = 0; j < block_size; ++j)
       seed_mask = (seed_mask << 2) + 3;
   }
+  size_t full_mask = 0;
+  for (size_t i = 0; i < 2*read_width; ++i) {
+    full_mask <<= 1;
+    full_mask |= 1ul;
+  }
+  seed_mask &= full_mask;
 }
 
 void
