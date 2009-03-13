@@ -109,7 +109,7 @@ int main(int argc, const char **argv) {
     }
     
     vector<GenomicRegion> contained;
-    genomic_region_intersection(big_regions, regions, contained);
+    genomic_region_intersection_by_base(big_regions, regions, contained);
     regions.clear();
     regions.swap(contained);
     
