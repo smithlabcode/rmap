@@ -400,4 +400,11 @@ void
 parse_region_name(std::string region_name,
 		  std::string& chrom, size_t &start, size_t &end);
 
+template <class T>
+std::string
+assemble_region_name(const T &region) {
+  return (region.get_chrom() + ":" + rmap::toa(region.get_start()) + "-" +
+          rmap::toa(region.get_end()));
+}
+
 #endif
