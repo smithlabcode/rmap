@@ -20,7 +20,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-PROGS = sortbed bedoverlap
+PROGS = sortbed bedoverlap mapsifter
 
 LIBS =
 LIBDIR = $(RMAP)/lib
@@ -49,7 +49,8 @@ all:	$(PROGS)
 %.o: %.cpp %.hpp
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-sortbed bedoverlap: $(addprefix $(COMMON_DIR), GenomicRegion.o rmap_os.o \
+sortbed bedoverlap mapsifter: \
+	$(addprefix $(COMMON_DIR), GenomicRegion.o rmap_os.o \
 	rmap_utils.o OptionParser.o)
 
 install: all
