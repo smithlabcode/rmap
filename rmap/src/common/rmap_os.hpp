@@ -80,16 +80,27 @@ std::string
 strip_path_and_suffix(std::string full_path);
 
 void
-extract_regions(const std::string &dirname, 
-		const std::vector<SimpleGenomicRegion> &regions_in, 
-		std::vector<std::string> &sequences);
+extract_regions_fasta(const std::string &dirname, 
+		      const std::vector<SimpleGenomicRegion> &regions_in, 
+		      std::vector<std::string> &sequences);
 
 void
-extract_regions(const std::string &dirname, 
-		const std::vector<GenomicRegion> &regions_in, 
-		std::vector<std::string> &sequences);
+extract_regions_fasta(const std::string &dirname, 
+		      const std::vector<GenomicRegion> &regions_in, 
+		      std::vector<std::string> &sequences);
 
 void 
 read_dir(const std::string& dirname, std::vector<std::string> &filenames);
+
+
+// void
+// extract_regions_oneline(const std::string &dirname, 
+// 		const std::vector<SimpleGenomicRegion> &regions_in, 
+// 		std::vector<std::string> &sequences);
+
+// void
+// extract_regions_oneline(const std::string &dirname, 
+// 		const std::vector<GenomicRegion> &regions_in, 
+// 		std::vector<std::string> &sequences);
 
 #endif

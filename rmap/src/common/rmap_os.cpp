@@ -125,7 +125,7 @@ void
 read_fastq_file(const char *filename, vector<string> &names, 
 		vector<string> &sequences, vector<vector<double> > &scores) {
   
-  static const size_t input_buffer_size = 1000000;
+  static const size_t INPUT_BUFFER_SIZE = 1000000;
   
   std::ifstream in(filename);
   if (!in) {
@@ -141,11 +141,11 @@ read_fastq_file(const char *filename, vector<string> &names,
   vector<double> scr;
   bool first_line = true;
   while (!in.eof()) {
-    char buffer[input_buffer_size + 1];
-    in.getline(buffer, input_buffer_size);
-    if (in.gcount() == static_cast<int>(input_buffer_size))
+    char buffer[INPUT_BUFFER_SIZE + 1];
+    in.getline(buffer, INPUT_BUFFER_SIZE);
+    if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
       throw RMAPException("Line in " + name + "\nexceeds max length: " +
-			 toa(input_buffer_size));
+			  toa(INPUT_BUFFER_SIZE));
     // correct for dos carriage returns before newlines
     if (buffer[strlen(buffer) - 1] == '\r')
       buffer[strlen(buffer) - 1] = '\0';
@@ -189,16 +189,16 @@ read_fasta_file(const char *filename, vector<string> &names,
     throw RMAPException("cannot open input file " + string(filename));
   }
 
-  static const size_t input_buffer_size = 1000000;
+  static const size_t INPUT_BUFFER_SIZE = 1000000;
   
   string s, name;
   bool first_line = true;
   while (!in.eof()) {
-    char buffer[input_buffer_size + 1];
-    in.getline(buffer, input_buffer_size);
-    if (in.gcount() == static_cast<int>(input_buffer_size))
+    char buffer[INPUT_BUFFER_SIZE + 1];
+    in.getline(buffer, INPUT_BUFFER_SIZE);
+    if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
       throw RMAPException("Line in " + name + "\nexceeds max length: " +
-			  toa(input_buffer_size));
+			  toa(INPUT_BUFFER_SIZE));
     // correct for dos carriage returns before newlines
     if (buffer[strlen(buffer) - 1] == '\r')
       buffer[strlen(buffer) - 1] = '\0';
@@ -219,54 +219,54 @@ read_fasta_file(const char *filename, vector<string> &names,
     sequences.push_back(s);
   }
 
-//   size_t begin_pos = in.tellg();
-//   in.seekg(0, std::ios_base::end);
-//   size_t end_pos = in.tellg();
-//   in.seekg(0, std::ios_base::beg);
+  //   size_t begin_pos = in.tellg();
+  //   in.seekg(0, std::ios_base::end);
+  //   size_t end_pos = in.tellg();
+  //   in.seekg(0, std::ios_base::beg);
   
-//   size_t filesize = end_pos - begin_pos;
-//   char *buffer = new char[filesize + 1];
+  //   size_t filesize = end_pos - begin_pos;
+  //   char *buffer = new char[filesize + 1];
   
-//   in.read(buffer, filesize);
-//   in.close();
+  //   in.read(buffer, filesize);
+  //   in.close();
   
-//   NotNewline not_newline;
+  //   NotNewline not_newline;
   
-//   // find name starts and ends
-//   vector<std::pair<size_t, size_t> > name_starts_ends;
-//   bool in_name = false;
-//   for (size_t i = 0; i < filesize; ++i) {
-//     if (buffer[i] == '>' && !in_name) {
-//       name_starts_ends.push_back(std::make_pair(i, static_cast<size_t>(0)));
-//       in_name = true;
-//     }
-//     else if (in_name && !not_newline(buffer[i])) {
-//       name_starts_ends.back().second = i;
-//       in_name = false;
-//     }
-//   }
-//   assert(name_starts_ends.back().second != 0);
+  //   // find name starts and ends
+  //   vector<std::pair<size_t, size_t> > name_starts_ends;
+  //   bool in_name = false;
+  //   for (size_t i = 0; i < filesize; ++i) {
+  //     if (buffer[i] == '>' && !in_name) {
+  //       name_starts_ends.push_back(std::make_pair(i, static_cast<size_t>(0)));
+  //       in_name = true;
+  //     }
+  //     else if (in_name && !not_newline(buffer[i])) {
+  //       name_starts_ends.back().second = i;
+  //       in_name = false;
+  //     }
+  //   }
+  //   assert(name_starts_ends.back().second != 0);
   
-//   if (name_starts_ends.size() == 0)
-//     throw RMAPException("no sequences found in file: " + string(filename));
+  //   if (name_starts_ends.size() == 0)
+  //     throw RMAPException("no sequences found in file: " + string(filename));
 
-//   // resize sequences and names
-//   names.resize(name_starts_ends.size());
-//   sequences.resize(name_starts_ends.size());
+  //   // resize sequences and names
+  //   names.resize(name_starts_ends.size());
+  //   sequences.resize(name_starts_ends.size());
   
-//   names.front() = string(buffer + name_starts_ends.front().first + 1, // (+1 for '>')
-// 			 buffer + name_starts_ends.front().second);
+  //   names.front() = string(buffer + name_starts_ends.front().first + 1, // (+1 for '>')
+  // 			 buffer + name_starts_ends.front().second);
   
-//   for (size_t i = 1; i < name_starts_ends.size(); ++i) {
-//     rmap::copy_if(buffer + name_starts_ends[i - 1].second,
-// 		  buffer + name_starts_ends[i].first,
-// 		  back_inserter(sequences[i - 1]), not_newline);
-//     names[i] = string(buffer + name_starts_ends[i].first + 1, // (+1 for '>')
-// 		      buffer + name_starts_ends[i].second);
-//   }
-//   rmap::copy_if(buffer + name_starts_ends.back().second, buffer + filesize,
-// 		back_inserter(sequences.back()), not_newline);
-//   delete[] buffer;
+  //   for (size_t i = 1; i < name_starts_ends.size(); ++i) {
+  //     rmap::copy_if(buffer + name_starts_ends[i - 1].second,
+  // 		  buffer + name_starts_ends[i].first,
+  // 		  back_inserter(sequences[i - 1]), not_newline);
+  //     names[i] = string(buffer + name_starts_ends[i].first + 1, // (+1 for '>')
+  // 		      buffer + name_starts_ends[i].second);
+  //   }
+  //   rmap::copy_if(buffer + name_starts_ends.back().second, buffer + filesize,
+  // 		back_inserter(sequences.back()), not_newline);
+  //   delete[] buffer;
 
 }
 
@@ -275,18 +275,18 @@ read_fasta_file(const char *filename, vector<string> &names,
 void
 read_filename_file(const char *filename, vector<string> &filenames) {
   
-  static const size_t input_buffer_size = 1000000;
+  static const size_t INPUT_BUFFER_SIZE = 1000000;
   
   std::ifstream in(filename);
   if (!in)
     throw RMAPException("cannot open input file " + string(filename));
   while (!in.eof()) {
-    char buffer[input_buffer_size + 1];
-    in.getline(buffer, input_buffer_size);
-    if (in.gcount() == static_cast<int>(input_buffer_size))
+    char buffer[INPUT_BUFFER_SIZE + 1];
+    in.getline(buffer, INPUT_BUFFER_SIZE);
+    if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
       throw RMAPException("Line in " + string(filename) +
 			  "\nexceeds max length: " +
-			  toa(input_buffer_size));
+			  toa(INPUT_BUFFER_SIZE));
     filenames.push_back(buffer);
     in.peek();
   }
@@ -316,10 +316,31 @@ basename(string filename) {
   else return s;
 }
 
+
+static size_t
+adjust_start_pos(const size_t orig_start, const string &chrom_name) {
+  static const double LINE_WIDTH = 50.0;
+  const size_t name_offset = chrom_name.length() + 2; // For the '>' and the '\n';
+  const size_t preceding_newlines = 
+    static_cast<size_t>(std::floor(orig_start/LINE_WIDTH));
+  return orig_start + preceding_newlines + name_offset;
+}
+
+static size_t
+adjust_region_size(const size_t orig_start, const string &chrom_name,
+		   const size_t orig_size) {
+  static const double LINE_WIDTH = 50.0;
+  const size_t preceding_newlines_start = 
+    static_cast<size_t>(std::floor(orig_start/LINE_WIDTH));
+  const size_t preceding_newlines_end = 
+    static_cast<size_t>(std::floor((orig_start + orig_size)/LINE_WIDTH));
+  return (orig_size + (preceding_newlines_end - preceding_newlines_start));
+}
+
 static void
-extract_regions_chrom(const string &chrom_name, const string &filename,
-		      const vector<SimpleGenomicRegion> &regions, 
-		      vector<string> &sequences) {
+extract_regions_chrom_fasta(const string &chrom_name, const string &filename,
+			    const vector<SimpleGenomicRegion> &regions, 
+			    vector<string> &sequences) {
   
   std::ifstream in(filename.c_str());
   for (vector<SimpleGenomicRegion>::const_iterator i(regions.begin());
@@ -329,25 +350,32 @@ extract_regions_chrom(const string &chrom_name, const string &filename,
     const size_t orig_end_pos = i->get_end();
     const size_t orig_region_size = orig_end_pos - orig_start_pos;
     
-    const size_t start_pos = orig_start_pos;
-    const size_t region_size = orig_region_size;
+    const size_t start_pos = adjust_start_pos(orig_start_pos, chrom_name);
+    const size_t region_size = adjust_region_size(orig_start_pos, chrom_name,
+						  orig_region_size);
     assert(start_pos >= 0);
     
     in.seekg(start_pos);
     char buffer[region_size + 1];
     buffer[region_size] = '\0';
     in.read(buffer, region_size);
+    
+    std::remove_if(buffer, buffer + region_size, std::bind2nd(std::equal_to<char>(), '\n'));
+    buffer[orig_region_size] = '\0';
+    
     sequences.push_back(buffer);
     std::transform(sequences.back().begin(), sequences.back().end(), 
 		   sequences.back().begin(), std::ptr_fun(&toupper));
+    assert(i->get_width() == sequences.back().length());
   }
   in.close();
 }
 
+
 static void
-extract_regions_chrom(const string &chrom_name, const string &filename,
-		      const vector<GenomicRegion> &regions, 
-		      vector<string> &sequences) {
+extract_regions_chrom_fasta(const string &chrom_name, const string &filename,
+			    const vector<GenomicRegion> &regions, 
+			    vector<string> &sequences) {
   
   std::ifstream in(filename.c_str());
   for (vector<GenomicRegion>::const_iterator i(regions.begin());
@@ -357,14 +385,19 @@ extract_regions_chrom(const string &chrom_name, const string &filename,
     const size_t orig_end_pos = i->get_end();
     const size_t orig_region_size = orig_end_pos - orig_start_pos;
     
-    const size_t start_pos = orig_start_pos;
-    const size_t region_size = orig_region_size;
+    const size_t start_pos = adjust_start_pos(orig_start_pos, chrom_name);
+    const size_t region_size = adjust_region_size(orig_start_pos, chrom_name,
+						  orig_region_size);
     assert(start_pos >= 0);
     
     in.seekg(start_pos);
     char buffer[region_size + 1];
     buffer[region_size] = '\0';
     in.read(buffer, region_size);
+    
+    std::remove_if(buffer, buffer + region_size, std::bind2nd(std::equal_to<char>(), '\n'));
+    buffer[orig_region_size] = '\0';
+    
     sequences.push_back(buffer);
     std::transform(sequences.back().begin(), sequences.back().end(), 
 		   sequences.back().begin(), std::ptr_fun(&toupper));
@@ -372,7 +405,6 @@ extract_regions_chrom(const string &chrom_name, const string &filename,
   }
   in.close();
 }
-
 
 
 void 
@@ -394,38 +426,13 @@ read_dir(const string& dirname, vector<string> &filenames) {
     throw "no valid files found in: " + dirname;
 }
 
-void
-extract_regions(const string &dirname, 
-		const vector<SimpleGenomicRegion> &regions_in, 
-		vector<string> &sequences) {
-  
-  assert(check_sorted(regions_in));
-
-  vector<string> filenames;
-  read_dir(dirname, filenames);
-
-  vector<vector<SimpleGenomicRegion> > regions;
-  separate_chromosomes(regions_in, regions);
-  
-  std::map<string, size_t> chrom_regions_map;
-  for (size_t i = 0; i < filenames.size(); ++i)
-    chrom_regions_map[strip_path(filenames[i])] = i;
-  
-  for (size_t i = 0; i < regions.size(); ++i) {
-    // get the right file
-    const string chrom(regions[i].front().get_chrom());
-    std::map<string, size_t>::const_iterator f_idx(chrom_regions_map.find(chrom));
-    if (f_idx == chrom_regions_map.end())
-      throw RMAPException("chrom not found:\t" + chrom);
-    extract_regions_chrom(chrom, filenames[f_idx->second], regions[i], sequences);
-  }
-}
 
 void
-extract_regions(const string &dirname, 
-		const vector<GenomicRegion> &regions_in, 
-		vector<string> &sequences) {
-
+extract_regions_fasta(const string &dirname, 
+		      const vector<GenomicRegion> &regions_in, 
+		      vector<string> &sequences) {
+  
+  static const string FASTA_SUFFIX(".fa");
   assert(check_sorted(regions_in));
   
   vector<string> filenames;
@@ -434,25 +441,59 @@ extract_regions(const string &dirname,
   vector<vector<GenomicRegion> > regions;
   separate_chromosomes(regions_in, regions);
   
-  std::map<string, size_t> chrom_regions_map;
+  std::tr1::unordered_map<string, size_t> chrom_regions_map;
   for (size_t i = 0; i < filenames.size(); ++i)
     chrom_regions_map[strip_path(filenames[i])] = i;
   
   for (size_t i = 0; i < regions.size(); ++i) {
-    // get the right file
-    const string chrom(regions[i].front().get_chrom());
-    std::map<string, size_t>::const_iterator f_idx(chrom_regions_map.find(chrom));
+    // GET THE RIGHT FILE
+    const string chrom_name(regions[i].front().get_chrom());
+    const string chrom_file(chrom_name + FASTA_SUFFIX);
+    std::tr1::unordered_map<string, size_t>::const_iterator f_idx = 
+      chrom_regions_map.find(chrom_file);
     if (f_idx == chrom_regions_map.end())
-      throw RMAPException("chrom not found:\t" + chrom);
-    extract_regions_chrom(chrom, filenames[f_idx->second], regions[i], sequences);
+      throw RMAPException("chrom not found:\t" + chrom_file);
+    extract_regions_chrom_fasta(chrom_name, filenames[f_idx->second], 
+				regions[i], sequences);
   }
 }
 
 
+void
+extract_regions_fasta(const string &dirname, 
+		      const vector<SimpleGenomicRegion> &regions_in, 
+		      vector<string> &sequences) {
+  
+  static const string FASTA_SUFFIX(".fa");
+  assert(check_sorted(regions_in));
+  
+  vector<string> filenames;
+  read_dir(dirname, filenames);
+  
+  vector<vector<SimpleGenomicRegion> > regions;
+  separate_chromosomes(regions_in, regions);
+  
+  std::tr1::unordered_map<string, size_t> chrom_regions_map;
+  for (size_t i = 0; i < filenames.size(); ++i)
+    chrom_regions_map[strip_path(filenames[i])] = i;
+  
+  for (size_t i = 0; i < regions.size(); ++i) {
+    // GET THE RIGHT FILE
+    const string chrom_name(regions[i].front().get_chrom());
+    const string chrom_file(chrom_name + FASTA_SUFFIX);
+    std::tr1::unordered_map<string, size_t>::const_iterator f_idx = 
+      chrom_regions_map.find(chrom_file);
+    if (f_idx == chrom_regions_map.end())
+      throw RMAPException("chrom not found:\t" + chrom_file);
+    extract_regions_chrom_fasta(chrom_name, filenames[f_idx->second], 
+				regions[i], sequences);
+  }
+}
+
 
 void
 read_prb_file(string filename, vector<vector<vector<double> > > &scores) {
-  static const size_t input_buffer_size = 1000000;
+  static const size_t INPUT_BUFFER_SIZE = 1000000;
   scores.clear();
   std::ifstream in(filename.c_str());
   if (!in)
@@ -461,20 +502,21 @@ read_prb_file(string filename, vector<vector<vector<double> > > &scores) {
   size_t line_number = 0;
   while (!in.eof()) {
     ++line_number;
-    char buffer[input_buffer_size + 1];
-    in.getline(buffer, input_buffer_size);
-    if (in.gcount() == static_cast<int>(input_buffer_size))
+    char buffer[INPUT_BUFFER_SIZE + 1];
+    in.getline(buffer, INPUT_BUFFER_SIZE);
+    if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
       throw RMAPException("Line in " + filename + 
-			    "\nexceeds max length: " +
-			    toa(input_buffer_size));
+			  "\nexceeds max length: " +
+			  toa(INPUT_BUFFER_SIZE));
     if (buffer[strlen(buffer) - 1] == '\r')
       buffer[strlen(buffer) - 1] = '\0';
     
     vector<string> parts;
     rmap::split_whitespace(buffer, parts);
     if (parts.size() % rmap::alphabet_size != 0)
-      throw RMAPException("Incorrect number of values on line " + toa(line_number) +
-			    " in file " + filename);
+      throw RMAPException("Incorrect number of values on line " + 
+			  toa(line_number) +
+			  " in file " + filename);
     scores.push_back(vector<vector<double> >());
     for (size_t i = 0; i < parts.size(); i += rmap::alphabet_size) {
       scores.back().push_back(vector<double>());
@@ -484,3 +526,119 @@ read_prb_file(string filename, vector<vector<vector<double> > > &scores) {
     in.peek();
   }
 }
+
+
+// void
+// extract_regions_oneline(const string &dirname, 
+// 			const vector<SimpleGenomicRegion> &regions_in, 
+// 			vector<string> &sequences) {
+  
+//   assert(check_sorted(regions_in));
+
+//   vector<string> filenames;
+//   read_dir(dirname, filenames);
+
+//   vector<vector<SimpleGenomicRegion> > regions;
+//   separate_chromosomes(regions_in, regions);
+  
+//   std::tr1::unordered_map<string, size_t> chrom_regions_map;
+//   for (size_t i = 0; i < filenames.size(); ++i)
+//     chrom_regions_map[strip_path(filenames[i])] = i;
+  
+//   for (size_t i = 0; i < regions.size(); ++i) {
+//     // get the right file
+//     const string chrom(regions[i].front().get_chrom());
+//     std::tr1::unordered_map<string, size_t>::const_iterator f_idx = 
+//       chrom_regions_map.find(chrom);
+//     if (f_idx == chrom_regions_map.end())
+//       throw RMAPException("chrom not found:\t" + chrom);
+//     extract_regions_chrom(chrom, filenames[f_idx->second], 
+// 			  regions[i], sequences);
+//   }
+// }
+
+// void
+// extract_regions_oneline(const string &dirname, 
+// 			const vector<GenomicRegion> &regions_in, 
+// 			vector<string> &sequences) {
+
+//   assert(check_sorted(regions_in));
+  
+//   vector<string> filenames;
+//   read_dir(dirname, filenames);
+  
+//   vector<vector<GenomicRegion> > regions;
+//   separate_chromosomes(regions_in, regions);
+  
+//   std::tr1::unordered_map<string, size_t> chrom_regions_map;
+//   for (size_t i = 0; i < filenames.size(); ++i)
+//     chrom_regions_map[strip_path(filenames[i])] = i;
+  
+//   for (size_t i = 0; i < regions.size(); ++i) {
+//     // get the right file
+//     const string chrom(regions[i].front().get_chrom());
+//     std::tr1::unordered_map<string, size_t>::const_iterator f_idx = 
+//       chrom_regions_map.find(chrom);
+//     if (f_idx == chrom_regions_map.end())
+//       throw RMAPException("chrom not found:\t" + chrom);
+//     extract_regions_chrom(chrom, filenames[f_idx->second], regions[i], sequences);
+//   }
+// }
+
+// static void
+// extract_regions_chrom(const string &chrom_name, const string &filename,
+// 		      const vector<SimpleGenomicRegion> &regions, 
+// 		      vector<string> &sequences) {
+  
+//   std::ifstream in(filename.c_str());
+//   for (vector<SimpleGenomicRegion>::const_iterator i(regions.begin());
+//        i != regions.end(); ++i) {
+    
+//     const size_t orig_start_pos = i->get_start();
+//     const size_t orig_end_pos = i->get_end();
+//     const size_t orig_region_size = orig_end_pos - orig_start_pos;
+    
+//     const size_t start_pos = orig_start_pos;
+//     const size_t region_size = orig_region_size;
+//     assert(start_pos >= 0);
+    
+//     in.seekg(start_pos);
+//     char buffer[region_size + 1];
+//     buffer[region_size] = '\0';
+//     in.read(buffer, region_size);
+//     sequences.push_back(buffer);
+//     std::transform(sequences.back().begin(), sequences.back().end(), 
+// 		   sequences.back().begin(), std::ptr_fun(&toupper));
+//   }
+//   in.close();
+// }
+
+
+// static void
+// extract_regions_chrom(const string &chrom_name, const string &filename,
+// 		      const vector<GenomicRegion> &regions, 
+// 		      vector<string> &sequences) {
+  
+//   std::ifstream in(filename.c_str());
+//   for (vector<GenomicRegion>::const_iterator i(regions.begin());
+//        i != regions.end(); ++i) {
+    
+//     const size_t orig_start_pos = i->get_start();
+//     const size_t orig_end_pos = i->get_end();
+//     const size_t orig_region_size = orig_end_pos - orig_start_pos;
+    
+//     const size_t start_pos = orig_start_pos;
+//     const size_t region_size = orig_region_size;
+//     assert(start_pos >= 0);
+    
+//     in.seekg(start_pos);
+//     char buffer[region_size + 1];
+//     buffer[region_size] = '\0';
+//     in.read(buffer, region_size);
+//     sequences.push_back(buffer);
+//     std::transform(sequences.back().begin(), sequences.back().end(), 
+// 		   sequences.back().begin(), std::ptr_fun(&toupper));
+//     assert(i->get_width() == sequences.back().length());
+//   }
+//   in.close();
+// }
