@@ -407,4 +407,11 @@ assemble_region_name(const T &region) {
           rmap::toa(region.get_end()));
 }
 
+template <class T>
+std::string
+assemble_region_name(const T &region, const std::string sep) {
+  return (region.get_chrom() + sep + rmap::toa(region.get_start()) + sep +
+	  rmap::toa(region.get_end()));
+}
+
 #endif
