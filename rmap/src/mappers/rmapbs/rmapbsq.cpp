@@ -85,11 +85,16 @@ map_reads(const string &chrom, const size_t chrom_id,
   for (chrom_offset = 0; chrom_offset < key_diff; ++chrom_offset)
     fast_read.shift(base2int(chrom[chrom_offset]));
   
-  for (; chrom_offset < chrom_size; ++chrom_offset) {
-    const size_t base = base2int(chrom[chrom_offset]);
+  for (; chrom_offset < read_width - 1; ++chrom_offset) {
     const size_t key_base = base2int_bs(chrom[chrom_offset - key_diff]);
-    
-    fast_read.shift(base);
+    fast_read.shift(base2int(chrom[chrom_offset]));
+    SeedMaker::update_bad_bases(key_base, bad_bases);
+    SeedMaker::update_read_word(key_base, read_word);
+  }
+  
+  for (; chrom_offset < chrom_size; ++chrom_offset) {
+    const size_t key_base = base2int_bs(chrom[chrom_offset - key_diff]);
+    fast_read.shift(base2int(chrom[chrom_offset]));
     SeedMaker::update_bad_bases(key_base, bad_bases);
     SeedMaker::update_read_word(key_base, read_word);
     
