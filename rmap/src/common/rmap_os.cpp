@@ -78,7 +78,11 @@ is_valid_filename(const string name, const string& filename_suffix) {
 
 string 
 path_join(const string& a, const string& b) {
-  return a + "/" + b;
+  if (b.empty() || b[0] == '/')
+    throw RMAPException("cannot prepend dir to file \"" + b + "\"");
+  if (!a.empty() && a[a.length() - 1] == '/')
+    return a + b;
+  else return a + "/" + b;
 }
 
 
@@ -177,9 +181,7 @@ read_fastq_file(const char *filename, vector<string> &names,
   }
 }
 
-struct NotNewline {
-  bool operator()(char c) {return c != '\n' && c != '\r';}
-};
+
 
 void
 read_fasta_file(const char *filename, vector<string> &names, 
@@ -219,56 +221,6 @@ read_fasta_file(const char *filename, vector<string> &names,
     names.push_back(name);
     sequences.push_back(s);
   }
-
-  //   size_t begin_pos = in.tellg();
-  //   in.seekg(0, std::ios_base::end);
-  //   size_t end_pos = in.tellg();
-  //   in.seekg(0, std::ios_base::beg);
-  
-  //   size_t filesize = end_pos - begin_pos;
-  //   char *buffer = new char[filesize + 1];
-  
-  //   in.read(buffer, filesize);
-  //   in.close();
-  
-  //   NotNewline not_newline;
-  
-  //   // find name starts and ends
-  //   vector<std::pair<size_t, size_t> > name_starts_ends;
-  //   bool in_name = false;
-  //   for (size_t i = 0; i < filesize; ++i) {
-  //     if (buffer[i] == '>' && !in_name) {
-  //       name_starts_ends.push_back(std::make_pair(i, static_cast<size_t>(0)));
-  //       in_name = true;
-  //     }
-  //     else if (in_name && !not_newline(buffer[i])) {
-  //       name_starts_ends.back().second = i;
-  //       in_name = false;
-  //     }
-  //   }
-  //   assert(name_starts_ends.back().second != 0);
-  
-  //   if (name_starts_ends.size() == 0)
-  //     throw RMAPException("no sequences found in file: " + string(filename));
-
-  //   // resize sequences and names
-  //   names.resize(name_starts_ends.size());
-  //   sequences.resize(name_starts_ends.size());
-  
-  //   names.front() = string(buffer + name_starts_ends.front().first + 1, // (+1 for '>')
-  // 			 buffer + name_starts_ends.front().second);
-  
-  //   for (size_t i = 1; i < name_starts_ends.size(); ++i) {
-  //     rmap::copy_if(buffer + name_starts_ends[i - 1].second,
-  // 		  buffer + name_starts_ends[i].first,
-  // 		  back_inserter(sequences[i - 1]), not_newline);
-  //     names[i] = string(buffer + name_starts_ends[i].first + 1, // (+1 for '>')
-  // 		      buffer + name_starts_ends[i].second);
-  //   }
-  //   rmap::copy_if(buffer + name_starts_ends.back().second, buffer + filesize,
-  // 		back_inserter(sequences.back()), not_newline);
-  //   delete[] buffer;
-
 }
 
 
