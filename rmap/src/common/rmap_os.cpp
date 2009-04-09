@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <map>
 #include <cstring>
+#include <cmath>
 
 using std::string;
 using std::vector;
