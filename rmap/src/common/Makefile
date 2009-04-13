@@ -31,7 +31,7 @@ OBJS = $(subst .cpp,.o,$(SOURCES))
 
 CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
-OPTFLAGS = -O2
+OPTFLAGS = -O3
 DEBUGFLAGS = -g
 
 ifeq "$(shell uname)" "Darwin"
