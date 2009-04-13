@@ -1,8 +1,7 @@
 /*
  *    Part of RMAP software
  *
- *    Copyright (C) 2008 Cold Spring Harbor Laboratory, 
- *                       University of Southern California and
+ *    Copyright (C) 2009 University of Southern California and
  *                       Andrew D. Smith
  *
  *    Authors: Andrew D. Smith
@@ -28,9 +27,9 @@
 
 struct MapResult {
   MapResult(size_t scr,
-	   size_t chr = std::numeric_limits<size_t>::max(),
-	   size_t ste = std::numeric_limits<size_t>::max(),
-	   size_t str = true, size_t unq = true) :
+	    size_t chr = std::numeric_limits<size_t>::max(),
+	    size_t ste = std::numeric_limits<size_t>::max(),
+	    size_t str = true, size_t unq = true) :
     chrom(chr), site(ste), score(scr), strand(str), unique(unq) {}
   void set(size_t scr, size_t chr, size_t ste, size_t str);
   unsigned chrom  : 15;
@@ -57,24 +56,34 @@ MapResult::set(size_t scr, size_t chr, size_t ste, size_t str) {
 }
 
 struct MultiMapResult {
+  MultiMapResult(size_t scr) : score(scr) {}
   void add(size_t scr, size_t chr, size_t ste, size_t str) {
     if (scr < score) {
       mr.clear();
       score = scr;
     }
-    if (mr.size() <= max_count)
+    // The "<=" below is not because we want to keep one more than
+    // "max_count" but because we need to be able to determine when we
+    // have too many. Probably a better way to do this.
+    if (mr.size() <= twice_max_count)
       mr.push_back(MapResult(scr, chr, ste, str));
   }
   std::vector<MapResult> mr;
   size_t score;
-  static size_t max_count;
-  bool is_unique() const {return mr.size() <= max_count;}
+  bool ambiguous() const {return mr.size() > max_count;}
   void collapse() {
     sort(mr.begin(), mr.end());
     mr.erase(std::unique(mr.begin(), mr.end()), mr.end());
   }
+  static size_t max_count;
+  static size_t twice_max_count;
+  static void init(const size_t mc) {
+    max_count = mc;
+    twice_max_count = 2*mc;
+  }
 };
 
 size_t MultiMapResult::max_count;
+size_t MultiMapResult::twice_max_count;
 
 #endif
