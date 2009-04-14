@@ -386,7 +386,7 @@ main(int argc, const char **argv) {
       for (size_t i = 1; i < reads.size(); ++i)
 	read_width = min(read_width, reads[i].length());
     }
-
+    
     if (VERBOSE)
       cerr << "READ WIDTH:     " << read_width << endl;
     

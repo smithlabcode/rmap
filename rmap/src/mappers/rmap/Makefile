@@ -20,7 +20,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-PROGS = rmap rmapq
+PROGS = rmap
 
 LIBS =
 LIBDIR = $(RMAP)/lib
@@ -49,9 +49,8 @@ all:	$(PROGS)
 %.o: %.cpp %.hpp
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-rmap rmapq: $(addprefix $(COMMON_DIR), SeedMaker.o GenomicRegion.o rmap_os.o rmap_utils.o OptionParser.o)
-rmap: $(addprefix $(COMMON_DIR), FastRead.o)
-rmapq: $(addprefix $(COMMON_DIR), FastReadQuality.o)
+rmap: $(addprefix $(COMMON_DIR), SeedMaker.o GenomicRegion.o rmap_os.o \
+	rmap_utils.o OptionParser.o FastRead.o FastReadQuality.o)
 
 install: all
 	@mkdir -p $(RMAP)/bin
