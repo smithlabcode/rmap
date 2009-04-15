@@ -366,11 +366,12 @@ main(int argc, const char **argv) {
     /****************** END COMMAND LINE OPTIONS *****************/
 
     const bool USING_QUALITY = !prb_file.empty();
-      
+    if (VERBOSE && USING_QUALITY)
+      cerr << "USING QUALITY SCORES" << endl;
+    
     // Get the reads
     vector<string> input_read_names, reads;
     read_fasta_file(reads_file.c_str(), input_read_names, reads);
-
     vector<vector<vector<double> > > scores;
     if (USING_QUALITY) {
       read_prb_file(prb_file.c_str(), scores);
@@ -391,6 +392,8 @@ main(int argc, const char **argv) {
       cerr << "READ WIDTH:     " << read_width << endl;
     
     // prepare the reads
+    if (VERBOSE)
+      cerr << "CHECKING READ QUALITY" << endl;
     vector<vector<string> > read_names;
     if (USING_QUALITY)
       clean_reads(max_mismatches, read_width, input_read_names, 
@@ -423,13 +426,14 @@ main(int argc, const char **argv) {
 	fast_reads.push_back(FastRead(reads[i]));
     }
     
+    if (VERBOSE)
+      cerr << "IDENTIFYING CHROMS" << endl;
     vector<string> chrom_files;
     if (!filenames_file.empty())
       read_filename_file(filenames_file.c_str(), chrom_files);
     else if (isdir(chrom_file.c_str())) 
       read_dir(chrom_file, fasta_suffix, chrom_files);
     else chrom_files.push_back(chrom_file);
-    
     if (VERBOSE) {
       cerr << endl << "chromosome files found (approx size):" << endl;
       for (vector<string>::const_iterator i = chrom_files.begin();
@@ -441,9 +445,6 @@ main(int argc, const char **argv) {
     for (size_t i = 0; i < chrom_files.size(); ++i)
       chrom_names.push_back(basename(chrom_files[i]));
     
-    if (VERBOSE)
-      cerr << endl << "scanning chromosomes:" << endl;
-
     vector<size_t> the_seeds;
     SeedMaker::first_last_seeds(min(read_width, SeedMaker::max_seed_part),
 				n_seeds, seed_weight, the_seeds);
@@ -459,6 +460,9 @@ main(int argc, const char **argv) {
 
     MultiMapResult::init(max_mappings);
     vector<MultiMapResult> best_maps(reads.size(), MultiMapResult(max_mismatches));
+
+    if (VERBOSE)
+      cerr << endl << "scanning chromosomes:" << endl;
     
     for (size_t j = 0; j < the_seeds.size() && !reads.empty(); ++j) {
       for (size_t i = 0; i < chrom_files.size() && !reads.empty(); ++i) {
