@@ -20,7 +20,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-app_subdirs=simreads simreadsbs
+app_subdirs=simreads simreadsbs simreadspe
 
 all:
 	@for i in $(app_subdirs); do \
