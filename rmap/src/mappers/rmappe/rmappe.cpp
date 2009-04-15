@@ -50,6 +50,7 @@ using std::tr1::unordered_multimap;
 
 typedef unordered_multimap<size_t, size_t> SeedHash;
 
+
 void
 get_read_matches(const size_t the_seed, const vector<string> &reads,
 		 SeedHash &seed_hash) {
@@ -66,7 +67,7 @@ get_read_matches(const size_t the_seed, const vector<string> &reads,
 
 template <class T> void
 map_reads(const string &chrom, const size_t chrom_id, const size_t profile, 
-	  const size_t read_width, const size_t max_diffs, 
+	  const size_t end_width, const size_t max_diffs, 
 	  const size_t min_sep, const size_t max_sep, 
 	  const vector<T> &reads_left, const vector<T> &reads_right, 
 	  const SeedHash &seed_hash, const bool strand, 
@@ -76,18 +77,16 @@ map_reads(const string &chrom, const size_t chrom_id, const size_t profile,
   MASK_t read_word = rmap_bits::all_zeros;
   T fast_read;
   
-  const size_t key_diff = read_width - min(read_width, SeedMaker::max_seed_part);
+  const size_t key_diff = end_width - min(end_width, SeedMaker::max_seed_part);
   const size_t chrom_size = chrom.size();
 
   vector<T> possible_lefts(max_sep);
-  
-  // const size_t lookup_mask = table_size - 1;
   
   size_t chrom_offset = 0;
   for (chrom_offset = 0; chrom_offset < key_diff; ++chrom_offset)
     fast_read.shift(base2int(chrom[chrom_offset]));
 
-  for (; chrom_offset < read_width - 1; ++chrom_offset) {
+  for (; chrom_offset < end_width - 1; ++chrom_offset) {
     const size_t key_base = base2int(chrom[chrom_offset - key_diff]);
     fast_read.shift(base2int(chrom[chrom_offset]));
     SeedMaker::update_bad_bases(key_base, bad_bases);
@@ -109,23 +108,22 @@ map_reads(const string &chrom, const size_t chrom_id, const size_t profile,
 	
 	const SeedHash::const_iterator  limit(bucket.second);
 	for (SeedHash::const_iterator to_test(bucket.first); to_test != limit; ++to_test) {
-
 	  const size_t score = reads_right[to_test->second].score(fast_read);
-
+	  
 	  if (score <= max_diffs) {
-
 	    const size_t lookback_limit = chrom_offset - min_sep;
-	    for (size_t i = chrom_offset - max_sep; i < lookback_limit; ++i) {
+	    for (size_t i = (chrom_offset > max_sep) ? 
+		   chrom_offset - max_sep : 0; i < lookback_limit; ++i) {
 	      
 	      const size_t pair_score = score + 
 		reads_left[to_test->second].score(possible_lefts[i % max_sep]);
-	      
+
 	      const vector<MultiMapResultPE>::iterator current(best_maps.begin() + 
 							       to_test->second);
 	      if (pair_score <= current->score) {
-		const size_t left_start = i - read_width + 1;
-		current->add(score, chrom_id, left_start, 
-			     chrom_offset - read_width + 1, strand);
+		const size_t left_start = i - end_width + 1;
+		current->add(pair_score, chrom_id, left_start, 
+			     chrom_offset - end_width + 1, strand);
 	      }
 	    }
 	  }
@@ -147,7 +145,7 @@ good_read(const vector<vector<double> > &read) {
 
 
 void
-clean_reads(const size_t min_match_score, const size_t left_width,
+clean_reads(const size_t min_match_score, const size_t end_width,
 	    const vector<string> &input_read_names, 
 	    vector<string> &reads_left, vector<string> &reads_right, 
 	    vector<vector<vector<double> > > &scores_left,
@@ -172,28 +170,39 @@ clean_reads(const size_t min_match_score, const size_t left_width,
 
 
 void
-sites_to_regions(const size_t read_width, const vector<string> &chrom, 
+sites_to_regions(const size_t end_width, const vector<string> &chrom, 
 		 const vector<size_t> &chrom_sizes, 
 		 const vector<vector<string> > &read_names, 
 		 vector<MultiMapResultPE> &bests, const size_t max_diffs, 
 		 vector<GenomicRegion> &hits) {
+  
+  static const string LEFT_TAG("_L");
+  static const string RIGHT_TAG("_R");
+
   for (size_t i = 0; i < bests.size(); ++i)
     if (!bests[i].mr.empty()) {
       sort(bests[i].mr.begin(), bests[i].mr.end());
       for (size_t j = 0; j < bests[i].mr.size(); ++j)
 	if (j == 0 || bests[i].mr[j - 1] < bests[i].mr[j]) {
 	  const size_t chrom_id = bests[i].mr[j].chrom;
-	  const size_t start = bests[i].mr[j].strand ? 
-	    bests[i].mr[j].site : 
-	    chrom_sizes[chrom_id] - bests[i].mr[j].site2 - read_width;
-	  const size_t end = bests[i].mr[j].strand ? 
-	    bests[i].mr[j].site2 + read_width : 
-	    chrom_sizes[chrom_id] - bests[i].mr[j].site;
+	  const size_t left_start = 
+	    bests[i].mr[j].strand ? bests[i].mr[j].site : 
+	    chrom_sizes[chrom_id] - bests[i].mr[j].site2 - end_width;
+	  const size_t right_start = 
+	    bests[i].mr[j].strand ? bests[i].mr[j].site2 :
+	    chrom_sizes[chrom_id] - bests[i].mr[j].site - end_width;
 	  const size_t score = bests[i].mr[j].score;
 	  const char strand = ((bests[i].mr[j].strand) ? '+' : '-');
-	  for (size_t k = 0; k < read_names[i].size(); ++k)
-	    hits.push_back(GenomicRegion(chrom[chrom_id], start, end,
-					 read_names[i][k], score, strand));
+	  for (size_t k = 0; k < read_names[i].size(); ++k) {
+	    hits.push_back(GenomicRegion(chrom[chrom_id], left_start, 
+					 left_start + end_width,
+					 read_names[i][k] + LEFT_TAG, 
+					 score, strand));
+	    hits.push_back(GenomicRegion(chrom[chrom_id], right_start,
+					 right_start + end_width,
+					 read_names[i][k] + RIGHT_TAG, 
+					 score, strand));
+	  }
 	}
     }
 }
@@ -204,7 +213,7 @@ to_base_symbol(char c) {return (isvalid(c)) ? toupper(c) : 'N';}
 
 
 void
-clean_reads(const size_t max_diffs, const size_t read_width,
+clean_reads(const size_t max_diffs, const size_t end_width,
 	    const vector<string> &input_read_names,
 	    vector<string> &reads_left, vector<string> &reads_right, 
 	    vector<vector<string> > &read_names) {
@@ -236,7 +245,7 @@ clean_reads(const size_t max_diffs, const size_t read_width,
 
 
 void
-sites_to_regions(const size_t read_width, const vector<string> &chrom, 
+sites_to_regions(const size_t end_width, const vector<string> &chrom, 
 		 const vector<size_t> &chrom_sizes, 
 		 const vector<vector<string> > &read_names, 
 		 vector<MultiMapResultPE> &bests, const size_t min_match_score, 
@@ -250,8 +259,8 @@ sites_to_regions(const size_t read_width, const vector<string> &chrom,
 	  const size_t chrom_id = bests[i].mr[j].chrom;
 	  const size_t start = bests[i].mr[j].strand ? 
 	    bests[i].mr[j].site : 
-	    chrom_sizes[chrom_id] - bests[i].mr[j].site - read_width;
-	  const size_t end = start + read_width;
+	    chrom_sizes[chrom_id] - bests[i].mr[j].site - end_width;
+	  const size_t end = start + end_width;
 	  const size_t score = bests[i].mr[j].score;
 	  const char strand = ((bests[i].mr[j].strand) ? '+' : '-');
 	  for (size_t k = 0; k < read_names[i].size(); ++k)
@@ -306,39 +315,40 @@ eliminate_ambigs(const size_t max_mismatches,
 
 
 void
-process_score_data(const size_t read_width, const size_t max_mismatches,
+process_score_data(const size_t end_width, const size_t max_mismatches,
 		   double &max_quality_score, double &max_match_score,
-		   vector<vector<vector<double> > > &scores_left,
-		   vector<vector<vector<double> > > &scores_right) {
+		   vector<vector<vector<double> > > &left,
+		   vector<vector<vector<double> > > &right) {
+
   double min_quality_score = numeric_limits<double>::max();
-  for (size_t i = 0; i < scores_left.size(); ++i)
-    for (size_t j = 0; j < scores_left[i].size(); ++j) {
-      max_quality_score = 
+  for (size_t i = 0; i < left.size(); ++i)
+    for (size_t j = 0; j < left[i].size(); ++j) {
+      max_quality_score =
 	max(max_quality_score, 
-	    max(*max_element(scores_left[i][j].begin(), scores_left[i][j].end()),
-		*max_element(scores_right[i][j].begin(), scores_right[i][j].end())));
-      min_quality_score = 
+	    max(*max_element(left[i][j].begin(), left[i][j].end()),
+		*max_element(right[i][j].begin(), right[i][j].end())));
+      min_quality_score =
 	min(min_quality_score, 
-	    min(*min_element(scores_left[i][j].begin(), scores_left[i][j].end()),
-		*min_element(scores_right[i][j].begin(), scores_right[i][j].end())));
+	    min(*min_element(left[i][j].begin(), left[i][j].end()),
+		*min_element(right[i][j].begin(), right[i][j].end())));
     }
   
-  FastReadQuality::set_read_properties(read_width, 0, max_quality_score - 
+  FastReadQuality::set_read_properties(end_width, 0, max_quality_score - 
 				       min_quality_score);
   const double max_final_score = 
     max_mismatches*(max_quality_score - min_quality_score);
   max_match_score = max_mismatches*
     FastReadQuality::quality_to_value(max_final_score/max_mismatches);
   
-  for (size_t i = 0; i < scores_left.size(); ++i) {
-    for (size_t j = 0; j < scores_left[i].size(); ++j) {
-      const double max_score_left = *max_element(scores_left[i][j].begin(), 
-						 scores_left[i][j].end());
-      const double max_score_right = *max_element(scores_right[i][j].begin(), 
-						  scores_right[i][j].end());
-      for (size_t k = 0; k < scores_left[i][j].size(); ++k) {
-	scores_left[i][j][k] = max_score_left - scores_left[i][j][k];
-	scores_right[i][j][k] = max_score_right - scores_right[i][j][k];
+  for (size_t i = 0; i < left.size(); ++i) {
+    for (size_t j = 0; j < left[i].size(); ++j) {
+      const double max_score_left = 
+	*max_element(left[i][j].begin(), left[i][j].end());
+      const double max_score_right = 
+	*max_element(right[i][j].begin(), right[i][j].end());
+      for (size_t k = 0; k < left[i][j].size(); ++k) {
+	left[i][j][k] = max_score_left - left[i][j][k];
+	right[i][j][k] = max_score_right - right[i][j][k];
       }
     }
   }
@@ -346,15 +356,14 @@ process_score_data(const size_t read_width, const size_t max_mismatches,
 
 
 void
-split_scores(const size_t left_width,
+split_scores(const size_t read_width,
 	     vector<vector<vector<double> > > &scores, 
 	     vector<vector<vector<double> > > &left,
 	     vector<vector<vector<double> > > &right) {
+  typedef vector<vector<double> > vv;
   for (size_t i = 0; i < scores.size(); ++i) {
-    left.push_back(vector<vector<double> >(scores[i].begin(), 
-					   scores[i].begin() + left_width));
-    right.push_back(vector<vector<double> >(scores[i].begin() + left_width,
-					    scores[i].begin() + 2*left_width));
+    left.push_back(vv(scores[i].begin(), scores[i].begin() + read_width));
+    right.push_back(vv(scores[i].end() - read_width, scores[i].end()));
     scores[i].clear();
   }
   scores.clear();
@@ -362,13 +371,27 @@ split_scores(const size_t left_width,
 
 
 void
-split_reads(const size_t left_width, vector<string> &reads,
+split_reads(const size_t read_width, vector<string> &reads,
 	    vector<string> &left, vector<string> &right) {
   for (size_t i = 0; i < reads.size(); ++i) {
-    left.push_back(reads[i].substr(0, left_width));
-    right.push_back(reads[i].substr(left_width, left_width));
+    left.push_back(reads[i].substr(0, read_width));
+    right.push_back(revcomp(reads[i].substr(reads[i].length() - read_width)));
   }
   reads.clear();
+}
+
+
+size_t
+determine_read_width(const vector<string> &reads, size_t read_width) {
+  size_t both_ends = reads.front().size();
+  for (size_t i = 1; i < reads.size(); ++i)
+    if (both_ends != reads[i].length())
+      throw RMAPException("paired-end reads must have uniform width");
+  if (read_width == 0)
+    read_width = std::floor(both_ends/2);
+  else if (read_width > both_ends/2)
+    read_width = both_ends - read_width;
+  return read_width;
 }
 
 
@@ -385,11 +408,10 @@ main(int argc, const char **argv) {
     
     size_t n_seeds = 0;
     size_t seed_weight = 0;
-    size_t read_width = 0;
     size_t max_mismatches = 0;
     size_t max_mappings = 1;
 
-    size_t left_width = 0;
+    size_t end_width = 0;
     size_t max_sep = 200;
     size_t min_sep = 0;
     
@@ -410,7 +432,7 @@ main(int argc, const char **argv) {
 		      false, prb_file);
     opt_parse.add_opt("seeds", 'S', "number of seeds", true , n_seeds);
     opt_parse.add_opt("hit", 'h', "weight of hit", true , seed_weight);
-    opt_parse.add_opt("width", 'w', "width of reads", false, read_width);
+    opt_parse.add_opt("width", 'w', "width of reads", false, end_width);
     opt_parse.add_opt("mismatch", 'm', "maximum allowed mismatches", 
 		      true , max_mismatches);
     opt_parse.add_opt("ambiguous", 'a', "file to write names of ambiguously mapped reads", 
@@ -444,60 +466,61 @@ main(int argc, const char **argv) {
     /****************** END COMMAND LINE OPTIONS *****************/
 
     const bool USING_QUALITY = !prb_file.empty();
+    if (VERBOSE && USING_QUALITY) {
+      cerr << "USING QUALITY SCORES" << endl;
+    }
       
-    // Get the reads
+    //// GET THE READS
+    if (VERBOSE)
+      cerr << "READING DATA" << endl;
     vector<string> input_read_names, reads;
     read_fasta_file(reads_file.c_str(), input_read_names, reads);
-    
     vector<vector<vector<double> > > scores;
     if (USING_QUALITY) {
+      if (VERBOSE)
+	cerr << "READING QUALITY SCORES" << endl;
       read_prb_file(prb_file.c_str(), scores);
       if (scores.size() != reads.size())
 	throw RMAPException("different number of reads in prb and reads files");
     }
-    
     if (VERBOSE)
       cerr << "TOTAL READS:    " << reads.size() << endl;
-
-    if (read_width == 0) {
-      read_width = reads.front().size();
-      for (size_t i = 1; i < reads.size(); ++i)
-	read_width = min(read_width, reads[i].length());
-    }
     
+    //// DETERMINE READ END WIDTH
+    end_width = determine_read_width(reads, end_width);
     if (VERBOSE)
-      cerr << "READ WIDTH:     " << read_width << endl;
-    
-    if (left_width > read_width/2) {
-      throw RMAPException("incorrect read width");
-    }
-    else if (left_width == 0)
-      left_width = std::floor(read_width/2);
+      cerr << "READ WIDTH:     " << end_width << endl;
     
     vector<string> reads_left, reads_right;
-    split_reads(left_width, reads, reads_left, reads_right);
+    split_reads(end_width, reads, reads_left, reads_right);
     vector<vector<vector<double> > > scores_left, scores_right;
     if (USING_QUALITY)
-      split_scores(left_width, scores, scores_left, scores_right);
+      split_scores(end_width, scores, scores_left, scores_right);
+    
+    // no more reads or scores after this point
+    assert(reads.empty() && scores.empty());
     
     // prepare the reads
+    if (VERBOSE)
+      cerr << "CHECKING READ QUALITY" << endl;
     vector<vector<string> > read_names;
     if (USING_QUALITY)
-      clean_reads(max_mismatches, left_width, input_read_names, 
+      clean_reads(max_mismatches, end_width, input_read_names, 
 		  reads_left, reads_right, scores_left, scores_right, 
 		  read_names);
-    else clean_reads(max_mismatches, left_width, input_read_names,
+    else clean_reads(max_mismatches, end_width, input_read_names,
 		     reads_left, reads_right, read_names);
-    
     if (VERBOSE)
       cerr << "READS AFTER QC: " << reads_left.size() << endl;
     
+    if (VERBOSE)
+      cerr << "FORMATTING READS" << endl;
     // convert the reads into FastReads
     vector<FastRead> fast_reads_left, fast_reads_right;
     vector<FastReadQuality> fast_reads_left_q, fast_reads_right_q;
     double max_match_score = 0, max_quality_score = 0;
     if (USING_QUALITY) {
-      process_score_data(read_width, max_mismatches,
+      process_score_data(end_width, max_mismatches,
 			 max_quality_score, max_match_score, 
 			 scores_left, scores_right);
       if (VERBOSE)
@@ -513,21 +536,22 @@ main(int argc, const char **argv) {
       scores_right.clear();
     }
     else {
-      FastRead::set_read_width(left_width);
+      FastRead::set_read_width(end_width);
       for (size_t i = 0; i < reads_left.size(); ++i) {
 	fast_reads_left.push_back(FastRead(reads_left[i]));
 	fast_reads_right.push_back(FastRead(reads_right[i]));
       }
-      // Should be able to do this: reads.clear();
     }
     
+    
+    if (VERBOSE)
+      cerr << "IDENTIFYING CHROMS" << endl;
     vector<string> chrom_files;
     if (!filenames_file.empty())
       read_filename_file(filenames_file.c_str(), chrom_files);
     else if (isdir(chrom_file.c_str())) 
       read_dir(chrom_file, fasta_suffix, chrom_files);
     else chrom_files.push_back(chrom_file);
-    
     if (VERBOSE) {
       cerr << endl << "chromosome files found (approx size):" << endl;
       for (vector<string>::const_iterator i = chrom_files.begin();
@@ -539,11 +563,8 @@ main(int argc, const char **argv) {
     for (size_t i = 0; i < chrom_files.size(); ++i)
       chrom_names.push_back(basename(chrom_files[i]));
     
-    if (VERBOSE)
-      cerr << endl << "scanning chromosomes:" << endl;
-
     vector<size_t> the_seeds;
-    SeedMaker::first_last_seeds(min(left_width, SeedMaker::max_seed_part),
+    SeedMaker::first_last_seeds(min(end_width, SeedMaker::max_seed_part),
 				n_seeds, seed_weight, the_seeds);
     
     if (VERBOSE) {
@@ -556,8 +577,11 @@ main(int argc, const char **argv) {
     vector<pair<string, size_t> > ambigs;
 
     MultiMapResultPE::init(max_mappings);
-    vector<MultiMapResultPE> best_maps(reads_left.size(), MultiMapResultPE(max_mismatches));
+    vector<MultiMapResultPE> best_maps(reads_left.size(), MultiMapResultPE(2*max_mismatches));
     
+    if (VERBOSE)
+      cerr << endl << "scanning chromosomes:" << endl;
+
     for (size_t j = 0; j < the_seeds.size() && !reads_left.empty(); ++j) {
       for (size_t i = 0; i < chrom_files.size() && !reads_left.empty(); ++i) {
 	if (VERBOSE)
@@ -577,23 +601,23 @@ main(int argc, const char **argv) {
 	  cerr << "[SCANNING=" << chrom_names.front() << "] ";
 
 	if (USING_QUALITY)
-	  map_reads(chrom.front(), i, the_seeds[j], left_width, max_match_score,
+	  map_reads(chrom.front(), i, the_seeds[j], end_width, max_match_score,
 		    min_sep, max_sep,
 		    fast_reads_left_q, fast_reads_right_q,
 		    seed_hash, true, best_maps);
-	else map_reads(chrom.front(), i, the_seeds[j], left_width, max_mismatches,
+	else map_reads(chrom.front(), i, the_seeds[j], end_width, max_mismatches,
 		       min_sep, max_sep,
 		       fast_reads_left, fast_reads_right,
 		       seed_hash, true, best_maps);
 	
 	revcomp_inplace(chrom.front());
-
+	
 	if (USING_QUALITY)
-	  map_reads(chrom.front(), i, the_seeds[j], left_width, max_match_score,
+	  map_reads(chrom.front(), i, the_seeds[j], end_width, max_match_score,
 		    min_sep, max_sep,
 		    fast_reads_left_q, fast_reads_right_q,
 		    seed_hash, false, best_maps);
-	else map_reads(chrom.front(), i, the_seeds[j], left_width, max_mismatches,
+	else map_reads(chrom.front(), i, the_seeds[j], end_width, max_mismatches,
 		       min_sep, max_sep,
 		       fast_reads_left, fast_reads_right,
 		       seed_hash, false, best_maps);
@@ -631,10 +655,10 @@ main(int argc, const char **argv) {
     vector<GenomicRegion> hits;
 
     if (USING_QUALITY)
-      sites_to_regions(left_width, chrom_names, chrom_sizes,
+      sites_to_regions(end_width, chrom_names, chrom_sizes,
 		       read_names, best_maps, max_match_score, 
 		       max_quality_score, hits);
-    else sites_to_regions(left_width, chrom_names, chrom_sizes,
+    else sites_to_regions(end_width, chrom_names, chrom_sizes,
 			  read_names, best_maps, max_mismatches, hits);
     
     // Output the results
