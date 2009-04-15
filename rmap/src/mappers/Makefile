@@ -20,7 +20,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-app_subdirs=rmap rmapbs
+app_subdirs=rmap rmapbs rmappe
 
 all:
 	@for i in $(app_subdirs); do \
