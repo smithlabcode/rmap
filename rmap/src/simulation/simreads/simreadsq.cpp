@@ -1,6 +1,7 @@
-/*    simreadsq: a program for simulating Solexa reads to test rmapq
- *    Copyright (C) 2008 Cold Spring Harbor Laboratory, 
- *                       University of Southern California and
+/*    simreadsq: a program for simulating Solexa reads to test rmap
+ *    with quality scores
+ *
+ *    Copyright (C) 2008 University of Southern California and
  *                       Andrew D. Smith
  *
  *    Authors: Andrew D. Smith
@@ -30,7 +31,6 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <set>
 #include <cmath>
 
 using std::ofstream;
@@ -41,11 +41,10 @@ using std::vector;
 using std::ostream;
 using std::endl;
 using std::cerr;
-using std::ptr_fun;
 using std::max;
 using std::min;
 
-bool
+static bool
 finite_matrix(const vector<vector<double> > &matrix) {
   for (size_t i = 0; i < matrix.size(); ++i)
     for (size_t j = 0; j < matrix[i].size(); ++j)
@@ -53,7 +52,7 @@ finite_matrix(const vector<vector<double> > &matrix) {
   return true;
 }
 
-void
+static void
 get_max_and_min_quality_scores(const vector<vector<double> > &scores, 
 			       double &min_quality_score, 
 			       double &max_quality_score) {
@@ -68,14 +67,14 @@ get_max_and_min_quality_scores(const vector<vector<double> > &scores,
 }
 
 
-void
+static void
 seq_to_quality_scores(const string &seq, vector<vector<double> > &quality_scores) {
   quality_scores.resize(seq.length(), vector<double>(rmap::alphabet_size, 0));
   for (size_t i = 0; i < seq.length(); ++i)
     quality_scores[i][base2int(seq[i])] = 1;
 }
 
-double
+static double
 score_against_sequence(const vector<vector<double> > &quality_scores, 
 		       const string &seq) {
   double score = 0;
@@ -84,16 +83,14 @@ score_against_sequence(const vector<vector<double> > &quality_scores,
   return score;
 }
 
-void
-simreads(const Runif &rng,
-	 const size_t n_reads, const size_t read_width, const size_t max_errors, 
-	 const string &name, const string &sequence,
-	 vector<string> &read_names, vector<string> &reads,
-	 vector<vector<vector<double> > > &probs) {
+static void
+simreadsq(const Runif &rng,
+	  const size_t n_reads, const size_t read_width, const size_t max_errors, 
+	  const string &name, const string &sequence,
+	  vector<string> &read_names, vector<string> &reads,
+	  vector<vector<vector<double> > > &probs) {
   
   const size_t lim = sequence.length() - read_width + 1;
-  
-  std::set<size_t> used;
   
   for (size_t i = 0; i < n_reads; ++i) {
     
@@ -204,7 +201,6 @@ main(int argc, const char **argv) {
       total += filesizes.back();
     }
 
-
     vector<size_t> samples;
     for (size_t i = 0; i < filesizes.size(); ++i)
       samples.push_back(n_reads*filesizes[i]/total);
@@ -219,8 +215,8 @@ main(int argc, const char **argv) {
       for (size_t j = 0; j < names.size(); ++j) {
 	const size_t offset = names[j].find(':');
 	const string name(names[j].substr(0, offset));
-	simreads(rng, samples[i], read_width, max_errors, 
-		 name, sequences[j], read_names, reads, probs);
+	simreadsq(rng, samples[i], read_width, max_errors, 
+		  name, sequences[j], read_names, reads, probs);
       }
     }
     
@@ -231,10 +227,9 @@ main(int argc, const char **argv) {
 
     out.open(prb_file.c_str());
     for (size_t i = 0; i < probs.size(); ++i) {
-      for (size_t j = 0; j < probs[i].size(); ++j) {
+      for (size_t j = 0; j < probs[i].size(); ++j)
 	copy(probs[i][j].begin(), probs[i][j].end(),
 	     ostream_iterator<double>(out, "\t"));
-      }
       out << endl;
     }
     out.close();
