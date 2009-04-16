@@ -34,6 +34,8 @@
 
 #include <tr1/unordered_map>
 
+using std::tr1::unordered_multimap;
+
 using std::string;
 using std::vector;
 using std::cout;
@@ -46,11 +48,8 @@ using std::numeric_limits;
 using std::pair;
 using std::make_pair;
 
-using std::tr1::unordered_multimap;
-
 typedef unordered_multimap<size_t, size_t> SeedHash;
-
-void
+static void
 get_read_matches(const size_t the_seed, const vector<string> &reads,
 		 SeedHash &seed_hash) {
   for (size_t i = 0; i < reads.size(); ++i) {
@@ -68,7 +67,8 @@ template <class T> void
 map_reads(const string &chrom, const size_t chrom_id,
 	  const size_t profile, const size_t read_width, 
 	  const size_t max_diffs, const vector<T> &fast_reads,
-	  const SeedHash &seed_hash, const bool strand, vector<MultiMapResult> &best_maps) {
+	  const SeedHash &seed_hash, const bool strand, 
+	  vector<MultiMapResult> &best_maps) {
   
   MASK_t bad_bases = rmap_bits::all_ones;
   MASK_t read_word = rmap_bits::all_zeros;
@@ -89,10 +89,8 @@ map_reads(const string &chrom, const size_t chrom_id,
   }
   
   for (; chrom_offset < chrom_size; ++chrom_offset) {
-    const size_t base = base2int(chrom[chrom_offset]);
     const size_t key_base = base2int(chrom[chrom_offset - key_diff]);
-    
-    fast_read.shift(base);
+    fast_read.shift(base2int(chrom[chrom_offset]));
     SeedMaker::update_bad_bases(key_base, bad_bases);
     SeedMaker::update_read_word(key_base, read_word);
     
@@ -101,12 +99,15 @@ map_reads(const string &chrom, const size_t chrom_id,
 	bucket(seed_hash.equal_range((read_word & profile)));
       if (bucket.first != bucket.second) {
 	const SeedHash::const_iterator  limit(bucket.second);
-	for (SeedHash::const_iterator to_test(bucket.first); to_test != limit; ++to_test) {
+	for (SeedHash::const_iterator to_test(bucket.first); 
+	     to_test != limit; ++to_test) {
 	  const size_t score = fast_reads[to_test->second].score(fast_read);
 	  if (score <= max_diffs) {
-	    const vector<MultiMapResult>::iterator current(best_maps.begin() + to_test->second);
+	    const vector<MultiMapResult>::iterator 
+	      current(best_maps.begin() + to_test->second);
 	    if (score <= current->score)
-	      current->add(score, chrom_id, chrom_offset - read_width + 1, strand);
+	      current->add(score, chrom_id, 
+			   chrom_offset - read_width + 1, strand);
 	  }
 	}
       }
@@ -115,7 +116,7 @@ map_reads(const string &chrom, const size_t chrom_id,
 }
 
 
-bool
+static bool
 good_read(const vector<vector<double> > &read) {
   size_t bad_count = 0;
   for (size_t i = 0; i < read.size(); ++i)
@@ -124,7 +125,7 @@ good_read(const vector<vector<double> > &read) {
 }
 
 
-void
+static void
 clean_reads(const size_t min_match_score, const size_t read_width,
 	    const vector<string> &input_read_names,
 	    vector<string> &reads, vector<vector<vector<double> > > &scores,
@@ -147,7 +148,7 @@ clean_reads(const size_t min_match_score, const size_t read_width,
 }
 
 
-void
+static void
 sites_to_regions(const vector<string> &chrom, const vector<size_t> &chrom_sizes, 
 		 const vector<string> &reads, const vector<vector<string> > &read_names, 
 		 vector<MultiMapResult> &bests, const size_t max_diffs, 
@@ -176,7 +177,7 @@ static char
 to_base_symbol(char c) {return (isvalid(c)) ? toupper(c) : 'N';}
 
 
-void
+static void
 clean_reads(const size_t max_diffs, const size_t read_width,
 	    const vector<string> &input_read_names,
 	    vector<string> &reads, vector<vector<string> > &read_names) {
@@ -205,7 +206,7 @@ clean_reads(const size_t max_diffs, const size_t read_width,
 }
 
 
-void
+static void
 sites_to_regions(const vector<string> &chrom, const vector<size_t> &chrom_sizes, 
 		 const vector<string> &reads, const vector<vector<string> > &read_names, 
 		 vector<MultiMapResult> &bests, const size_t min_match_score, 
@@ -233,7 +234,7 @@ sites_to_regions(const vector<string> &chrom, const vector<size_t> &chrom_sizes,
 }
 
 
-void
+static void
 write_non_uniques(string filename, const vector<pair<string, size_t> > &ambigs) {
   std::ofstream out(filename.c_str());
   for (size_t i = 0; i < ambigs.size(); ++i)
@@ -269,7 +270,7 @@ eliminate_ambigs(const size_t max_mismatches,
 }
 
 
-void
+static void
 process_score_data(const size_t read_width, const size_t max_mismatches,
 		   double &max_quality_score, double &max_match_score,
 		   vector<vector<vector<double> > > &scores) {
@@ -287,10 +288,8 @@ process_score_data(const size_t read_width, const size_t max_mismatches,
   FastReadQuality::set_read_properties(read_width, 0, max_quality_score - 
 				       min_quality_score);
   
-  const double max_final_score = 
-    max_mismatches*(max_quality_score - min_quality_score);
   max_match_score = max_mismatches*
-    FastReadQuality::quality_to_value(max_final_score/max_mismatches);
+    FastReadQuality::quality_to_value(max_quality_score - min_quality_score);
   
   for (size_t i = 0; i < scores.size(); ++i) {
     for (size_t j = 0; j < scores[i].size(); ++j) {
@@ -299,6 +298,21 @@ process_score_data(const size_t read_width, const size_t max_mismatches,
       for (size_t k = 0; k < scores[i][j].size(); ++k)
 	scores[i][j][k] = max_score - scores[i][j][k];
     }
+  }
+}
+
+
+static void
+fastq_to_prb(const vector<string> &reads,
+	     const vector<vector<double> > &fastq_scores, 
+	     vector<vector<vector<double> > > &scores) {
+  typedef vector<double> vv;
+  for (size_t i = 0; i < reads.size(); ++i) {
+    scores.push_back(vector<vv>(reads[i].length(),
+				vv(rmap::alphabet_size, -40)));
+    for (size_t j = 0; j < reads[i].size(); ++j)
+      scores[i][j][base2int(reads[i][j])] = 
+	10.0*log(1 + pow(10.0, (fastq_scores[i][j] - 64)/10.0))/log(10.0);
   }
 }
 
@@ -365,23 +379,35 @@ main(int argc, const char **argv) {
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
 
-    const bool USING_QUALITY = !prb_file.empty();
+    const bool FASTQ_READS = (is_fastq(reads_file));
+    const bool USING_QUALITY = (!prb_file.empty() || FASTQ_READS);
+    
     if (VERBOSE && USING_QUALITY)
       cerr << "USING QUALITY SCORES" << endl;
     
     // Get the reads
     vector<string> input_read_names, reads;
-    read_fasta_file(reads_file.c_str(), input_read_names, reads);
     vector<vector<vector<double> > > scores;
-    if (USING_QUALITY) {
-      read_prb_file(prb_file.c_str(), scores);
-      if (scores.size() != reads.size())
-	throw RMAPException("different number of reads in prb and reads files");
+    if (FASTQ_READS) {
+      vector<vector<double> > fastq_scores;
+      read_fastq_file(reads_file.c_str(), input_read_names, reads,
+		      fastq_scores);
+      
+      fastq_to_prb(reads, fastq_scores, scores);
+
+    }
+    else {
+      read_fasta_file(reads_file.c_str(), input_read_names, reads);
+      if (USING_QUALITY) {
+	read_prb_file(prb_file.c_str(), scores);
+	if (scores.size() != reads.size())
+	  throw RMAPException("different number of reads in prb and reads files");
+      }
     }
     
     if (VERBOSE)
       cerr << "TOTAL READS:    " << reads.size() << endl;
-
+    
     if (read_width == 0) {
       read_width = reads.front().size();
       for (size_t i = 1; i < reads.size(); ++i)
@@ -400,7 +426,6 @@ main(int argc, const char **argv) {
 		  reads, scores, read_names);
     else clean_reads(max_mismatches, read_width, input_read_names, 
 		     reads, read_names);
-    
     if (VERBOSE)
       cerr << "READS AFTER QC: " << reads.size() << endl;
     
@@ -459,8 +484,11 @@ main(int argc, const char **argv) {
     vector<pair<string, size_t> > ambigs;
 
     MultiMapResult::init(max_mappings);
-    vector<MultiMapResult> best_maps(reads.size(), MultiMapResult(max_mismatches));
-
+    vector<MultiMapResult> best_maps(reads.size(), 
+				     MultiMapResult((USING_QUALITY) ? 
+						    max_match_score : 
+						    max_mismatches));
+    
     if (VERBOSE)
       cerr << endl << "scanning chromosomes:" << endl;
     
@@ -473,15 +501,17 @@ main(int argc, const char **argv) {
 	get_read_matches(the_seeds[j], reads, seed_hash);
 	
 	vector<string> chrom_names, chrom;
-	if (VERBOSE)
-	  cerr << "[LOADING CHROM] ";
+	if (VERBOSE) cerr << "[LOADING CHROM] ";
 	read_fasta_file(chrom_files[i].c_str(), chrom_names, chrom);
 	if (j == 0)
 	  chrom_sizes[i] = chrom.front().length();
 	
+	transform(chrom.front().begin(), chrom.front().end(), chrom.front().begin(), 
+		  std::ptr_fun(&toupper));
+	
 	if (VERBOSE)
 	  cerr << "[SCANNING=" << chrom_names.front() << "] ";
-
+	
 	if (USING_QUALITY)
 	  map_reads(chrom.front(), i, the_seeds[j], read_width, max_match_score,
 		    fast_reads_q, seed_hash, true, best_maps);
@@ -489,13 +519,13 @@ main(int argc, const char **argv) {
 		       fast_reads, seed_hash, true, best_maps);
 	
 	revcomp_inplace(chrom.front());
-
+	
 	if (USING_QUALITY)
 	  map_reads(chrom.front(), i, the_seeds[j], read_width, max_match_score,
 		    fast_reads_q, seed_hash, false, best_maps);
 	else map_reads(chrom.front(), i, the_seeds[j], read_width, max_mismatches,
 		       fast_reads, seed_hash, false, best_maps);
-
+	
 	if (VERBOSE)
 	  cerr << "[CLEANING=" << chrom_names.front() << "] ";
 	if (USING_QUALITY)
@@ -511,7 +541,7 @@ main(int argc, const char **argv) {
       cerr << endl << "[eliminating ambiguous reads...";
     
     if (USING_QUALITY)
-      eliminate_ambigs(max_mismatches, best_maps, read_names, 
+      eliminate_ambigs(max_match_score, best_maps, read_names, 
 		       reads, ambigs, fast_reads_q);
     else eliminate_ambigs(max_mismatches, best_maps, read_names, 
 			  reads, ambigs, fast_reads);
