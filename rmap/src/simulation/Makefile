@@ -1,7 +1,6 @@
 #    Makefile from rmap software
 #
-#    Copyright (C) 2008 Cold Spring Harbor Laboratory, 
-#                       University of Southern California and
+#    Copyright (C) 2009 University of Southern California and
 #                       Andrew D. Smith
 #
 #    Authors: Andrew D. Smith
