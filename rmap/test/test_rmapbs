@@ -28,8 +28,8 @@ TEST_READS=$1/input/test_reads_bs.fa
 
 ./rmapbs -o test_reads_bs.bed -a test_reads_bs.amb -S 3 -h 10 -m 2 -w 32 \
 -c ${TEST_CHROM} ${TEST_READS}
-if [ `diff --brief test_reads_bs.bed $1/output`="" ] && \
-   [ `diff --brief test_reads_bs.amb $1/output`="" ]; then
+if [ "`diff --brief test_reads_bs.bed $1/output`" = "" ] && \
+   [ "`diff --brief test_reads_bs.amb $1/output`" = "" ]; then
         echo "PASS"
 fi
 rm test_reads_bs.bed test_reads_bs.amb

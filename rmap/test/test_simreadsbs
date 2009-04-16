@@ -26,7 +26,7 @@
 TEST_CHROM=$1/input/chr8.fa
 
 ./simreadsbs -o test_reads_bs.fa -n 1000 -w 35 -e 2 -S 1 ${TEST_CHROM}
-if [ `diff --brief test_reads_bs.fa $1/output`="" ]; then
+if [ "`diff --brief test_reads_bs.fa $1/output`" = "" ]; then
         echo "PASS"
 else
 	echo "FAIL" 
