@@ -51,7 +51,8 @@ main(int argc, const char **argv) {
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("extractseq", "program to extract sequence regions from "
 			   "chromosome files corresponding to genomic intervals "
-			   "specified in a BED file");
+			   "specified in a BED file",
+			   "<bed-format-regions>");
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
 		      false, outfile);
     opt_parse.add_opt("chrom", 'c', "directory with chrom files (FASTA format)", 

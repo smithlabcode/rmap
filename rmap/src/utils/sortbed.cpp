@@ -64,7 +64,8 @@ int main(int argc, const char **argv) {
     bool collapse_regions = false;
 
     /****************** GET COMMAND LINE ARGUMENTS ***************************/
-    OptionParser opt_parse("sortbed", "A program for sorting BED format files");
+    OptionParser opt_parse("sortbed", "A program for sorting BED format files",
+			   "<bed-format-file>");
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
 		      false , outfile);
     opt_parse.add_opt("collapse", 'c', "Collapse the BED intervals", 

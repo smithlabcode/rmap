@@ -93,7 +93,8 @@ main(int argc, const char **argv) {
     bool VERBOSE = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
-    OptionParser opt_parse("simreads", "program for generating simulated reads");
+    OptionParser opt_parse("simreads", "program for generating simulated reads",
+			   "<fasta-chrom-files>");
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
 		      false , outfile);
     opt_parse.add_opt("reads", 'n', "number of reads to simulate", 

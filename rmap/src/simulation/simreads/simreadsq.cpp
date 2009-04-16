@@ -160,7 +160,8 @@ main(int argc, const char **argv) {
     /****************** COMMAND LINE OPTIONS ********************/
     static OptionParser opt_parse("simreadsq",
 				  "program for generating simulated reads"
-				  " with simulated quality scores");
+				  " with simulated quality scores",
+				  "<fasta-chrom-files>");
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", false , outfile);
     opt_parse.add_opt("reads", 'n', "number of reads to simulate", false , n_reads);
     opt_parse.add_opt("width", 'w', "width of reads to simulate", false, read_width);

@@ -443,7 +443,8 @@ main(int argc, const char **argv) {
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("rmappe", "The rmap mapping tool for "
-			   "Solexa reads (paired-end version)");
+			   "Solexa reads (paired-end version)",
+			   "<fast[a/q]-reads-file>");
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
 		      false , outfile);
     opt_parse.add_opt("chrom", 'c', "FASTA file or dir containing chromosome(s)", 

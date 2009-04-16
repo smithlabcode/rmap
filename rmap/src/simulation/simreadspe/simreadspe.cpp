@@ -109,7 +109,7 @@ main(int argc, const char **argv) {
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("simreadspe", "program for generating simulated "
-			   "paired-end reads");
+			   "paired-end reads", "<fasta-chrom-files>");
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
 		      false , outfile);
     opt_parse.add_opt("reads", 'n', "number of reads to simulate", 

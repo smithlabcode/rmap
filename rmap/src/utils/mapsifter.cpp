@@ -143,7 +143,8 @@ main(int argc, const char **argv) {
 
   /****************** GET COMMAND LINE ARGUMENTS ***************************/
   OptionParser opt_parse("mapsifter", "a program for sifting through mapped "
-			 "read locations (given in BED format)");
+			 "read locations (given in BED format)",
+			 "<bed-format-file>");
   opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
 		    false , outfile);
   opt_parse.add_opt("verbose", 'v', "print more run info", 

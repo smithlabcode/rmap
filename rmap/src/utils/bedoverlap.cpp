@@ -66,7 +66,8 @@ int main(int argc, const char **argv) {
     
     /****************** GET COMMAND LINE ARGUMENTS ***************************/
     OptionParser opt_parse("bedoverlap", "a program for finding intervals "
-			   "overlapping members of another set of intervals");
+			   "overlapping members of another set of intervals",
+			   "<bed-regions> <bed-map-locations>");
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
 		      false , outfile);
     vector<string> leftover_args;
