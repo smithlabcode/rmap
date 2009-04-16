@@ -76,7 +76,7 @@ struct MultiMapResultPE {
       mr.clear();
       score = scr;
     }
-    if (mr.size() <= max_count)
+    if (mr.size() <= twice_max_count)
       mr.push_back(MapResultPE(scr, chr, ste, st2, str));
   }
   std::vector<MapResultPE> mr;
