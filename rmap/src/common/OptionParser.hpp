@@ -85,7 +85,8 @@ struct RMAPOptionException : public RMAPException {
 class OptionParser {
 public:
 
-  OptionParser(const std::string nm, const std::string descr);
+  OptionParser(const std::string nm, const std::string descr,
+	       std::string noflag_msg = "");
   
   void add_opt(const std::string l_name, const char s_name, 
 	       const std::string descr,  const bool reqd, int &val);
@@ -122,6 +123,7 @@ public:
 private:
   std::string prog_name;
   std::string prog_descr;
+  std::string noflag_message;
   std::vector<Option> options;
 
   bool help_request;

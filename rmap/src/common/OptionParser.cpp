@@ -295,8 +295,10 @@ OptionParser::parse(const int argc, const char **argv, vector<string> &arguments
       first_missing_option_name = options[i].format_option_name();
 }
 
-OptionParser::OptionParser(const string nm, const string descr) :
-  prog_name(nm), prog_descr(descr), help_request(false), about_request(false) {
+OptionParser::OptionParser(const string nm, const string descr,
+			   string noflag_msg) :
+  prog_name(nm), prog_descr(descr), noflag_message(noflag_msg),
+  help_request(false), about_request(false) {
   add_opt("help", '?', "print this help message", false, help_request);
   add_opt("about", '\0', "print about message", false, about_request);
 }
@@ -323,8 +325,11 @@ OptionParser::help_message() const {
   }
   
   std::ostringstream ss;
-  ss << "Usage: " << prog_name << " [OPTIONS]" << endl << endl;
-
+  ss << "Usage: " << prog_name << " [OPTIONS]";
+  if (!noflag_message.empty())
+    ss << " " << noflag_message;
+  ss << endl << endl;
+  
   if (options.size() > 2) {
     ss << "Options:" << endl;
     for (size_t i = 2; i < options.size(); ++i)
