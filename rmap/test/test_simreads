@@ -23,7 +23,12 @@
 #
 
 
-TEST_CHROM=$1/chr8.fa
-TEST_READS=$1/test_reads.fa
+TEST_CHROM=$1/input/chr8.fa
 
-echo "No test for simreads"
+./simreads -o test_reads.fa -n 1000 -w 35 -e 2 -S 1 ${TEST_CHROM}
+if [ `diff --brief test_reads.fa $1/output`="" ]; then
+        echo "PASS"
+else
+	echo "FAIL" 
+fi
+rm test_reads.fa

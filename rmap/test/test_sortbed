@@ -22,6 +22,6 @@
 #
 
 
-TEST_BED=$1/test_regions.bed
+TEST_BED=$1/input/test_regions.bed
 
 echo "No test for sortbed"
