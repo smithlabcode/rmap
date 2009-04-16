@@ -95,15 +95,4 @@ extract_regions_fasta(const std::string &dirname,
 void 
 read_dir(const std::string& dirname, std::vector<std::string> &filenames);
 
-
-// void
-// extract_regions_oneline(const std::string &dirname, 
-// 		const std::vector<SimpleGenomicRegion> &regions_in, 
-// 		std::vector<std::string> &sequences);
-
-// void
-// extract_regions_oneline(const std::string &dirname, 
-// 		const std::vector<GenomicRegion> &regions_in, 
-// 		std::vector<std::string> &sequences);
-
 #endif
