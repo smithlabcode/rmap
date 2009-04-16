@@ -385,20 +385,22 @@ main(int argc, const char **argv) {
     if (VERBOSE && USING_QUALITY)
       cerr << "USING QUALITY SCORES" << endl;
     
-    // Get the reads
+    //// GET THE READS
+    if (VERBOSE)
+      cerr << "READING DATA" << endl;
     vector<string> input_read_names, reads;
     vector<vector<vector<double> > > scores;
     if (FASTQ_READS) {
       vector<vector<double> > fastq_scores;
       read_fastq_file(reads_file.c_str(), input_read_names, reads,
 		      fastq_scores);
-      
       fastq_to_prb(reads, fastq_scores, scores);
-
     }
     else {
       read_fasta_file(reads_file.c_str(), input_read_names, reads);
       if (USING_QUALITY) {
+	if (VERBOSE)
+	  cerr << "READING QUALITY SCORES" << endl;
 	read_prb_file(prb_file.c_str(), scores);
 	if (scores.size() != reads.size())
 	  throw RMAPException("different number of reads in prb and reads files");
