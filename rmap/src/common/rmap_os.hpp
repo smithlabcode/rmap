@@ -36,6 +36,9 @@ bool
 isdir(const char *filename);
 
 bool
+is_fastq(const std::string filename);
+
+bool
 is_valid_filename(const std::string name, 
 		  const std::string& filename_suffix);
 

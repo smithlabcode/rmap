@@ -45,6 +45,7 @@ strip_path(string full_path) {
   return full_path.substr(start);
 }
 
+
 string
 strip_path_and_suffix(string full_path) {
   size_t start = full_path.find_last_of('/');
@@ -57,11 +58,22 @@ strip_path_and_suffix(string full_path) {
   return full_path.substr(start, end - start);
 }
 
+
 bool
 isdir(const char *filename) {
   struct stat buffer;
   stat(filename, &buffer);
   return S_ISDIR(buffer.st_mode);
+}
+
+
+bool
+is_fastq(const string filename) {
+  std::ifstream f(filename.c_str());
+  char c = '\0';
+  f >> c;
+  f.close();
+  return (c == '@');
 }
 
 
@@ -118,10 +130,8 @@ is_sequence_line(const char *buffer) {
 
 void
 parse_score_line(const char *buffer, vector<double> &scr) {
-  vector<string> parts;
-  rmap::split_whitespace(buffer, parts);
-  for (size_t i = 0; i < parts.size(); ++i) {
-    scr.push_back(atof(parts[i].c_str()));
+  for (const char *i = buffer; *i != '\0'; ++i) {
+    scr.push_back(static_cast<size_t>(*i));
   }
 }
 
@@ -145,6 +155,7 @@ read_fastq_file(const char *filename, vector<string> &names,
   string s, name;
   vector<double> scr;
   bool first_line = true;
+  bool is_sequence_line = false, is_score_line = false;
   while (!in.eof()) {
     char buffer[INPUT_BUFFER_SIZE + 1];
     in.getline(buffer, INPUT_BUFFER_SIZE);
@@ -165,13 +176,18 @@ read_fastq_file(const char *filename, vector<string> &names,
       name = name.substr(name.find_first_not_of("@ "));
       s = "";
       scr.clear();
+      is_sequence_line = true;
     }
-    else if (is_sequence_line(buffer))
+    else if (is_sequence_line) {
       s += buffer;
-    else {
-      vector<double> curr_scr;
-      parse_score_line(buffer, curr_scr);
-      scr.insert(scr.end(), curr_scr.begin(), curr_scr.end());
+      is_sequence_line = false;
+    }
+    else if (buffer[0] == '+') {
+      is_score_line = true;
+    }
+    else if (is_score_line) {
+      parse_score_line(buffer, scr);
+      is_score_line = false;
     }
   }
   if (!first_line && s.length() > 0) {
@@ -479,119 +495,3 @@ read_prb_file(string filename, vector<vector<vector<double> > > &scores) {
     in.peek();
   }
 }
-
-
-// void
-// extract_regions_oneline(const string &dirname, 
-// 			const vector<SimpleGenomicRegion> &regions_in, 
-// 			vector<string> &sequences) {
-  
-//   assert(check_sorted(regions_in));
-
-//   vector<string> filenames;
-//   read_dir(dirname, filenames);
-
-//   vector<vector<SimpleGenomicRegion> > regions;
-//   separate_chromosomes(regions_in, regions);
-  
-//   std::tr1::unordered_map<string, size_t> chrom_regions_map;
-//   for (size_t i = 0; i < filenames.size(); ++i)
-//     chrom_regions_map[strip_path(filenames[i])] = i;
-  
-//   for (size_t i = 0; i < regions.size(); ++i) {
-//     // get the right file
-//     const string chrom(regions[i].front().get_chrom());
-//     std::tr1::unordered_map<string, size_t>::const_iterator f_idx = 
-//       chrom_regions_map.find(chrom);
-//     if (f_idx == chrom_regions_map.end())
-//       throw RMAPException("chrom not found:\t" + chrom);
-//     extract_regions_chrom(chrom, filenames[f_idx->second], 
-// 			  regions[i], sequences);
-//   }
-// }
-
-// void
-// extract_regions_oneline(const string &dirname, 
-// 			const vector<GenomicRegion> &regions_in, 
-// 			vector<string> &sequences) {
-
-//   assert(check_sorted(regions_in));
-  
-//   vector<string> filenames;
-//   read_dir(dirname, filenames);
-  
-//   vector<vector<GenomicRegion> > regions;
-//   separate_chromosomes(regions_in, regions);
-  
-//   std::tr1::unordered_map<string, size_t> chrom_regions_map;
-//   for (size_t i = 0; i < filenames.size(); ++i)
-//     chrom_regions_map[strip_path(filenames[i])] = i;
-  
-//   for (size_t i = 0; i < regions.size(); ++i) {
-//     // get the right file
-//     const string chrom(regions[i].front().get_chrom());
-//     std::tr1::unordered_map<string, size_t>::const_iterator f_idx = 
-//       chrom_regions_map.find(chrom);
-//     if (f_idx == chrom_regions_map.end())
-//       throw RMAPException("chrom not found:\t" + chrom);
-//     extract_regions_chrom(chrom, filenames[f_idx->second], regions[i], sequences);
-//   }
-// }
-
-// static void
-// extract_regions_chrom(const string &chrom_name, const string &filename,
-// 		      const vector<SimpleGenomicRegion> &regions, 
-// 		      vector<string> &sequences) {
-  
-//   std::ifstream in(filename.c_str());
-//   for (vector<SimpleGenomicRegion>::const_iterator i(regions.begin());
-//        i != regions.end(); ++i) {
-    
-//     const size_t orig_start_pos = i->get_start();
-//     const size_t orig_end_pos = i->get_end();
-//     const size_t orig_region_size = orig_end_pos - orig_start_pos;
-    
-//     const size_t start_pos = orig_start_pos;
-//     const size_t region_size = orig_region_size;
-//     assert(start_pos >= 0);
-    
-//     in.seekg(start_pos);
-//     char buffer[region_size + 1];
-//     buffer[region_size] = '\0';
-//     in.read(buffer, region_size);
-//     sequences.push_back(buffer);
-//     std::transform(sequences.back().begin(), sequences.back().end(), 
-// 		   sequences.back().begin(), std::ptr_fun(&toupper));
-//   }
-//   in.close();
-// }
-
-
-// static void
-// extract_regions_chrom(const string &chrom_name, const string &filename,
-// 		      const vector<GenomicRegion> &regions, 
-// 		      vector<string> &sequences) {
-  
-//   std::ifstream in(filename.c_str());
-//   for (vector<GenomicRegion>::const_iterator i(regions.begin());
-//        i != regions.end(); ++i) {
-    
-//     const size_t orig_start_pos = i->get_start();
-//     const size_t orig_end_pos = i->get_end();
-//     const size_t orig_region_size = orig_end_pos - orig_start_pos;
-    
-//     const size_t start_pos = orig_start_pos;
-//     const size_t region_size = orig_region_size;
-//     assert(start_pos >= 0);
-    
-//     in.seekg(start_pos);
-//     char buffer[region_size + 1];
-//     buffer[region_size] = '\0';
-//     in.read(buffer, region_size);
-//     sequences.push_back(buffer);
-//     std::transform(sequences.back().begin(), sequences.back().end(), 
-// 		   sequences.back().begin(), std::ptr_fun(&toupper));
-//     assert(i->get_width() == sequences.back().length());
-//   }
-//   in.close();
-// }
