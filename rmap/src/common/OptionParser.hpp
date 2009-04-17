@@ -46,6 +46,8 @@ public:
 	 const std::string descr,  const bool reqd, std::string &val);
   Option(const std::string l_name, const char s_name, 
 	 const std::string descr,  const bool reqd, bool &val);
+  Option(const std::string l_name, const char s_name, 
+	 const std::string descr,  const bool reqd, char &val);
   
   bool parse(std::vector<std::string> &command_line);
   void parse_config_file(std::vector<std::string> &options);
@@ -71,6 +73,7 @@ private:
   double *double_value;
   std::string *string_value;
   bool *bool_value;    
+  char *char_value;    
   
   void format_option(const std::string &argument);
   static void set_max_length(size_t num);
@@ -104,6 +107,8 @@ public:
 	       const std::string descr,  const bool reqd, std::string &val);
   void add_opt(const std::string l_name, const char s_name, 
 	       const std::string descr,  const bool reqd, bool &val);
+  void add_opt(const std::string l_name, const char s_name, 
+	       const std::string descr,  const bool reqd, char &val);
   
   void parse(const int argc, const char **argv, 
 	     std::vector<std::string> &arguments,

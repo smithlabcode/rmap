@@ -40,7 +40,7 @@ static const size_t MAX_LINE_LENGTH = 72;
 enum {
   RMAP_ARG_INT,    RMAP_ARG_UINT,    RMAP_ARG_LONG,
   RMAP_ARG_ULONG,  RMAP_ARG_FLOAT,   RMAP_ARG_DOUBLE,
-  RMAP_ARG_STRING, RMAP_ARG_BOOL
+  RMAP_ARG_STRING, RMAP_ARG_BOOL, RMAP_ARG_CHAR
 };
 
 using std::cerr;
@@ -53,9 +53,10 @@ Option::format_option(const string &argument) {
       (arg_type == RMAP_ARG_LONG && !(ss >> *long_value)) ||
       (arg_type == RMAP_ARG_ULONG && !(ss >> *ulong_value)) ||
       (arg_type == RMAP_ARG_FLOAT && !(ss >> *float_value)) ||
-      (arg_type == RMAP_ARG_DOUBLE && !(ss >> *double_value)))
+      (arg_type == RMAP_ARG_DOUBLE && !(ss >> *double_value)) ||
+      (arg_type == RMAP_ARG_CHAR && !(ss >> *char_value)))
     throw RMAPOptionException("Invalid argument [" + argument + 
-				"] to option [" + format_option_name() + "]");
+			      "] to option [" + format_option_name() + "]");
   else if (arg_type == RMAP_ARG_STRING)
     *string_value = argument;
   else if (arg_type == RMAP_ARG_BOOL)
@@ -105,6 +106,11 @@ Option::Option(const string l_name, const char s_name, const string descr,
 	       const bool reqd, bool &val) :
   arg_type(RMAP_ARG_BOOL), long_name(l_name), short_name(s_name), 
   description(descr), required(reqd), specified(false), bool_value(&val) {}
+
+Option::Option(const string l_name, const char s_name, const string descr, 
+	       const bool reqd, char &val) :
+  arg_type(RMAP_ARG_CHAR), long_name(l_name), short_name(s_name), 
+  description(descr), required(reqd), specified(false), char_value(&val) {}
 
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
@@ -226,6 +232,12 @@ OptionParser::add_opt(const string l_name, const char s_name, const string descr
 void 
 OptionParser::add_opt(const string l_name, const char s_name, const string descr,
 		      const bool reqd, bool &val) {
+  options.push_back(Option(l_name, s_name, descr, reqd, val));
+}
+
+void 
+OptionParser::add_opt(const string l_name, const char s_name, const string descr,
+		      const bool reqd, char &val) {
   options.push_back(Option(l_name, s_name, descr, reqd, val));
 }
 
