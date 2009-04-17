@@ -41,15 +41,12 @@ using std::endl;
 void
 add_sequencing_errors(const Runif &rng, const double max_errors,
 		      string &seq, string &error_log) {
-  size_t no_err,temp;
-  temp = max_errors+1;
   error_log = string(seq.length(), '0');
   std::set<size_t> errors;
-  no_err = double(rng.runif(1ul, temp) + 0.7);
-  for (size_t i = 0; i < no_err; ++i) {
+  for (size_t i = 0; i < max_errors; ++i) {
     size_t error_pos = rng.runif(0ul, seq.length());
     while (errors.find(error_pos) != errors.end())
-	error_pos = rng.runif(0ul, seq.length());
+      error_pos = rng.runif(0ul, seq.length());
     errors.insert(error_pos);
     error_log[error_pos] = '1';
 
@@ -110,16 +107,9 @@ prob_to_quality_scores_solexa(const vector<vector<double> > &prb, vector<vector<
   for (size_t i = 0; i < prb.size(); ++i) {
     std::transform(prb[i].begin(), prb[i].end(),
 		   quality[i].begin(), std::bind2nd(std::plus<double>(), 1e-3));
-//     cerr << quality[i][0] << "\t" << prb[i][0] << endl;
-//     assert(quality[i][0] > 0);
     const double column_sum = accumulate(quality[i].begin(), quality[i].end(), 0.0);
-//     cerr << column_sum << endl;
-//     assert(quality[i][0] > 0);
-//     cerr << quality[i][0] << endl;
     std::transform(quality[i].begin(), quality[i].end(),
 		   quality[i].begin(), std::bind2nd(std::divides<double>(), column_sum));
-//     cerr << quality[i][0] << endl;
-//     assert(quality[i][0] > 0);
   }
   for (size_t i = 0; i < quality.size(); ++i)
     for (size_t j = 0; j < rmap::alphabet_size; ++j) {
@@ -175,11 +165,6 @@ complement_score_matrix(const vector<vector<double> > &matrix,
 			vector<vector<double> > &scores) {
   scores = matrix;
   for (size_t i = 0; i < scores.size(); ++i) {
-    //     for (size_t j = 0; j < scores[i].size(); ++j)
-    //       assert(finite(scores[i][j]));
-//    const size_t max_idx = max_element(scores[i].begin(), scores[i].end())
-      //    - scores[i].begin();
-    //const double max_score = scores[i][max_idx];
     for (size_t j = 0; j < scores[i].size(); ++j) {
       scores[i][j] = max_quality_score - scores[i][j];
     }
