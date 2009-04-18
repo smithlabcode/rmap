@@ -46,7 +46,6 @@ main(int argc, const char **argv) {
     
     // Parameter variables
     size_t kmer = 0;
-    string seqfile;
     string outfile;
   
     bool WRITE_TEXT = false;
@@ -80,7 +79,7 @@ main(int argc, const char **argv) {
       cerr << opt_parse.help_message() << endl;
       return EXIT_SUCCESS;
     }
-    const string chrom_file = leftover_args.front();
+    const string seqfile = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
     
     if (VERBOSE)
