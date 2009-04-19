@@ -93,6 +93,7 @@ simreads_bs(const Runif &rng,
 	    const size_t n_reads, 
 	    const size_t read_width, 
 	    const size_t max_errors, 
+	    const double bs_rate,
 	    const double meth_rate,
 	    
 	    const string &name, 
@@ -127,7 +128,7 @@ simreads_bs(const Runif &rng,
     
     // Do the bisulfite treatment
     string seq_bs(seq);
-    bisulfite_treatment(rng, seq_bs, meth_rate);
+    bisulfite_treatment(rng, seq_bs, bs_rate, meth_rate);
     
     // Sample errors
     vector<vector<double> > errors;
@@ -177,7 +178,8 @@ main(int argc, const char **argv) {
     size_t n_reads = 1000;
     size_t read_width = 25;
     size_t max_errors = 0;
-    double meth_rate = 0;
+    double meth_rate = 0.0;
+    double bs_rate = 1.0;
     size_t random_number_seed = -numeric_limits<size_t>::max();
 
     bool VERBOSE = false;
@@ -195,7 +197,8 @@ main(int argc, const char **argv) {
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
     opt_parse.add_opt("prob", 'p', "prb output file", true, prb_file);
     opt_parse.add_opt("unconv", 'u', "output file for unconverted reads", false, unconverted_outfile);
-    opt_parse.add_opt("meth", 'm', "rate of CpG methylation", false, meth_rate);
+    opt_parse.add_opt("meth", 'm', "rate of CpG methylation", false, meth_rate); 
+    opt_parse.add_opt("bs", 'b', "rate of bisulfite conversion", false, bs_rate);
     opt_parse.add_opt("seed", 'S', "random number seed", false, random_number_seed);
     vector<string> leftover_args;
     opt_parse.parse(argc, argv, leftover_args);
@@ -244,7 +247,7 @@ main(int argc, const char **argv) {
       for (size_t j = 0; j < names.size(); ++j) {
 	const size_t offset = names[j].find(':');
 	const string name(names[j].substr(0, offset));
-	simreads_bs(rng, samples[i], read_width, max_errors, meth_rate, 
+	simreads_bs(rng, samples[i], read_width, max_errors, bs_rate, meth_rate, 
 		    name, sequences[j], read_names, reads, reads_bs, probs);
       }
     }
