@@ -44,12 +44,13 @@ using std::ptr_fun;
 
 
 void
-simreads_bs(const Runif rng,
-	    const size_t n_reads, const size_t read_width, 
-	    const size_t max_errors, const double meth_rate,
-	    const string &name, const string &sequence,
-	    vector<string> &read_names, vector<string> &reads,
-	    vector<string> &reads_bs) {
+simreadsbs(const Runif rng,
+	   const size_t n_reads, const size_t read_width, 
+	   const size_t max_errors, 
+	   const double bs_rate, const double meth_rate,
+	   const string &name, const string &sequence,
+	   vector<string> &read_names, vector<string> &reads,
+	   vector<string> &reads_bs) {
 
   const size_t lim = sequence.length() - read_width + 1;
 
@@ -74,7 +75,7 @@ simreads_bs(const Runif rng,
 	add_sequencing_errors(rng, max_errors, seq, error_log);
 	
 	reads.push_back(seq);
-	bisulfite_treatment(rng, seq, meth_rate);
+	bisulfite_treatment(rng, seq, bs_rate, meth_rate);
 	const string read_name(name + ":" + toa(start) + "-" + 
 			       toa(start + read_width) + "_" + toa(!rc) + "_" +
 			       error_log + "_" + toa(count(error_log.begin(), 
@@ -98,9 +99,10 @@ main(int argc, const char **argv) {
     size_t n_reads = 1000;
     size_t read_width = 25;
     size_t max_errors = 0;
-    double meth_rate = 0;
+    double meth_rate = 0.0;
+    double bs_rate = 1.0;
     size_t random_number_seed = -numeric_limits<size_t>::max();
-
+    
     bool VERBOSE = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
@@ -113,7 +115,8 @@ main(int argc, const char **argv) {
     opt_parse.add_opt("err", 'e', "maximum number of simulated sequencing errors", false, max_errors);
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
     opt_parse.add_opt("unconv", 'u', "output file for unconverted reads", false, unconverted_outfile);
-    opt_parse.add_opt("meth", 'm', "rate of CpG methylation", false, meth_rate);
+    opt_parse.add_opt("meth", 'm', "rate of CpG methylation", false, meth_rate); 
+    opt_parse.add_opt("bs", 'b', "rate of bisulfite conversion", false, bs_rate);
     opt_parse.add_opt("seed", 'S', "random number seed", false, random_number_seed);
     vector<string> leftover_args;
     opt_parse.parse(argc, argv, leftover_args);
@@ -161,8 +164,8 @@ main(int argc, const char **argv) {
       for (size_t j = 0; j < names.size(); ++j) {
 	const size_t offset = names[j].find(':');
 	const string name(names[j].substr(0, offset));
-	simreads_bs(rng, samples[i], read_width, max_errors, meth_rate, 
-		    name, sequences[j], read_names, reads, reads_bs);
+	simreadsbs(rng, samples[i], read_width, max_errors, bs_rate, meth_rate, 
+		   name, sequences[j], read_names, reads, reads_bs);
       }
     }
     
