@@ -297,6 +297,8 @@ process_score_data(const size_t read_width, const size_t max_mismatches,
 					    scores[i][j].end());
       for (size_t k = 0; k < scores[i][j].size(); ++k)
 	scores[i][j][k] = max_score - scores[i][j][k];
+      scores[i][j][base2int('C')] = min(scores[i][j][base2int('C')],
+                                        scores[i][j][base2int('T')]);
     }
   }
 }
@@ -317,6 +319,16 @@ fastq_to_prb(const vector<string> &reads,
 }
 
 
+static void
+treat_cpgs(string &chrom) {
+  const size_t lim = chrom.length() - 1;
+  for (size_t i = 0; i < lim; ++i) {
+    if (chrom[i] == 'T' and chrom[i + 1] == 'G')
+      chrom[i] = 'C';
+  }
+}
+
+
 int 
 main(int argc, const char **argv) {
   try {
@@ -328,10 +340,10 @@ main(int argc, const char **argv) {
     string ambiguous_file;
     string fasta_suffix = "fa";
     
-    size_t n_seeds = 0;
-    size_t seed_weight = 0;
+    size_t n_seeds = 3;
+    size_t seed_weight = 10;
     size_t read_width = 0;
-    size_t max_mismatches = 0;
+    size_t max_mismatches = 10;
     size_t max_mappings = 1;
     
     bool VERBOSE = false;
@@ -349,10 +361,10 @@ main(int argc, const char **argv) {
     opt_parse.add_opt("filenames", 'F', "file listing names of chromosome files",
 		      false , filenames_file);
     opt_parse.add_opt("prb", 'p', "file with quality scores (prb format)", false, prb_file);
-    opt_parse.add_opt("seeds", 'S', "number of seeds", true , n_seeds);
-    opt_parse.add_opt("hit", 'h', "weight of hit", true , seed_weight);
+    opt_parse.add_opt("seeds", 'S', "number of seeds", false , n_seeds);
+    opt_parse.add_opt("hit", 'h', "weight of hit", false , seed_weight);
     opt_parse.add_opt("width", 'w', "width of reads", false, read_width);
-    opt_parse.add_opt("mismatch", 'm', "maximum allowed mismatches", true ,
+    opt_parse.add_opt("mismatch", 'm', "maximum allowed mismatches", false ,
 		      max_mismatches);
     opt_parse.add_opt("ambiguous", 'a', "file to write names of ambiguously "
 		      "mapped reads", false , ambiguous_file);
@@ -436,7 +448,8 @@ main(int argc, const char **argv) {
     double max_match_score = 0, max_quality_score = 0;
     if (USING_QUALITY) {
       process_score_data(read_width, max_mismatches,
-			 max_quality_score, max_match_score, scores);
+			 max_quality_score,
+			 max_match_score, scores);
       if (VERBOSE)
 	cerr << "MAX_MATCH_SCORE=" << max_match_score << endl
 	     << "MAX_QUALITY_SCORE=" << max_quality_score << endl;
@@ -509,6 +522,7 @@ main(int argc, const char **argv) {
 	
 	transform(chrom.front().begin(), chrom.front().end(), chrom.front().begin(), 
 		  std::ptr_fun(&toupper));
+	treat_cpgs(chrom.front());
 	
 	if (VERBOSE)
 	  cerr << "[SCANNING=" << chrom_names.front() << "] ";
@@ -518,8 +532,15 @@ main(int argc, const char **argv) {
 		    fast_reads_q, seed_hash, true, best_maps);
 	else map_reads(chrom.front(), i, the_seeds[j], read_width, max_mismatches,
 		       fast_reads, seed_hash, true, best_maps);
+
+	chrom.clear();
+ 	chrom_names.clear();
+	read_fasta_file(chrom_files[i].c_str(), chrom_names, chrom);
 	
 	revcomp_inplace(chrom.front());
+	transform(chrom.front().begin(), chrom.front().end(), chrom.front().begin(), 
+		  std::ptr_fun(&toupper));
+	treat_cpgs(chrom.front());
 	
 	if (USING_QUALITY)
 	  map_reads(chrom.front(), i, the_seeds[j], read_width, max_match_score, 
