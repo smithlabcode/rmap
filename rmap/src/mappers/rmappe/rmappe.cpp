@@ -131,8 +131,8 @@ static bool
 good_read(const vector<vector<double> > &read) {
   size_t bad_count = 0;
   for (size_t i = 0; i < read.size(); ++i)
-    bad_count += (*std::max_element(read[i].begin(), read[i].end()) <= 0);
-  return (bad_count <= 2);
+    bad_count += (*std::max_element(read[i].begin(), read[i].end()) <= -5.0);
+  return (bad_count <= 20);
 }
 
 
@@ -430,11 +430,11 @@ main(int argc, const char **argv) {
     string ambiguous_file;
     string fasta_suffix = "fa";
     
-    size_t n_seeds = 0;
-    size_t seed_weight = 0;
-    size_t max_mismatches = 0;
+    size_t n_seeds = 3;
+    size_t seed_weight = 11;
+    size_t max_mismatches = 10;
     size_t max_mappings = 1;
-
+    
     size_t end_width = 0;
     size_t max_sep = 200;
     size_t min_sep = 0;
@@ -455,11 +455,11 @@ main(int argc, const char **argv) {
 		      false , filenames_file);
     opt_parse.add_opt("prb", 'p', "file with quality scores (prb format)", 
 		      false, prb_file);
-    opt_parse.add_opt("seeds", 'S', "number of seeds", true , n_seeds);
-    opt_parse.add_opt("hit", 'h', "weight of hit", true , seed_weight);
+    opt_parse.add_opt("seeds", 'S', "number of seeds", false , n_seeds);
+    opt_parse.add_opt("hit", 'h', "weight of hit", false , seed_weight);
     opt_parse.add_opt("width", 'w', "width of reads", false, end_width);
     opt_parse.add_opt("mismatch", 'm', "maximum allowed mismatches", 
-		      true , max_mismatches);
+		      false , max_mismatches);
     opt_parse.add_opt("ambiguous", 'a', "file to write names of ambiguously mapped reads", 
 		      false , ambiguous_file);
     opt_parse.add_opt("min-sep", '\0', "min separation between ends", 
@@ -604,7 +604,7 @@ main(int argc, const char **argv) {
 				n_seeds, seed_weight, the_seeds);
     
     if (VERBOSE) {
-      cerr << "SEED STRUCTURES" << endl;
+      cerr << endl << "SEED STRUCTURES" << endl;
       for (size_t i = 0; i < the_seeds.size(); ++i)
 	cerr << bits2string_masked(rmap_bits::all_ones, the_seeds[i]) << endl;
       cerr << endl;
