@@ -20,6 +20,10 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+ifndef RMAP
+$(error RMAP variable undefined)
+endif
+
 PROGS = sortbed bedoverlap mapsifter extractseq
 
 LIBS =
