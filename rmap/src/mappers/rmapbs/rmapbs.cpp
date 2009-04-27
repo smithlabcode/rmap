@@ -121,8 +121,8 @@ bool
 good_read(const vector<vector<double> > &read) {
   size_t bad_count = 0;
   for (size_t i = 0; i < read.size(); ++i)
-    bad_count += (*std::max_element(read[i].begin(), read[i].end()) <= 0);
-  return (bad_count <= 2);
+    bad_count += (*std::max_element(read[i].begin(), read[i].end()) <= -5.0);
+  return (bad_count <= 20);
 }
 
 
@@ -341,7 +341,7 @@ main(int argc, const char **argv) {
     string fasta_suffix = "fa";
     
     size_t n_seeds = 3;
-    size_t seed_weight = 10;
+    size_t seed_weight = 11;
     size_t read_width = 0;
     size_t max_mismatches = 10;
     size_t max_mappings = 1;
@@ -489,7 +489,7 @@ main(int argc, const char **argv) {
 				n_seeds, seed_weight, the_seeds);
     
     if (VERBOSE) {
-      cerr << "SEED STRUCTURES" << endl;
+      cerr << endl << "SEED STRUCTURES" << endl;
       for (size_t i = 0; i < the_seeds.size(); ++i)
 	cerr << bits2string_masked(rmap_bits::all_ones, the_seeds[i]) << endl;
       cerr << endl;
