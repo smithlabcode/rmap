@@ -24,7 +24,6 @@
 #include "GenomicRegion.hpp"
 
 #include <cassert>
-#include <map>
 #include <fstream>
 #include <tr1/unordered_map>
 
@@ -343,7 +342,7 @@ GenomicRegion::operator!=(const GenomicRegion& rhs) const {
 void
 separate_chromosomes(const vector<SimpleGenomicRegion>& regions,
 		     vector<vector<SimpleGenomicRegion> >& separated_by_chrom) {
-  typedef std::map<chrom_id_type, vector<SimpleGenomicRegion> > Separator;
+  typedef unordered_map<chrom_id_type, vector<SimpleGenomicRegion> > Separator;
   Separator separator;
   for (vector<SimpleGenomicRegion>::const_iterator i = regions.begin(); 
        i != regions.end(); ++i) {
@@ -361,7 +360,7 @@ separate_chromosomes(const vector<SimpleGenomicRegion>& regions,
 void
 separate_chromosomes(const vector<GenomicRegion>& regions,
 		     vector<vector<GenomicRegion> >& separated_by_chrom) {
-  typedef std::map<chrom_id_type, vector<GenomicRegion> > Separator;
+  typedef unordered_map<chrom_id_type, vector<GenomicRegion> > Separator;
   Separator separator;
   for (vector<GenomicRegion>::const_iterator i = regions.begin(); 
        i != regions.end(); ++i) {
