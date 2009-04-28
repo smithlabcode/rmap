@@ -1,8 +1,7 @@
 /*
  *    Part of RMAP software
  *
- *    Copyright (C) 2008 Cold Spring Harbor Laboratory, 
- *                       University of Southern California and
+ *    Copyright (C) 2009 University of Southern California and
  *                       Andrew D. Smith
  *
  *    Authors: Andrew D. Smith
@@ -22,133 +21,51 @@
  */
 
 #include "RNG.hpp"
-#include <algorithm>
-#include<iostream>
-using std::cerr;
-using std::max;
 
-size_t Runif :: instance_count = 0;
+#include <unistd.h>
+#include <cstdlib>
+#include <ctime>
 
-/* most significant w-r bits */
-static const unsigned long UPPER_MASK = 0x80000000UL;   
+size_t Runif::state = 0;
+bool Runif::seed_set = false;
 
-/* least significant r bits */
-static const unsigned long LOWER_MASK = 0x7fffffffUL;
+static const size_t 
+DUMMY_SEED = std::numeric_limits<size_t>::max();
+static const size_t
+MODULUS_MASK = static_cast<size_t>(-1);
+static const double
+DOUBLE_DENOMINATOR = static_cast<double>(std::numeric_limits<size_t>::max());
 
-static const size_t N = 624;   
-
-static const size_t M = 397;
-
-/*signed long int 
-  static const LCG(unsigned long int x)
-  {
-  return( ((69069 * x) + 1) &0xffffffffUL);
-  }*/
-
-unsigned long int 
-static const MAGIC(unsigned long int y) {
-  return((((y)&0x1) ? 0x9908b0dfUL : 0));
+static inline size_t
+rng_integer(size_t &state) {
+  // TOO MUCH MAGIC:
+  state = (1103515245*state + 12345) & MODULUS_MASK;
+  return state;
 }
 
-
-void 
-set_rng(vector<unsigned long>&randm,size_t &x ,unsigned long int seed) {
-  size_t i;
-  if(seed ==0)
-    seed = 4357; 
-  randm[0] = seed & 0xffffffffUL;
-  for (i = 1; i < N; i++) {
-    randm[i] =
-      (1812433253UL * (randm[i-1] ^ (randm[i-1] >> 30)) + i);
-    
-    randm[i] &= 0xffffffffUL;
-  }
-  x = i;
+static double
+rng_double(size_t &state) {
+  return rng_integer(state)/DOUBLE_DENOMINATOR;
 }
 
-unsigned long int
-pre_compute(vector<unsigned long>&mt,size_t &x) {
-  size_t kk;
-  if (x >= N) {   /* generate N words at one time */
-    for (kk = 0; kk < N - M; kk++) {
-      unsigned long y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
-      mt[kk] = mt[kk + M] ^ (y >> 1) ^ MAGIC(y);      
-    }
-    for (; kk<N - 1; kk++) {
-      unsigned long y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
-      mt[kk] = mt[kk + (M - N)] ^ (y >> 1) ^ MAGIC(y);
-    }
-    { 
-      unsigned long y = (mt[N - 1] & UPPER_MASK) | (mt[0] & LOWER_MASK);
-      mt[N - 1] = mt[M - 1] ^ (y >> 1) ^ MAGIC(y);
-    }
-    x = 0;
-  }
-  /* Tempering */
-  unsigned long int  k = mt[x];
-  k ^= (k >> 11);
-  k ^= (k << 7) & 0x9d2c5680UL;
-  k ^= (k << 15) & 0xefc60000UL;
-  k ^= (k >> 18);
-  x++; 
-  return k;
-}
-
-unsigned long int 
-rng_integer(vector<unsigned long>&randm,size_t &x,unsigned int n) {
-  unsigned long int offset = 0;
-  unsigned long int range =  0xffffffffUL - offset;
-  unsigned long int scale;
-  unsigned long int k;
-
-  if (n > range || n == 0) 
-    {
-      cerr<<"invalid n, either 0 or exceeds maximum value of generator";
-            
-    }
-
-  scale = range / n;
-  do
-    {
-      k = (pre_compute(randm,x) - offset) / scale;
-    }
-  while (k >= n);
-   
-  return k;
-}
-
-double
-rng_double(vector<unsigned long>&randm,size_t &x) 
-{
-  return pre_compute(randm,x)/ 4294967296.0 ;
-}
-
-
-Runif::Runif(size_t seed) : randm(N,0) {
-  srand((seed == std::numeric_limits<size_t>::max()) ? 
-	((time(0) + getpid())*Runif::getCount()) : seed);
-  instance_count ++ ;
-  set_rng(randm,x,rand());
-}
-
-size_t Runif::getCount()
-{
-  return (instance_count);
-}
-Runif::~Runif() {
+Runif::Runif(size_t seed) {
+  if (seed != DUMMY_SEED)
+    state = seed;
+  else if (!seed_set)
+    state = time(0) + getpid();
 }
 
 int
 Runif::runif(int min_val, int max_val) const {
-  return min_val + rng_integer(randm,x,max_val - min_val);
+  return min_val + (rng_integer(state) % (max_val - min_val));
 }
 
 size_t
 Runif::runif(size_t min_val, size_t max_val) const {
-  return min_val  + rng_integer(randm,x,max_val - min_val);
+  return min_val + (rng_integer(state) % (max_val - min_val));
 }
 
 double 
 Runif::runif(double min_val, double max_val) const {
-  return min_val + rng_double(randm,x)*(max_val - min_val);
+  return min_val + rng_double(state)*(max_val - min_val);
 }

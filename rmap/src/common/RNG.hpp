@@ -1,8 +1,7 @@
 /*
  *    Part of RMAP software
  *
- *    Copyright (C) 2008 Cold Spring Harbor Laboratory, 
- *                       University of Southern California and
+ *    Copyright (C) 2009 University of Southern California and
  *                       Andrew D. Smith
  *
  *    Authors: Andrew D. Smith
@@ -23,23 +22,20 @@
 
 #ifndef RNG_HPP
 #define RNG_HPP
+
 #include <limits>
 #include <cstdlib>
-#include<vector>
-using std::vector;
 
 class Runif {
 public:
   Runif(size_t seed = std::numeric_limits<size_t>::max());
-  ~Runif();
+  ~Runif() {}
   int runif(int min_val, int max_val) const;
   size_t runif(size_t min_val, size_t max_val) const;
   double runif(double min_val, double max_val) const;  
 private:
-  mutable vector<unsigned long>randm;
-  mutable size_t x;
-  static size_t instance_count;
-  static size_t getCount(); 
+  static size_t state;
+  static bool seed_set;
 };
 
 #endif
