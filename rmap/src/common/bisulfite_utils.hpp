@@ -33,6 +33,7 @@ bisulfite_treatment(const Runif &rng, std::string &seq,
 		    double bs_rate = 1.0, double meth_rate = 0.0);
 
 void
-bisulfite_treatment(std::string &seq, double bs_rate = 1.0, double meth_rate = 0.0);
+bisulfite_treatment(std::string &seq, 
+		    double bs_rate = 1.0, double meth_rate = 0.0);
 
 #endif

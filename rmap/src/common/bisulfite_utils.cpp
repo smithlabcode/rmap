@@ -29,22 +29,23 @@ using std::string;
 void
 bisulfite_treatment(const Runif &rng, string &seq, double bs_rate, double meth_rate) {
   const size_t seq_len = seq.length() - 1;
-  for (size_t i = 1; i < seq_len; ++i)
-    if (toupper(seq[i - 1]) == 'C') {
-      if (!(toupper(seq[i]) == 'G' || rng.runif(0.0, 1.0) > meth_rate) ||
-	  rng.runif(0.0, 1.0) < bs_rate)
-	seq[i - 1] = 'T';
+  for (size_t i = 0; i < seq_len; ++i)
+    if (toupper(seq[i]) == 'C') {
+      // CpG
+      if (toupper(seq[i + 1]) == 'G' &&
+	  (rng.runif(0.0, 1.0) > meth_rate || rng.runif(0.0, 1.0) < bs_rate)) {
+	seq[i] = 'T';
+      }
+      // Regular C
+      else if (rng.runif(0.0, 1.0) < bs_rate)
+	seq[i] = 'T';
     }
+  if (toupper(seq[seq_len]) == 'C' && rng.runif(0.0, 1.0) < bs_rate)
+    seq[seq_len] = 'T';
 }
 
 void
 bisulfite_treatment(string &seq, double bs_rate, double meth_rate) {
-  const Runif rng(getpid() + time(0));
-  const size_t seq_len = seq.length() - 1;
-  for (size_t i = 1; i < seq_len; ++i)
-    if (toupper(seq[i - 1]) == 'C') {
-      if (!(toupper(seq[i]) == 'G' || rng.runif(0.0, 1.0) > meth_rate) ||
-	  rng.runif(0.0, 1.0) < bs_rate)
-	seq[i - 1] = 'T';
-    }
+  const Runif rng;
+  bisulfite_treatment(rng, seq, bs_rate, meth_rate);
 }
