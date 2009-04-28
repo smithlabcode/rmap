@@ -30,7 +30,6 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <set>
 
 using std::ofstream;
 using std::ostream_iterator;
@@ -40,11 +39,9 @@ using std::vector;
 using std::ostream;
 using std::endl;
 using std::cerr;
-using std::ptr_fun;
-
 
 void
-simreadsbs(const Runif rng,
+simreadsbs(const Runif &rng,
 	   const size_t n_reads, const size_t read_width, 
 	   const size_t max_errors, 
 	   const double bs_rate, const double meth_rate,
@@ -53,8 +50,6 @@ simreadsbs(const Runif rng,
 	   vector<string> &reads_bs) {
 
   const size_t lim = sequence.length() - read_width + 1;
-
-  std::set<size_t> used;
 
   for (size_t i = 0; i < n_reads; ++i) {
     bool found_one = false;
@@ -101,7 +96,7 @@ main(int argc, const char **argv) {
     size_t max_errors = 0;
     double meth_rate = 0.0;
     double bs_rate = 1.0;
-    size_t random_number_seed = -numeric_limits<size_t>::max();
+    size_t random_number_seed = numeric_limits<size_t>::max();
     
     bool VERBOSE = false;
     
