@@ -1,6 +1,5 @@
 /*    sortbed: a program for sorting BED format files
- *    Copyright (C) 2008 Cold Spring Harbor Laboratory, 
- *                       University of Southern California and
+ *    Copyright (C) 2008 University of Southern California and
  *                       Andrew D. Smith
  *
  *    Authors: Andrew D. Smith
@@ -28,9 +27,11 @@
 using std::string;
 using std::vector;
 using std::ostream;
-using std::cout;
 using std::endl;
 using std::cerr;
+using std::pair;
+using std::make_pair;
+using std::sort;
 
 typedef GenomicRegion* GenomicRegionPointer;
 
@@ -54,6 +55,50 @@ sort_regions(vector<GenomicRegion> &regions) {
        i != sorter.end(); ++i)
     r.push_back(*(*i));
   r.swap(regions);
+}
+
+void
+sort_regions_collapse_chrom(vector<GenomicRegion> &regions) {
+  static const string FAKE_NAME("X");
+  const string chrom(regions.front().get_chrom());
+
+  vector<pair<size_t, bool> > boundaries;
+  for (size_t i = 0; i < regions.size(); ++i) {
+    boundaries.push_back(make_pair(regions[i].get_start(), false));
+    boundaries.push_back(make_pair(regions[i].get_end(), true));
+  }
+  regions.clear();
+  sort(boundaries.begin(), boundaries.end());
+
+  GenomicRegion holder(chrom, 0, 0, FAKE_NAME, 0, '+');
+  size_t count = 0;
+  for (size_t i = 0; i < boundaries.size(); ++i)
+    if (boundaries[i].second) {
+      --count;
+      if (count == 0) {
+	holder.set_end(boundaries[i].first);
+	regions.push_back(holder);
+      }
+    }
+    else {
+      if (count == 0) 
+	holder.set_start(boundaries[i].first);
+      ++count;
+    }
+}
+
+void
+sort_regions_collapse(vector<GenomicRegion> &regions) {
+  vector<vector<GenomicRegion> > separated_by_chrom;
+  separate_chromosomes(regions, separated_by_chrom);
+  regions.clear();
+  for (size_t i = 0; i < separated_by_chrom.size(); ++i) {
+    sort_regions_collapse_chrom(separated_by_chrom[i]);
+    regions.insert(regions.end(),
+		   separated_by_chrom[i].begin(), 
+		   separated_by_chrom[i].end());
+    separated_by_chrom[i].clear();
+  }
 }
 
 int main(int argc, const char **argv) {
@@ -93,17 +138,17 @@ int main(int argc, const char **argv) {
     
     vector<GenomicRegion> regions;
     ReadBEDFile(input_file_name, regions);
-    
-    if (!check_sorted(regions))
+
+    if (collapse_regions)
+      sort_regions_collapse(regions);
+    else if (!check_sorted(regions))
       sort_regions(regions);
     
-    if (collapse_regions)
-      collapse(regions);
-    
-    ostream* out = (outfile.empty()) ? &cout : new std::ofstream(outfile.c_str());
+    ostream* out = (outfile.empty()) ? 
+      &std::cout : new std::ofstream(outfile.c_str());
     copy(regions.begin(), regions.end(), 
 	 std::ostream_iterator<GenomicRegion>(*out, "\n"));
-    if (out != &cout) delete out;
+    if (out != &std::cout) delete out;
   }
   catch (RMAPException &e) {
     cerr << "ERROR:\t" << e.what() << endl;
