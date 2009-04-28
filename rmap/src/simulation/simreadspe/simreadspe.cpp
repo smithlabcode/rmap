@@ -102,7 +102,7 @@ main(int argc, const char **argv) {
     size_t n_reads = 1000;
     size_t read_width = 25;
     size_t max_errors = 0;
-    size_t random_number_seed = -numeric_limits<size_t>::max();
+    size_t random_number_seed = numeric_limits<size_t>::max();
     size_t separation = 200;
 
     bool VERBOSE = false;
