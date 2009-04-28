@@ -180,7 +180,7 @@ main(int argc, const char **argv) {
     size_t max_errors = 0;
     double meth_rate = 0.0;
     double bs_rate = 1.0;
-    size_t random_number_seed = -numeric_limits<size_t>::max();
+    size_t random_number_seed = numeric_limits<size_t>::max();
 
     bool VERBOSE = false;
     
