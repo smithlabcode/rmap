@@ -29,11 +29,6 @@ using std::string;
 using std::cerr;
 using std::endl;
 
-size_t FastRead::score_mask = 0;
-size_t FastRead::segments = 0;
-size_t FastRead::read_width = 0;
-size_t FastRead::right_most_bit = 0;
-
 ////////////////////////////////////////////////////////////////////////
 // WORD PAIR
 
@@ -105,48 +100,54 @@ FastRead::WordPair::tostring_bases(size_t mask) const {
 ////////////////////////////////////////////////////////////////////////
 // FAST READ
 
+size_t FastRead::score_mask = 0;
+size_t FastRead::segments = 0;
+size_t FastRead::read_width = 0;
+size_t FastRead::right_most_bit = 0;
+
 void
 FastRead::set_read_width(const size_t m) {
   read_width = m;
   score_mask = (rmap_bits::low_bit << (m % rmap_bits::word_size)) - 1;
   right_most_bit = (rmap_bits::word_size - (m % rmap_bits::word_size));
   score_mask <<= right_most_bit;
-  segments = size_t(std::ceil(m/static_cast<float>(rmap_bits::word_size)));
+  segments = size_t(std::ceil(m/static_cast<float>(rmap_bits::word_size))) - 1;
 }
 
 FastRead::FastRead(const std::string &s_) {
   assert(s_.length() > 0);
-  for (size_t i = 0; i < segments - 1; ++i) {    
+  wp.resize(segments + 1);
+  for (size_t i = 0; i < segments; ++i) {    
     const string this_seg(s_.substr(i*rmap_bits::word_size, rmap_bits::word_size));
-    wp.push_back(WordPair(this_seg));
+    wp[i] = WordPair(this_seg);
   }
-  wp.push_back(WordPair(s_.substr((segments - 1)*rmap_bits::word_size)));
+  wp[segments] = WordPair(s_.substr(segments*rmap_bits::word_size));
 }
 
 FastRead::FastRead(std::string::const_iterator a,
 		   const std::string::const_iterator b) {
-  for (size_t i = 0; i < segments - 1; ++i) {
+  for (size_t i = 0; i < segments; ++i) {
     const string this_seg(a + i*rmap_bits::word_size, 
 			  a + (i + 1));
-    wp.push_back(WordPair(this_seg));
+    wp[i] = WordPair(this_seg);
   }
-  wp.push_back(WordPair(string(a + (segments - 1)*rmap_bits::word_size, b)));
+  wp[segments] = WordPair(string(a + segments*rmap_bits::word_size, b));
 }
 
 string
 FastRead::tostring_bases() const {
   std::ostringstream ss;
-  for (size_t i = 0; i < wp.size() - 1; ++i)
+  for (size_t i = 0; i < segments; ++i)
     ss << wp[i].tostring_bases(rmap_bits::all_ones);
-  ss << wp.back().tostring_bases(score_mask);
+  ss << wp[segments-1].tostring_bases(score_mask);
   return ss.str();
 }
 
 string
 FastRead::tostring_bits() const {
   std::ostringstream ss;
-  for (size_t i = 0; i < wp.size() - 1; ++i)
+  for (size_t i = 0; i < segments; ++i)
     ss << wp[i].tostring_bits(rmap_bits::all_ones) << endl;
-  ss << wp.back().tostring_bits(score_mask) << endl;
+  ss << wp[segments].tostring_bits(score_mask) << endl;
   return ss.str();
 }

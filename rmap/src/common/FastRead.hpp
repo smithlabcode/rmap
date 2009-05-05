@@ -28,6 +28,7 @@
 #include <vector>
 #include <iostream>
 #include <ostream>
+#include <valarray>
 #include "rmap_utils.hpp"
 
 class FastRead {
@@ -36,8 +37,8 @@ public:
   FastRead(std::string::const_iterator a,
 	   const std::string::const_iterator b);
   FastRead() {
-    wp.resize(segments);
-    wp.back() = WordPair((rmap_bits::all_ones << right_most_bit));
+    wp.resize(segments + 1);
+    wp[segments] = WordPair((rmap_bits::all_ones << right_most_bit));
   }
   std::string tostring_bases() const;
   std::string tostring_bits() const;
@@ -68,7 +69,7 @@ private:
     static std::string bits2string(size_t mask, size_t bits);
   };
 
-  std::vector<WordPair> wp;
+  std::valarray<WordPair> wp;
   static size_t score_mask;
   static size_t segments;
   static size_t read_width;
@@ -99,15 +100,15 @@ inline void
 FastRead::shift(const size_t idx) {
   for (size_t i = 0; i < wp.size() - 1; ++i)
     wp[i].shift(wp[i + 1]);
-  wp.back().shift(idx, right_most_bit);
+  wp[segments].shift(idx, right_most_bit);
 }
 
 inline size_t
 FastRead::score(const FastRead &other) const {
   size_t ss = 0;
-  for (size_t i = 0; i < wp.size() - 1; ++i)
+  for (size_t i = 0; i < segments; ++i)
     ss += wp[i].score(other.wp[i], rmap_bits::all_ones);
-  return ss + wp.back().score(other.wp.back(), score_mask);
+  return ss + wp[segments].score(other.wp[segments], score_mask);
 }
 
 inline size_t
