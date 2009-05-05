@@ -41,9 +41,9 @@ SeedMaker::get_seed_set(const size_t read_width, const size_t n_seeds,
   size_t depth = 0;
   for (size_t i = 1; i <= seed_weight && depth < max_depth; i *= 2) {
     ++depth;
+    const size_t shift = static_cast<size_t>(std::ceil((1.0*read_width/n_seeds)/i));
     const SeedMaker sm(read_width, n_seeds, seed_weight,
-		       seed_weight/i, 
-		       (read_width/n_seeds)/i,
+		       seed_weight/i, shift,
 		       (read_width - seed_weight)/i);
     vector<size_t> profs;
     sm.get_seed_profiles(profs);
@@ -64,10 +64,11 @@ SeedMaker::get_seed_set(const size_t read_width, const size_t n_seeds,
 void
 SeedMaker::first_last_seeds(const size_t read_width, const size_t n_seeds, 
 			    const size_t seed_weight, vector<size_t> &profs) {
+
+  const size_t shift = static_cast<size_t>(std::ceil(1.0*read_width/n_seeds));
   const SeedMaker sm_first(read_width, n_seeds,  seed_weight, seed_weight,
-			   read_width/n_seeds, read_width);
-  const SeedMaker sm_last(read_width, n_seeds, seed_weight, 1, 1, read_width/seed_weight);
-  
+			   shift, read_width);
+  const SeedMaker sm_last(read_width, n_seeds, seed_weight, 1, 1, n_seeds);
   
   vector<size_t> first_profs, last_profs;
   sm_first.get_seed_profiles(first_profs);
@@ -89,6 +90,44 @@ SeedMaker::first_last_seeds(const size_t read_width, const size_t n_seeds,
   profs.swap(non_redundant_profs);
 }
 
+
+void
+SeedMaker::last_seeds(const size_t read_width, const size_t n_seeds, 
+		      const size_t seed_weight, vector<size_t> &profs) {
+  const SeedMaker sm_last(read_width, n_seeds, seed_weight, 1, 1, read_width/seed_weight);
+  sm_last.get_seed_profiles(profs);
+}
+
+
+void
+SeedMaker::last_two_seeds(const size_t read_width, const size_t n_seeds, 
+			  const size_t seed_weight, vector<size_t> &profs) {
+  
+  const size_t shift = static_cast<size_t>(std::floor(1.0*read_width/seed_weight));
+  const SeedMaker sm_last(read_width, n_seeds, seed_weight, 1, 1, read_width/seed_weight);
+  const SeedMaker sm_first(read_width, n_seeds,  seed_weight, 2, 2, 2*shift);
+  
+  vector<size_t> first_profs, last_profs;
+  sm_first.get_seed_profiles(first_profs);
+  sm_last.get_seed_profiles(last_profs);
+  
+  for (size_t i = 0; i < first_profs.size(); ++i)
+    for (size_t j = 0; j < last_profs.size(); ++j)
+      profs.push_back((first_profs[i] | last_profs[j]));
+
+  vector<size_t> non_redundant_profs;
+  for (size_t i = 0; i < profs.size(); ++i) {
+    bool found_containing = false;
+    for (size_t j = 0; j < non_redundant_profs.size() && !found_containing; ++j)
+      if ((non_redundant_profs[j] | profs[i]) == non_redundant_profs[j])
+	found_containing = true;
+    if (!found_containing)
+      non_redundant_profs.push_back(profs[i]);
+  }
+  profs.swap(non_redundant_profs);
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // MAIN FUNCTIONS TO GET THE SEED SETS
 
@@ -97,10 +136,10 @@ SeedMaker::SeedMaker(const size_t r, const size_t s, const size_t w,
   read_width(r), n_seeds(s), seed_weight(w), block_size(b), 
   shift_size(f), gap_size(g) {
   seed_mask = 0;
-  const size_t n_blocks = seed_weight/block_size;
+  const size_t n_blocks = static_cast<size_t>(std::ceil(1.0*seed_weight/block_size));
   for (size_t i = 0; i < n_blocks; ++i) {
-    for (size_t j = 0; j < gap_size; ++j)
-      seed_mask = (seed_mask << 2) + 0;
+    for (size_t j = 0; j < gap_size - block_size; ++j)
+      seed_mask = (seed_mask << 2);
     for (size_t j = 0; j < block_size; ++j)
       seed_mask = (seed_mask << 2) + 3;
   }
@@ -158,8 +197,6 @@ bool
 SeedMaker::valid_seed(const size_t the_seed, const string &read) {
   return true;
 }
-using std::cerr;
-using std::endl;
 
 size_t
 SeedMaker::get_heavy_shift(const size_t width, const size_t sd) {

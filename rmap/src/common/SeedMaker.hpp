@@ -41,6 +41,12 @@ public:
   static void
   first_last_seeds(const size_t rw, const size_t ns, 
  		   const size_t sw, std::vector<size_t> &p);
+  static void
+  last_seeds(const size_t read_width, const size_t n_seeds, 
+	     const size_t seed_weight, std::vector<size_t> &profs);
+  static void
+  last_two_seeds(const size_t read_width, const size_t n_seeds, 
+		 const size_t seed_weight, std::vector<size_t> &profs);
   static size_t make_read_word(const std::string &s);
   static void update_read_word(const size_t base, size_t &key);
   static void update_bad_bases(const size_t base, size_t &bads);
@@ -50,7 +56,6 @@ public:
   static size_t get_heavy_shift(const size_t width, const size_t sd);
   
   static const size_t max_seed_part; // = 32ul;
-
   
 private:
   size_t read_width;
