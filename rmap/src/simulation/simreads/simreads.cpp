@@ -96,7 +96,7 @@ main(int argc, const char **argv) {
     OptionParser opt_parse("simreads", "program for generating simulated reads",
 			   "<fasta-chrom-files>");
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
-		      false , outfile);
+		      true , outfile);
     opt_parse.add_opt("reads", 'n', "number of reads to simulate", 
 		      false, n_reads);
     opt_parse.add_opt("width", 'w', "width of reads to simulate", 
