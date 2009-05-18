@@ -121,7 +121,6 @@ read_dir(const string& dirname, string filename_suffix,
 }
 
 
-
 bool
 is_sequence_line(const char *buffer) {
   return isvalid(buffer[0]);
@@ -130,11 +129,30 @@ is_sequence_line(const char *buffer) {
 
 void
 parse_score_line(const char *buffer, vector<double> &scr) {
-  for (const char *i = buffer; *i != '\0'; ++i) {
-    scr.push_back(static_cast<size_t>(*i));
-  }
+  for (const char *i = buffer; *i != '\0'; ++i)
+    scr.push_back(quality_character_to_solexa(*i) - 5);
 }
 
+
+inline bool
+is_fastq_name_line(size_t line_count) {
+  return ((line_count % 4) == 0);
+}
+
+inline bool
+is_fastq_sequence_line(size_t line_count) {
+  return ((line_count % 4) == 1);
+}
+
+inline bool
+is_fastq_score_name_line(size_t line_count) {
+  return ((line_count % 4) == 2);
+}
+
+inline bool
+is_fastq_score_line(size_t line_count) {
+  return ((line_count % 4) == 3);
+}
 
 void
 read_fastq_file(const char *filename, vector<string> &names, 
@@ -143,29 +161,29 @@ read_fastq_file(const char *filename, vector<string> &names,
   static const size_t INPUT_BUFFER_SIZE = 1000000;
   
   std::ifstream in(filename);
-  if (!in) {
+  if (!in)
     throw RMAPException("cannot open input file " + string(filename));
-  }
-
-  // @HANNIBAL_1_FC304RBAAXX_RD1:1:1:601:1775
-  // GTTTCTTAAGACCGCCCCTACGGTGCTGGCGCTCGGCCTAATCCCATATATGTCACTTNGTGGATCAAGCA
-  // +HANNIBAL_1_FC304RBAAXX_RD1:1:1:601:1775
-  // 13 30 28 3 35 14 9 0 2 12 2 18 28 10 -1 -2 -3 8 -2 3 -1 19 8 4 13 15 -2 -0 11 2 -2 4 -1 -4 -2 1 16 15 24 19 14 26 3 16 16 8 8 10 2 3 5 4 6 5 2 3 12 9 -5 0 7 2 -1 1 10 4 3 2 1 0 4
   
   string s, name;
   vector<double> scr;
   bool first_line = true;
   bool is_sequence_line = false, is_score_line = false;
+  size_t line_count = 0;
   while (!in.eof()) {
     char buffer[INPUT_BUFFER_SIZE + 1];
     in.getline(buffer, INPUT_BUFFER_SIZE);
     if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
       throw RMAPException("Line in " + name + "\nexceeds max length: " +
 			  toa(INPUT_BUFFER_SIZE));
+    if (in.gcount() == 0) break;
+
     // correct for dos carriage returns before newlines
     if (buffer[strlen(buffer) - 1] == '\r')
       buffer[strlen(buffer) - 1] = '\0';
-    if (buffer[0] == '@') {
+
+    if (is_fastq_name_line(line_count)) {
+      if (buffer[0] != '@')
+	throw RMAPException("invalid FASTQ name line: " + string(buffer));
       if (first_line == false && s.length() > 0) {
 	names.push_back(name);
 	sequences.push_back(s);
@@ -178,17 +196,23 @@ read_fastq_file(const char *filename, vector<string> &names,
       scr.clear();
       is_sequence_line = true;
     }
-    else if (is_sequence_line) {
+    if (is_fastq_sequence_line(line_count)) {
+      assert(is_sequence_line);
       s += buffer;
       is_sequence_line = false;
     }
-    else if (buffer[0] == '+') {
+    if (is_fastq_score_name_line(line_count)) {
+      if (buffer[0] != '+')
+	throw RMAPException("invalid FASTQ score name line: " + 
+			    string(buffer));
       is_score_line = true;
     }
-    else if (is_score_line) {
+    if (is_fastq_score_line(line_count)) {
+      assert(is_score_line);
       parse_score_line(buffer, scr);
       is_score_line = false;
     }
+    ++line_count;
   }
   if (!first_line && s.length() > 0) {
     names.push_back(name);
