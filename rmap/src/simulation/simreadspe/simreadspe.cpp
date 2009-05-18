@@ -1,5 +1,5 @@
-/*    simreadspe: a program for simulating paired-end Solexa reads to
- *    test rmappe
+/*    simreadspeq: a program for simulating paired-end Solexa reads to
+ *    test rmappe with quality scores
  *
  *    Copyright (C) 2009 University of Southern California and
  *                       Andrew D. Smith
@@ -30,98 +30,217 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
 using std::ostream_iterator;
 using std::numeric_limits;
 using std::string;
 using std::vector;
+using std::ofstream;
 using std::endl;
 using std::cerr;
 
-void
-simreadspe(const Runif &rng,
-	   const size_t n_reads, const size_t read_width, 
-	   const size_t separation, const size_t max_errors,
-	   const string &name, const string &sequence,
-	   vector<string> &read_names, vector<string> &reads) {
+using std::max;
+using std::min;
+
+
+
+static void
+get_error_log(const string &seq, const string &called_seq, 
+	      string &error_log) {
+  error_log = string(seq.length(), '0');
+  for (size_t i = 0; i < seq.length(); ++i)
+    if (seq[i] != called_seq[i])
+      error_log[i] = '1';
+}
+
+
+static void
+simreads_pe(const Runif &rng,
+	    const size_t n_reads, const size_t read_width, 
+	    const size_t min_separation, 
+	    const size_t max_separation, 
+	    const size_t max_errors, 
+	    const string &name, const string &sequence,
+	    vector<string> &read_names, vector<string> &reads,
+	    vector<vector<vector<double> > > &probs) {
   
-  const size_t lim = sequence.length() - separation - read_width + 1;
+  const size_t lim = sequence.length() - max_separation - read_width + 1;
   
   for (size_t i = 0; i < n_reads; ++i) {
-    bool found_one = false;
-    while (!found_one) {          
-      const size_t start = rng.runif(0ul, lim);      
-      bool valid = true;
-      for (size_t j = start; j < start + read_width && valid; ++j)
-	valid = isvalid(sequence[j]);
-      
-      for (size_t j = start + separation; 
-	   j < start + separation + read_width && valid; ++j)
-	valid = isvalid(sequence[j]);
-      
-      if (valid) {
-	string seq_left(sequence.substr(start, read_width));
-	string seq_right(sequence.substr(start + separation, 
-					 read_width));
-	const bool rc = (rng.runif(0.0,1.0) > 0.5);
-	if (rc) {
-	  seq_left = revcomp(seq_left);	 
-	  seq_right = revcomp(seq_right);
-	  seq_left.swap(seq_right);
-	}
-	
-	string error_log_left;
-	add_sequencing_errors(rng, max_errors, seq_left, error_log_left);
-	
-	string error_log_right;
-	add_sequencing_errors(rng, max_errors, seq_right, error_log_right);
-	
-	const string read_name(name + ":" + toa(start) + "-" + 
-			       toa(start + separation + read_width) + "_" + toa(!rc) + "_" +
-			       error_log_left + "_" + 
-			       toa(count(error_log_left.begin(), 
-					 error_log_left.end(), '1')) + "_" +
-			       error_log_right + "_" + 
-			       toa(count(error_log_right.begin(), 
-					 error_log_right.end(), '1')));
-	reads.push_back(seq_left + seq_right);
-	read_names.push_back(read_name);
-	found_one = true;
-      }
+    
+    // Get a valid starting point
+    size_t start = numeric_limits<size_t>::max();
+    while (start == numeric_limits<size_t>::max()) {
+      start = rng.runif(0ul, lim);
+      for (size_t j = 0; j < read_width && 
+	     start != numeric_limits<size_t>::max(); ++j)
+	if (!isvalid(sequence[start + j]))
+	  start = numeric_limits<size_t>::max();
     }
+
+    const size_t sampled_sep = rng.runif(min_separation, max_separation);
+
+    string seq_left(sequence.substr(start, read_width));
+    transform(seq_left.begin(), seq_left.end(), seq_left.begin(), 
+	      std::ptr_fun(&toupper));
+
+    string seq_right(revcomp(sequence.substr(start + sampled_sep, read_width)));
+    transform(seq_right.begin(), seq_right.end(), seq_right.begin(), 
+	      std::ptr_fun(&toupper));
+    
+    const bool rc = (rng.runif(0.0,1.0) > 0.5);
+    if (rc) seq_left.swap(seq_right);
+    
+    // Do the left end
+    vector<vector<double> > matrix_left;
+    sequence_to_consensus_matrix(seq_left, matrix_left);
+    add_sequencing_errors(rng, max_errors, matrix_left);
+    string called_seq_left;
+    call_bases_solexa(matrix_left, called_seq_left);
+    
+    string error_log_left;
+    get_error_log(seq_left, called_seq_left, error_log_left);
+    
+    for (size_t j = 0; j < matrix_left.size(); ++j)
+      for (size_t k = 0; k < matrix_left[j].size(); ++k)
+	matrix_left[j][k] = 
+	  round(error_probability_to_solexa(1.0 - matrix_left[j][k]));
+
+    size_t actual_mismatches_left = count(error_log_left.begin(), error_log_left.end(), '1');
+
+    // Do the right end
+    vector<vector<double> > matrix_right;
+    sequence_to_consensus_matrix(seq_right, matrix_right);
+    add_sequencing_errors(rng, max_errors, matrix_right);
+    string called_seq_right;
+    call_bases_solexa(matrix_right, called_seq_right);
+    
+    string error_log_right;
+    get_error_log(seq_right, called_seq_right, error_log_right);
+    
+    for (size_t j = 0; j < matrix_right.size(); ++j)
+      for (size_t k = 0; k < matrix_right[j].size(); ++k)
+	matrix_right[j][k] = 
+	  round(error_probability_to_solexa(1.0 - matrix_right[j][k]));
+
+    size_t actual_mismatches_right = count(error_log_right.begin(), error_log_right.end(), '1');
+    
+    // Make name
+    const string read_name(name + ":" + toa(start) + "-" + 
+			   toa(start + read_width) + "_" + toa(!rc) + "_" +
+			   error_log_left + "_" + toa(actual_mismatches_left) + "_" +
+			   error_log_right + "_" + toa(actual_mismatches_right));
+    
+    // Push back what was sampled
+    reads.push_back(called_seq_left);
+    reads.back() += called_seq_right;
+    
+    read_names.push_back(read_name);
+
+    probs.push_back(matrix_left);
+    probs.back().insert(probs.back().end(),
+			matrix_right.begin(), 
+			matrix_right.end());
   }
 }
+
+
+static void
+prb_to_fastq(const string &read,
+	     const vector<vector<double> > &prb,
+	     string &fastq) {
+  for (size_t i = 0; i < read.length(); ++i) {
+    const double score = *max_element(prb[i].begin(), prb[i].end());
+    fastq += solexa_to_quality_character(score + 5);
+  }
+}
+
+
+static void
+write_reads_fastq(const string &outfile, 
+		  const vector<string> &reads,
+		  const vector<string> &read_names,
+		  const vector<vector<vector<double> > > &probs) {
+  ofstream out(outfile.c_str());
+  for (size_t i = 0; i < reads.size(); ++i) {
+    string fastq;
+    prb_to_fastq(reads[i], probs[i], fastq);
+    out << "@" << read_names[i] << endl
+	<< reads[i] << endl
+	<< "+" << read_names[i] << endl
+	<< fastq << endl;
+  }
+  out.close();
+}
+  
+
+static void
+write_reads_fasta(const string &outfile, 
+		  const vector<string> &reads,
+		  const vector<string> &read_names) {
+  ofstream out(outfile.c_str());
+  for (size_t i = 0; i < reads.size(); ++i)
+    out << ">" << read_names[i] << endl << reads[i] << endl;
+  out.close();
+}
+
+
+static void
+write_reads_prb(const string &prb_file, 
+		const vector<vector<vector<double> > > &probs) {
+  ofstream out(prb_file.c_str());
+  for (size_t i = 0; i < probs.size(); ++i) {
+    for (size_t j = 0; j < probs[i].size(); ++j)
+      copy(probs[i][j].begin(), probs[i][j].end(),
+	   ostream_iterator<double>(out, "\t"));
+    out << endl;
+  }
+  out.close();
+}
+
 
 int
 main(int argc, const char **argv) {
 
   try {
     
+    string prb_file;
     string seqfile;
     string outfile;
     size_t n_reads = 1000;
     size_t read_width = 25;
     size_t max_errors = 0;
     size_t random_number_seed = numeric_limits<size_t>::max();
-    size_t separation = 200;
+    size_t min_separation = 0;
+    size_t max_separation = 200;
 
     bool VERBOSE = false;
+    bool FASTQ_OUTPUT = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("simreadspe", "program for generating simulated "
 			   "paired-end reads", "<fasta-chrom-files>");
-    opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
+    opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)",
 		      false , outfile);
     opt_parse.add_opt("reads", 'n', "number of reads to simulate", 
 		      false, n_reads);
-    opt_parse.add_opt("sep", 's', "separation between ends", 
-		      false, separation);
     opt_parse.add_opt("width", 'w', "width of reads to simulate", 
 		      false, read_width);
-    opt_parse.add_opt("err", 'e', "maximum number of simulated sequencing errors", 
+    opt_parse.add_opt("min-sep", '\0', "min fragment length", 
+		      false, min_separation);
+    opt_parse.add_opt("max-sep", '\0', "max fragment length", 
+		      false, max_separation);
+    opt_parse.add_opt("err", 'e', "maximum number of simulated sequencing errors",
 		      false, max_errors);
-    opt_parse.add_opt("seed", 'S', "random number seed", false, random_number_seed);
-    opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
+    opt_parse.add_opt("verbose", 'v', "print more run info", 
+		      false, VERBOSE);
+    opt_parse.add_opt("fastq", 'q', "write FASTQ format reads", 
+		      false, FASTQ_OUTPUT);
+    opt_parse.add_opt("prob", 'p', "prb output file", 
+		      false, prb_file);
+    opt_parse.add_opt("seed", 'S', "random number seed", 
+		      false, random_number_seed);
     vector<string> leftover_args;
     opt_parse.parse(argc, argv, leftover_args);
     if (argc == 1 || opt_parse.help_requested()) {
@@ -143,15 +262,22 @@ main(int argc, const char **argv) {
     vector<string> filenames(leftover_args);
     /****************** END COMMAND LINE OPTIONS *****************/
 
-    const Runif rng(random_number_seed);
+    if (FASTQ_OUTPUT && !prb_file.empty())
+      throw RMAPException("fastq output is incompatible "
+			  "with specifying a prb file");
 
+    const Runif rng(random_number_seed);
+    
     vector<string> reads, read_names;
+    vector<vector<vector<double> > > probs;
+    
     vector<size_t> filesizes;
     double total = 0;
     for (size_t i = 0; i < filenames.size(); ++i) {
       filesizes.push_back(get_filesize(filenames[i]));
       total += filesizes.back();
     }
+    
     vector<size_t> samples;
     for (size_t i = 0; i < filesizes.size(); ++i)
       samples.push_back(n_reads*filesizes[i]/total);
@@ -162,18 +288,23 @@ main(int argc, const char **argv) {
       
       vector<string> names, sequences;
       read_fasta_file(filenames[i].c_str(), names, sequences);
+      
       for (size_t j = 0; j < names.size(); ++j) {
 	const size_t offset = names[j].find(':');
 	const string name(names[j].substr(0, offset));
-	simreadspe(rng, samples[i], read_width, separation,
-		   max_errors, name, sequences[j], read_names, reads);
+	simreads_pe(rng, samples[i], read_width, 
+		    min_separation, max_separation, max_errors, 
+		    name, sequences[j], read_names, reads, probs);
       }
     }
     
-    std::ofstream out(outfile.c_str());
-    for (size_t i = 0; i < reads.size(); ++i)
-      out << ">" << read_names[i] << endl << reads[i] << endl;
-    out.close();
+    if (FASTQ_OUTPUT)
+      write_reads_fastq(outfile, reads, read_names, probs);
+    else {
+      if (!prb_file.empty())
+	write_reads_prb(prb_file, probs);
+      write_reads_fasta(outfile, reads, read_names);
+    }
   }      
   catch (std::bad_alloc &ba) {
     cerr << "ERROR: could not allocate memory" << endl;
