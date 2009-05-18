@@ -511,14 +511,14 @@ fastq_to_prb(const vector<string> &reads,
 }
 
 
-static void
-set_read_width(const vector<string> &reads, size_t &read_width) {
-  if (read_width == 0) {
-    read_width = reads.front().size();
-    for (size_t i = 1; i < reads.size(); ++i)
-      read_width = min(read_width, reads[i].length());
-  }
-}
+// static void
+// set_read_width(const vector<string> &reads, size_t &read_width) {
+//   if (read_width == 0) {
+//     read_width = reads.front().size();
+//     for (size_t i = 1; i < reads.size(); ++i)
+//       read_width = min(read_width, reads[i].length());
+//   }
+// }
 
 
 static void
