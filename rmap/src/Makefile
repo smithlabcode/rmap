@@ -20,7 +20,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-app_subdirs=mappers simulation utils
+app_subdirs=mappers simulation utils deadzones
 
 all:
 	@make -C common RMAP=$(RMAP) OPT=1
