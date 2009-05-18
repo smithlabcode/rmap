@@ -1,4 +1,4 @@
-/*    simreadspeq: a program for simulating paired-end Solexa reads to
+/*    simreadspe: a program for simulating paired-end Solexa reads to
  *    test rmappe with quality scores
  *
  *    Copyright (C) 2009 University of Southern California and
