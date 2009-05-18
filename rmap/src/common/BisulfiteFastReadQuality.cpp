@@ -178,11 +178,11 @@ BisulfiteFastReadQuality::BisulfiteFastReadQuality(const vector<vector<double> >
   words.push_back(Words(this_seg));
 }
 
-BisulfiteFastReadQuality::BisulfiteFastReadQuality(const string &s) {
-  for (size_t i = 0; i < segments - 1; ++i)
-    words.push_back(Words(s.begin() + i*segment_size, s.begin() + (i + 1)*segment_size));
-  words.push_back(Words(s.begin() + (segments - 1)*segment_size, s.end()));
-}
+// BisulfiteFastReadQuality::BisulfiteFastReadQuality(const string &s) {
+//   for (size_t i = 0; i < segments - 1; ++i)
+//     words.push_back(Words(s.begin() + i*segment_size, s.begin() + (i + 1)*segment_size));
+//   words.push_back(Words(s.begin() + (segments - 1)*segment_size, s.end()));
+// }
 
 string
 BisulfiteFastReadQuality::tostring_values() const {
