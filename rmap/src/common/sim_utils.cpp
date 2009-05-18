@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <set>
 #include <cmath>
+#include <tr1/unordered_map>
 
 using std::string;
 using std::vector;
@@ -37,6 +38,105 @@ using std::log;
 
 using std::cerr;
 using std::endl;
+
+
+void
+sequence_to_consensus_matrix(const string &sequence, 
+			     vector<vector<double> > &matrix) {
+  static const double prior = 1e-4; 
+  const size_t seq_len = sequence.length();
+  matrix.clear();
+  matrix.resize(seq_len, vector<double>(rmap::alphabet_size, prior));
+  for (size_t i = 0; i < seq_len; ++i) {
+    if (isvalid(sequence[i]))
+      matrix[i][base2int(sequence[i])] = 1.0 - 3*prior;
+    else
+      fill(matrix[i].begin(), matrix[i].end(), 0.25);
+  }
+}
+
+typedef std::tr1::unordered_map<size_t, double> err_map;
+
+static void
+get_error_set(const Runif &rng, const size_t seq_len,
+	      const double n_errors, err_map &error) {
+  static const double tolerance = 0.1;
+  
+  double total_error = 0.5*n_errors;
+  while (total_error > 0) {
+    const double curr_err = 
+      (total_error < tolerance) ? total_error :
+      rng.runif(0.0, std::min(total_error, 1.0));
+    
+    size_t pos = rng.runif(0ul, seq_len);
+    while (!error.empty() && error.find(pos) != error.end())
+      pos = rng.runif(0ul, seq_len);
+    
+    error[pos] = curr_err;
+    total_error -= curr_err;
+  }
+}
+
+
+static void
+add_error(const Runif &rng, double err, vector<double> &matrix) {
+  static const double tolerance = 0.1;
+
+  // find the consensus base
+  const size_t consensus = 
+    max_element(matrix.begin(), matrix.end()) - matrix.begin();
+  
+  // subtract the error prob
+  matrix[consensus] -= err;
+
+  // add that prob to other bases
+  while (err > 0) {
+    const double curr_err = ((err < tolerance) ? err : rng.runif(0.0, err));
+    size_t pos = rng.runif(0ul, rmap::alphabet_size);
+    while (pos == consensus)
+      pos = rng.runif(0ul, rmap::alphabet_size);
+    matrix[pos] += curr_err;
+    err -= curr_err;
+  }
+}
+
+
+void
+add_sequencing_errors(const Runif &rng, const double n_errors,
+		      vector<vector<double> > &matrix) {
+  // determine where the error will be (and how much);
+  const size_t seq_len = matrix.size();
+  err_map error;
+  get_error_set(rng, seq_len, n_errors, error);
+  // include the errors in the matrix
+  for (err_map::const_iterator i = error.begin(); i != error.end(); ++i)
+    add_error(rng, i->second, matrix[i->first]);
+}
+
+
+void
+add_sequencing_errors(const double n_errors,
+		      vector<vector<double> > &matrix) {
+  Runif rng;
+  add_sequencing_errors(rng, n_errors, matrix);
+}
+
+
+void
+call_bases_solexa(const vector<vector<double> > &matrix,
+		  string &sequence) {
+  
+  for (size_t i = 0; i < matrix.size(); ++i) {
+    const vector<double>::const_iterator call =
+      max_element(matrix[i].begin(), matrix[i].end());
+    if (*call > 0.5)
+      sequence += int2base(call - matrix[i].begin());
+    else
+      sequence += 'N';
+  }
+}
+
+
 
 void
 add_sequencing_errors(const Runif &rng, const double max_errors,

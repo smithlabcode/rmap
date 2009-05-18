@@ -29,37 +29,19 @@
 #include "RNG.hpp"
 
 void
-add_sequencing_errors(const Runif &rng, const double n_errors,
-		      std::string &seq, std::string &error_log);
+sequence_to_consensus_matrix(const std::string &sequence, 
+			     std::vector<std::vector<double> > &matrix);
 
 void
 add_sequencing_errors(const Runif &rng, const double n_errors,
-		      std::string &seq, std::vector<std::vector<double> > &quality_scores);
+		      std::vector<std::vector<double> > &matrix);
 
 void
-generate_sequencing_errors(const Runif &rng, 
-			   const size_t read_width,const double total_error, 
-			   std::vector<std::vector<double> > &errors);
+add_sequencing_errors(const double n_errors,
+		      std::vector<std::vector<double> > &matrix);
 
 void
-add_sequencing_errors(const std::vector<std::vector<double> > &errors,
-		      std::vector<std::vector<double> > &prb);
-
-
-void
-adjust_seq_using_matrix(const std::vector<std::vector<double> > &prb, std::string &seq);
-
-
-void
-prob_to_quality_scores_solexa(const std::vector<std::vector<double> > &prb, 
-			      std::vector<std::vector<double> > &quality);
-
-
-void
-complement_score_matrix(const std::vector<std::vector<double> > &matrix,
-			const double max_quality_score,
-			std::vector<std::vector<double> > &scores);
+call_bases_solexa(const std::vector<std::vector<double> > &matrix,
+		  std::string &sequence);
 
 #endif
-
-
