@@ -26,38 +26,38 @@
 #include <numeric>
 
 struct MapResult {
-  MapResult(size_t scr,
-	    size_t chr = std::numeric_limits<size_t>::max(),
-	    size_t ste = std::numeric_limits<size_t>::max(),
-	    size_t str = true, size_t unq = true) :
-    chrom(chr), site(ste), score(scr), strand(str), unique(unq) {}
-  void set(size_t scr, size_t chr, size_t ste, size_t str);
-  unsigned chrom  : 15;
+  MapResult(size_t ste = std::numeric_limits<size_t>::max(),
+	    size_t chr = 0,
+	    bool str = true) : site(ste), chrom(chr), strand(str) {}
+  void set(size_t ste, size_t chr, bool str);
   unsigned site   : 32;
-  unsigned score  : 15;
+  unsigned chrom  : 15;
   unsigned strand : 1;
-  unsigned unique : 1;
   bool operator<(const MapResult& rhs) const {
-    return (chrom < rhs.chrom ||
-            (chrom == rhs.chrom && site < rhs.site));
+    return (chrom < rhs.chrom || (chrom == rhs.chrom && site < rhs.site));
   }
   bool operator==(const MapResult& rhs) const {
-    return chrom == rhs.chrom && site == rhs.site;
+    return site == rhs.site && chrom == rhs.chrom;
   }
 };
 
 inline void 
-MapResult::set(size_t scr, size_t chr, size_t ste, size_t str) {
-  unique = (scr < score || (site == ste && unique && chrom == chr));
-  chrom = chr;
+MapResult::set(size_t ste, size_t chr, bool str) {
   site = ste;
-  score = scr;
+  chrom = chr;
   strand = str;
 }
 
-struct MultiMapResult {
+class MultiMapResult {
+public:
   MultiMapResult(size_t scr) : score(scr) {}
-  void add(size_t scr, size_t chr, size_t ste, size_t str) {
+  bool empty() const {return mr.empty();}
+  void sort() {std::sort(mr.begin(), mr.end());}
+  void swap(MultiMapResult &rhs) {
+    mr.swap(rhs.mr);
+    std::swap(score, rhs.score);
+  }
+  void add(size_t scr, size_t chr, size_t ste, bool str) {
     if (scr < score) {
       mr.clear();
       score = scr;
@@ -66,13 +66,13 @@ struct MultiMapResult {
     // "max_count" but because we need to be able to determine when we
     // have too many. Probably a better way to do this.
     if (mr.size() <= twice_max_count)
-      mr.push_back(MapResult(scr, chr, ste, str));
+      mr.push_back(MapResult(ste, chr, str));
   }
-  std::vector<MapResult> mr;
   size_t score;
+  std::vector<MapResult> mr;
   bool ambiguous() const {return mr.size() > max_count;}
   void collapse() {
-    sort(mr.begin(), mr.end());
+    std::sort(mr.begin(), mr.end());
     mr.erase(std::unique(mr.begin(), mr.end()), mr.end());
   }
   static size_t max_count;
