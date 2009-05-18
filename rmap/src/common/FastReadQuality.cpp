@@ -28,8 +28,6 @@
 
 using std::string;
 using std::vector;
-using std::cerr;
-using std::endl;
 
 size_t FastReadQuality::score_mask = 0;
 size_t FastReadQuality::segments = 0;
@@ -138,16 +136,16 @@ FastReadQuality::Words::tostring_values(size_t mask) const {
   std::ostringstream ss;
   for (size_t i = FastReadQuality::segment_size; i > 0; --i)
     ss << std::setw(3) << get_val(mask, a_vec, i) << " ";
-  ss << endl;
+  ss << std::endl;
   for (size_t i = FastReadQuality::segment_size; i > 0; --i)
     ss << std::setw(3) << get_val(mask, c_vec, i) << " ";
-  ss << endl;
+  ss << std::endl;
   for (size_t i = FastReadQuality::segment_size; i > 0; --i)
     ss << std::setw(3) << get_val(mask, g_vec, i) << " ";
-  ss << endl;
+  ss << std::endl;
   for (size_t i = FastReadQuality::segment_size; i > 0; --i)
     ss << std::setw(3) << get_val(mask, t_vec, i) << " ";
-  ss << endl;
+  ss << std::endl;
 
   return ss.str();
 }
@@ -178,17 +176,11 @@ FastReadQuality::FastReadQuality(const vector<vector<double> > &s) {
   words.push_back(Words(this_seg));
 }
 
-FastReadQuality::FastReadQuality(const string &s) {
-  for (size_t i = 0; i < segments - 1; ++i)
-    words.push_back(Words(s.begin() + i*segment_size, s.begin() + (i + 1)*segment_size));
-  words.push_back(Words(s.begin() + (segments - 1)*segment_size, s.end()));
-}
-
 string
 FastReadQuality::tostring_values() const {
   std::ostringstream ss;
-  for (size_t i = 0; i < words.size() - 1; ++i)
-    ss << words[i].tostring_values(rmap_bits::all_ones) << endl;
+  for (size_t i = 0; i < segments - 1; ++i)
+    ss << words[i].tostring_values(rmap_bits::all_ones) << std::endl;
   ss << words.back().tostring_values(score_mask);
   return ss.str();
 }
@@ -196,8 +188,8 @@ FastReadQuality::tostring_values() const {
 string
 FastReadQuality::tostring_bits() const {
   std::ostringstream ss;
-  for (size_t i = 0; i < words.size() - 1; ++i)
-    ss << words[i].tostring_bits(rmap_bits::all_ones) << endl;
+  for (size_t i = 0; i < segments - 1; ++i)
+    ss << words[i].tostring_bits(rmap_bits::all_ones) << std::endl;
   ss << words.back().tostring_bits(score_mask);
   return ss.str();
 }
