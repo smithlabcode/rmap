@@ -24,7 +24,7 @@ ifndef RMAP
 $(error RMAP variable undefined)
 endif
 
-PROGS = simreadsbs simreadsbsq
+PROGS = simreadsbs
 
 LIBS =
 LIBDIR = $(RMAP)/lib
