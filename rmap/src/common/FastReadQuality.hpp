@@ -32,7 +32,7 @@
 
 class FastReadQuality {
 public:
-  FastReadQuality(const std::string &s);
+//   FastReadQuality(const std::string &s);
   FastReadQuality(const std::vector<std::vector<double> > &s);
   FastReadQuality() {words.resize(segments);}
   std::string tostring_values() const;
