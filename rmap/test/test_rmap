@@ -25,14 +25,21 @@
 
 TEST_CHROM=$1/input/chr8.fa
 TEST_READS=$1/input/test_reads.fa
-TEST_READS_Q=$1/input/test_reads_q.fa
-TEST_PRB=$1/input/test_reads_q.prb
+TEST_READS_FQ=$1/input/test_reads.fq
+TEST_PRB=$1/input/test_reads.prb
 
-./rmap -o test_reads.bed -a test_reads.amb -S 3 -h 10 -m 2 -w 32 -c ${TEST_CHROM} ${TEST_READS}
-./rmap -o test_reads_q.bed -c ${TEST_CHROM} -S 3 -h 9 -w 35 -m 2 -a test_reads_q.amb -p ${TEST_PRB} ${TEST_READS_Q}
+./rmap -o test_reads.bed -a test_reads.amb -c  ${TEST_CHROM} ${TEST_READS}
+./rmap -o test_reads_fq.bed -a test_reads_fq.amb -c  ${TEST_CHROM} ${TEST_READS_FQ}
+./rmap -o test_reads_prb.bed -a test_reads_prb.amb -c  ${TEST_CHROM} -p ${TEST_PRB} ${TEST_READS}
 
 if [ "`diff --brief test_reads.bed $1/output`" = "" ] && \
-   [ "`diff --brief test_reads.amb $1/output`" = "" ]; then
-	echo "PASS"
+    [ "`diff --brief test_reads.amb $1/output`" = "" ] && \
+    [ "`diff --brief test_reads_fq.bed $1/output`" = "" ] && \
+    [ "`diff --brief test_reads_fq.amb $1/output`" = "" ] && \
+    [ "`diff --brief test_reads_prb.bed $1/output`" = "" ] && \
+    [ "`diff --brief test_reads_prb.amb $1/output`" = "" ]; then
+    echo "PASS"
+else
+    echo "FAIL"
 fi
-rm test_reads.bed test_reads.amb
+rm test_reads.bed test_reads.amb test_reads_fq.bed test_reads_fq.amb test_reads_prb.bed test_reads_prb.amb
