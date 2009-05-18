@@ -53,7 +53,7 @@ all:	$(PROGS)
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
 rmappe: $(addprefix $(COMMON_DIR), SeedMaker.o GenomicRegion.o rmap_os.o \
-	rmap_utils.o OptionParser.o FastRead.o FastReadQuality.o)
+	rmap_utils.o OptionParser.o FastRead.o FastReadQuality.o FastReadWC.o)
 
 install: all
 	@mkdir -p $(RMAP)/bin
