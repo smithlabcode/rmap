@@ -143,7 +143,7 @@ map_reads(const string &chrom, const size_t chrom_id,
   MASK_t read_word = rmap_bits::all_zeros;
   T fast_read;
   
-  const size_t key_diff = read_width - min(read_width, SeedMaker::max_seed_part);
+  // const size_t key_diff = read_width - min(read_width, SeedMaker::max_seed_part);
   const size_t chrom_size = chrom.size();
 
   vector<T> possible_lefts(max_sep);
