@@ -62,7 +62,7 @@ private:
     size_t upper;
     size_t lower;
     size_t bads;
-    
+
     static size_t get_upper(const size_t i) {return i > 1;}
     static size_t get_lower(const size_t i) {return (i % 2);}
     static size_t get_bads(char c) {return (c == 4);}
@@ -98,7 +98,7 @@ FastRead::WordPair::shift(const size_t i, const size_t shifter) {
 
 inline void
 FastRead::shift(const size_t idx) {
-  for (size_t i = 0; i < wp.size() - 1; ++i)
+  for (size_t i = 0; i < segments; ++i)
     wp[i].shift(wp[i + 1]);
   wp[segments].shift(idx, right_most_bit);
 }
