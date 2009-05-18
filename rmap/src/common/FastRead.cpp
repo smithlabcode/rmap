@@ -26,8 +26,6 @@
 #include <cmath>
 
 using std::string;
-using std::cerr;
-using std::endl;
 
 ////////////////////////////////////////////////////////////////////////
 // WORD PAIR
@@ -147,7 +145,7 @@ string
 FastRead::tostring_bits() const {
   std::ostringstream ss;
   for (size_t i = 0; i < segments; ++i)
-    ss << wp[i].tostring_bits(rmap_bits::all_ones) << endl;
-  ss << wp[segments].tostring_bits(score_mask) << endl;
+    ss << wp[i].tostring_bits(rmap_bits::all_ones) << std::endl;
+  ss << wp[segments].tostring_bits(score_mask) << std::endl;
   return ss.str();
 }
