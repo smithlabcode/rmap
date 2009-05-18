@@ -53,7 +53,7 @@ all:	$(PROGS)
 %.o: %.cpp %.hpp
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-rmap: $(addprefix $(COMMON_DIR), SeedMaker.o GenomicRegion.o rmap_os.o \
+rmap: $(addprefix $(COMMON_DIR), SeedMaker.o GenomicRegion.o rmap_os.o FastReadWC.o \
 	rmap_utils.o OptionParser.o FastRead.o FastReadQuality.o)
 
 install: all
