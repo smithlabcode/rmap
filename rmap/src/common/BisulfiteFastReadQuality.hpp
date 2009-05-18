@@ -32,7 +32,7 @@
 
 class BisulfiteFastReadQuality {
 public:
-  BisulfiteFastReadQuality(const std::string &s);
+  // BisulfiteFastReadQuality(const std::string &s);
   BisulfiteFastReadQuality(const std::vector<std::vector<double> > &s);
   BisulfiteFastReadQuality() {words.resize(segments);}
   std::string tostring_values() const;
