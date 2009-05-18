@@ -1,5 +1,5 @@
-/*    bedoverlap: a program for finding intervals overlapping members
- *    of another set of intervals
+/*    mapsifter: a program for sifting through read map locations, and
+ *    obtaining those fitting score and position criteria
  *
  *    Copyright (C) 2009 University of Southern California and
  *                       Andrew D. Smith
