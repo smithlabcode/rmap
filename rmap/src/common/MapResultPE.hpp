@@ -26,36 +26,31 @@
 #include <numeric>
 
 struct MapResultPE {
-  MapResultPE(size_t scr,
-	      size_t chr = std::numeric_limits<size_t>::max(),
+  MapResultPE(size_t chr = std::numeric_limits<size_t>::max(),
 	      size_t ste = std::numeric_limits<size_t>::max(),
-	      size_t st2 = std::numeric_limits<size_t>::max(),
-	      size_t str = true, size_t unq = true) :
-    chrom(chr), site(ste), site2(st2), score(scr), strand(str), unique(unq) {}
-  void set(size_t scr, size_t chr, size_t ste, size_t st2, size_t str);
-  unsigned chrom  : 15;
+	      size_t st2 = 0,
+	      bool str = true) : site(ste), site2(st2), 
+				 chrom(chr), strand(str) {}
+  void set(size_t ste, size_t st2, size_t chr, bool str);
   unsigned site   : 32;
   unsigned site2  : 32;
-  unsigned score  : 15;
+  unsigned chrom  : 15;
   unsigned strand : 1;
-  unsigned unique : 1;
   bool operator<(const MapResultPE& rhs) const {
     return (chrom < rhs.chrom ||
             (chrom == rhs.chrom && site < rhs.site) ||
             (chrom == rhs.chrom && site == rhs.site && site2 < rhs.site2));
   }
   bool operator==(const MapResultPE& rhs) const {
-    return chrom == rhs.chrom && site == rhs.site && site2 == rhs.site2;
+    return site == rhs.site && site2 == rhs.site2 && chrom == rhs.chrom;
   }
 };
 
 inline void 
-MapResultPE::set(size_t scr, size_t chr, size_t ste, size_t st2, size_t str) {
-  unique = (scr < score || (site == ste && st2 == site2 && chrom == chr && unique));
-  chrom = chr;
+MapResultPE::set(size_t ste, size_t st2, size_t chr, bool str) {
   site = ste;
   site2 = st2;
-  score = scr;
+  chrom = chr;
   strand = str;
 }
 
@@ -64,26 +59,33 @@ operator<<(std::ostream &os, const MapResultPE &mrp) {
   return os << "CHROM=" << mrp.chrom << "\t" 
 	    << "SITE =" << mrp.site << "\t"
 	    << "SITE2=" << mrp.site2 << "\t"
-	    << "SCORE=" << mrp.score << "\t"
-	    << "STRAN=" << mrp.strand << "\t"
-	    << "UNIQ =" << mrp.unique;
+	    << "STRAN=" << mrp.strand;
 }
 
 struct MultiMapResultPE {
   MultiMapResultPE(size_t scr) : score(scr) {}
-  void add(size_t scr, size_t chr, size_t ste, size_t st2, size_t str) {
+  bool empty() const {return mr.empty();}
+  void sort() {std::sort(mr.begin(), mr.end());}
+  void swap(MultiMapResultPE &rhs) {
+    mr.swap(rhs.mr);
+    std::swap(score, rhs.score);
+  }
+  void add(size_t scr, size_t chr, size_t ste, size_t st2, bool str) {
     if (scr < score) {
       mr.clear();
       score = scr;
     }
+    // The "<=" below is not because we want to keep one more than
+    // "max_count" but because we need to be able to determine when we
+    // have too many. Probably a better way to do this.
     if (mr.size() <= twice_max_count)
-      mr.push_back(MapResultPE(scr, chr, ste, st2, str));
+      mr.push_back(MapResultPE(chr, ste, st2, str));
   }
-  std::vector<MapResultPE> mr;
   size_t score;
+  std::vector<MapResultPE> mr;
   bool ambiguous() const {return mr.size() > max_count;}
   void collapse() {
-    sort(mr.begin(), mr.end());
+    std::sort(mr.begin(), mr.end());
     mr.erase(std::unique(mr.begin(), mr.end()), mr.end());
   }
   static size_t max_count;
