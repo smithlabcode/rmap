@@ -394,6 +394,8 @@ extract_regions_chrom_fasta(const string &chrom_name, const string &filename,
     sequences.push_back(buffer);
     std::transform(sequences.back().begin(), sequences.back().end(), 
 		   sequences.back().begin(), std::ptr_fun(&toupper));
+    if (i->neg_strand())
+      revcomp_inplace(sequences.back());
     assert(i->get_width() == sequences.back().length());
   }
   in.close();
