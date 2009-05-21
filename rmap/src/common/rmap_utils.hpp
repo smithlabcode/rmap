@@ -249,6 +249,12 @@ revcomp_inplace(std::string& s) {
   std::reverse(s.begin(), s.end());
 }
 
+inline void
+revcomp_inplace(std::string::iterator first, std::string::iterator last) {
+  std::transform(first, last, first, complement);
+  std::reverse(first, last);
+}
+
 inline std::string 
 bits2string_masked(size_t mask, size_t bits) {
   std::string s;
