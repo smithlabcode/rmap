@@ -2,8 +2,6 @@ This is the README file for the first release of RMAP version 2. RMAP
 is a program for mapping reads from short-read sequencing technology
 (such as Solexa/Illumina).
 
-Written by Andrew D Smith, May 21 2009
-
 
 CONTACT INFORMATION:
 ========================================================================
@@ -18,7 +16,7 @@ The RMAP software will only run on UNIX-like operating systems, and
 was developed on Linux systems. The RMAP software requires a fairly
 recent C++ compiler (i.e. it must include tr1 headers). RMAP has been
 compiled and tested on Linux and OS X operating systems using GCC v4.1
-or greater.
+or greater. Also, RMAP will only run on 64-bit machines.
 
 
 INSTALLATION:
