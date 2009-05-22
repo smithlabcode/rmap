@@ -19,8 +19,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-PROGS = occursonce occurstwice masked2bed maskmers \
-	occursoncebs occurstwicebs maskmersbs
+PROGS = deadzones
 
 LIBS =
 LIBDIR = $(RMAP)/lib
@@ -46,14 +45,10 @@ endif
 
 all:	$(PROGS)
 
-deadzone_utils.o: deadzone_utils.cpp deadzone_utils.hpp
-	$(CXX) $(CFLAGS) -c -o $@ $< -I$(COMMON_DIR)	
-
 %.o: %.cpp %.hpp
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-occursonce occurstwice maskmers masked2bed \
-occursoncebs occurstwicebs maskmersbs: \
+$(PROGS): \
 	$(addprefix $(COMMON_DIR), rmap_os.o GenomicRegion.o \
 	rmap_utils.o OptionParser.o) deadzone_utils.o
 
