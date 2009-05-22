@@ -157,10 +157,13 @@ Option::option_match(const string &other) {
 
 bool
 Option::parse(vector<string> &command_line) {
+  static const string dummy("");
   if (!command_line.empty())
     for (size_t i = 0; i < command_line.size();)
       if (option_match(command_line[i])) {
-	format_option(command_line[i + 1]);
+	if (i < command_line.size() - 1) 
+	  format_option(command_line[i + 1]);
+	else format_option(dummy);
 	specified = true;
 	command_line.erase(command_line.begin() + i);
 	if (arg_type != RMAP_ARG_BOOL)
