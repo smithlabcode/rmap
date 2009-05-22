@@ -239,8 +239,8 @@ iterate_over_seeds(const bool VERBOSE,
       }
       
       chroms.clear();
-      chrom_names.clear();
-      read_fasta_file(chrom_files[i].c_str(), chrom_names, chroms);
+      tmp_chrom_names.clear();
+      read_fasta_file(chrom_files[i].c_str(), tmp_chrom_names, chroms);
 
       for (size_t k = 0; k < chroms.size(); ++k) {
 	revcomp_inplace(chroms[k]);
@@ -617,8 +617,8 @@ load_reads(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_MODE,
   dummy_read_index.clear();
   if (VERBOSE)
     cerr << "[DONE]" << endl
-	 << "TOTAL READS (HQ): " << read_index.size() << endl;
-  
+	 << "TOTAL READS (DISTINCT; HQ): " << read_index.size() << endl;
+  assert(reads.size() == read_index.size());
   
   //////////////////////////////////////////////////////////////
   // CONVERT THE READS INTO FASTREADS
