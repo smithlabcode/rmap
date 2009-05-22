@@ -224,7 +224,6 @@ main(int argc, const char **argv) {
     size_t kmer = 0;
     size_t prefix_len = 0;
     string outfile;
-    string fasta_suffix = "fa";
   
     bool VERBOSE = false;
     bool BISULFITE = false;
@@ -236,8 +235,6 @@ main(int argc, const char **argv) {
 		      true, outfile);
     opt_parse.add_opt("kmer", 'k', "Width of k-mers", true, kmer);
     opt_parse.add_opt("prefix", 'p', "prefix length", true, prefix_len);
-    opt_parse.add_opt("suffix", 's', "suffix of FASTA files "
-		      "(assumes -c indicates dir)", false , fasta_suffix);
     opt_parse.add_opt("bisulfite", 'B', "get bisulfite deadzones", 
 		      false, BISULFITE);
     opt_parse.add_opt("verbose", 'v', "print more run information", 
