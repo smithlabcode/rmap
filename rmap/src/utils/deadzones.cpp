@@ -119,89 +119,132 @@ sort_index(const bool VERBOSE, const bool BISULFITE,
 }
 
 
-template <class T> void
-merge_contiguous(vector<T> &dead) {
-  sort(dead.begin(), dead.end());
-  collapse(dead);
-  size_t j = 0;
-  for (size_t i = 1; i < dead.size(); ++i) {
-    if (dead[j].get_end() == dead[i].get_start())
-      dead[j].set_end(dead[i].get_end());
-    else {
-      ++j;
-      dead[j].swap(dead[i]);
+static void
+write_dead(std::ofstream &out, const string &chrom_name, 
+	   const char strand, vector<size_t>::const_iterator curr,
+	   const vector<size_t>::const_iterator lim) {
+  assert(curr < lim);
+  size_t prev_ambig = *curr;
+  ++curr;
+  for (; curr < lim; ++curr)
+    if (*curr - 1 != *(curr - 1)) {
+      out << GenomicRegion(chrom_name, prev_ambig,
+			   *(curr - 1) + 1, "X", 0, strand) << endl;
+      prev_ambig = *curr;
     }
-  }
-  ++j;
-  dead.erase(dead.begin() + j, dead.end());
+  out << GenomicRegion(chrom_name, prev_ambig, 
+		       *(curr - 1) + 1, "X", 0, strand) << endl;
 }
 
 
 static void
-get_dead(const size_t kmer, 
-	 const vector<size_t> &seqoffsets, const vector<size_t> &seqlens, 
-	 const vector<string> &chrom_names, vector<size_t> &ambigs, 
-	 vector<SimpleGenomicRegion> &dead) {
-
-  const size_t max_offset = seqoffsets.back();
+get_dead(const bool VERBOSE, const string &outfile, const size_t kmer, 
+	 const vector<size_t> &seqoffsets, const vector<string> &chrom_names, 
+	 vector<size_t> &ambigs) {
   
+  const size_t max_offset = seqoffsets.back();
   for (size_t i = 0; i < ambigs.size(); ++i) {
     if (ambigs[i] >= max_offset)
       ambigs[i] = 2*max_offset - ambigs[i] - kmer;
     assert(ambigs[i] < max_offset);
   }
-  
   sort(ambigs.begin(), ambigs.end());
   ambigs.erase(std::unique(ambigs.begin(), ambigs.end()), ambigs.end());
   
-  size_t j = 0;
-  for (size_t i = 0; i < ambigs.size(); ++i) {
-    while (ambigs[i] >= seqoffsets[j]) ++j;
-    const size_t offset = ambigs[i] - (seqoffsets[j] - seqlens[j]);
-    dead.push_back(SimpleGenomicRegion(chrom_names[j], offset, offset + 1));
+  vector<size_t> offset_idx;
+  for (size_t i = 0, j = 0; i < seqoffsets.size(); ++i) {
+    while (ambigs[j] < seqoffsets[i]) ++j;
+    offset_idx.push_back(j);
+    assert(j <= ambigs.size());
   }
-  merge_contiguous(dead);
+  
+  size_t total_length = 0;
+  for (size_t i = 0, prev_idx = 0; i < offset_idx.size(); ++i) {
+    for (size_t j = prev_idx; j < offset_idx[i]; ++j)
+      ambigs[j] -= total_length;
+    prev_idx = offset_idx[i];
+    total_length = seqoffsets[i];
+  }
+  
+  std::ofstream out(outfile.c_str());
+  for (size_t i = 0, prev_idx = 0; i < offset_idx.size(); ++i) {
+    write_dead(out, chrom_names[i], '+', ambigs.begin() + 
+	       prev_idx, ambigs.begin() + offset_idx[i]);
+    prev_idx = offset_idx[i];
+  }
+  out.close();
 }
 
 
 static void
-get_dead_bs(const size_t kmer, 
-	    const vector<size_t> &seqoffsets, const vector<size_t> &seqlens, 
-	    const vector<string> &chrom_names, vector<size_t> &ambigs, 
-	    vector<GenomicRegion> &dead) {
-
+get_dead_bs(const bool VERBOSE, const string &outfile, const size_t kmer, 
+	    const vector<size_t> &seqoffsets, const vector<string> &chrom_names, 
+	    vector<size_t> &ambigs) {
+  assert(!ambigs.empty());
   sort(ambigs.begin(), ambigs.end());
   
   const size_t max_offset = seqoffsets.back();
-  
+  if (VERBOSE)
+    cerr << "[PREPARING POS-STRAND BS DEADS]" << endl;
+
   // Do the positive strand bisulfite deadzones
-  assert(!ambigs.empty());
-  size_t i = 0, j = 0;
-  for (; i < ambigs.size() && ambigs[i] < max_offset; ++i) {
-    while (ambigs[i] >= seqoffsets[j]) ++j;
-    const size_t offset = ambigs[i] - (seqoffsets[j] - seqlens[j]);
-    dead.push_back(GenomicRegion(chrom_names[j], offset, offset + 1, "X", 0, '+'));
-  }
-  merge_contiguous(dead);
+  const size_t lim = lower_bound(ambigs.begin(), ambigs.end(), 
+				 max_offset) - ambigs.begin();
   
+  // make a partition vector of the offsets, the last being "lim"
+  vector<size_t> offset_idx;
+  for (size_t i = 0, j = 0; i < seqoffsets.size(); ++i) {
+    while (ambigs[j] < seqoffsets[i]) ++j;
+    offset_idx.push_back(j);
+    assert(j <= lim);
+  }
+  
+  size_t total_length = 0;
+  for (size_t i = 0, prev_idx = 0; i < offset_idx.size(); ++i) {
+    for (size_t j = prev_idx; j < offset_idx[i]; ++j)
+      ambigs[j] -= total_length;
+    prev_idx = offset_idx[i];
+    total_length = seqoffsets[i];
+  }
+
+  std::ofstream out(outfile.c_str());
+  
+  for (size_t i = 0, prev_idx = 0; i < offset_idx.size(); ++i) {
+    write_dead(out, chrom_names[i], '+', ambigs.begin() + 
+	       prev_idx, ambigs.begin() + offset_idx[i]);
+    prev_idx = offset_idx[i];
+  }
+  
+  if (VERBOSE)
+    cerr << "[PREPARING NEG-STRAND BS DEADS]" << endl;
   // Move the negative strand deadzones into the first portion of the
   // vector and correct their indexes.
-  for (j = 0; i < ambigs.size(); ++i)
+  for (size_t j = 0, i = lim; i < ambigs.size(); ++i)
     ambigs[j++] = 2*max_offset - ambigs[i] - kmer;
-  ambigs.erase(ambigs.begin() + j, ambigs.end());
+  ambigs.erase(ambigs.end() - lim, ambigs.end());
   reverse(ambigs.begin(), ambigs.end());
-  
-  // Do the negative strand bisulfite deadzones
-  vector<GenomicRegion> dead_neg;
-  for (i = 0, j = 0; i < ambigs.size(); ++i) {
-    while (ambigs[i] >= seqoffsets[j])
-      ++j;
-    const size_t offset = ambigs[i] - (seqoffsets[j] - seqlens[j]);
-    dead_neg.push_back(GenomicRegion(chrom_names[j], offset, offset + 1, "X", 0, '-'));
+
+  offset_idx.clear();
+  for (size_t i = 0, j = 0; i < seqoffsets.size(); ++i) {
+    while (ambigs[j] < seqoffsets[i]) ++j;
+    offset_idx.push_back(j);
+    assert(j <= ambigs.size());
   }
-  merge_contiguous(dead_neg);
-  dead.insert(dead.end(), dead_neg.begin(), dead_neg.end());
-  dead_neg.clear();
+  
+  total_length = 0;
+  for (size_t i = 0, prev_idx = 0; i < offset_idx.size(); ++i) {
+    for (size_t j = prev_idx; j < offset_idx[i]; ++j)
+      ambigs[j] -= total_length;
+    prev_idx = offset_idx[i];
+    total_length = seqoffsets[i];
+  }
+  
+  for (size_t i = 0, prev_idx = 0; i < offset_idx.size(); ++i) {
+    write_dead(out, chrom_names[i], '-', ambigs.begin() + 
+	       prev_idx, ambigs.begin() + offset_idx[i]);
+    prev_idx = offset_idx[i];
+  }
+  out.close();
 }
 
 
@@ -270,7 +313,6 @@ main(int argc, const char **argv) {
       vector<string> names, sequences;
       read_fasta_file(seqfiles[i].c_str(), names, sequences);
       for (size_t j = 0; j < sequences.size(); ++j) {
-	seqlens.push_back(sequences[j].length());
 	long_seq += sequences[j];
 	seqoffsets.push_back(long_seq.length());
 	chrom_names.push_back(names[j]);
@@ -297,14 +339,7 @@ main(int argc, const char **argv) {
     if (BISULFITE) {
       if (VERBOSE)
 	cerr << "[PREPARING BS DEADZONES]" << endl;
-      vector<GenomicRegion> dead;
-      get_dead_bs(kmer, seqoffsets, seqlens, chrom_names, ambigs, dead);
-      if (VERBOSE)
-	cerr << "[WRITING OUTPUT]" << endl;
-      std::ofstream out(outfile.c_str());
-      copy(dead.begin(), dead.end(), 
-	   std::ostream_iterator<GenomicRegion>(out, "\n"));
-      out.close();
+      get_dead_bs(VERBOSE, outfile, kmer, seqoffsets, chrom_names, ambigs);
     }
     else {
       if (VERBOSE)
