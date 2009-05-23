@@ -57,7 +57,14 @@ enum { RUN_MODE_MISMATCH, RUN_MODE_WILDCARD, RUN_MODE_WEIGHT_MATRIX };
 ////  THIS STUFF DEALS WITH THE HASHING OF KEYS
 ////
 ////
-typedef unordered_multimap<size_t, size_t> SeedHash;
+template <typename T> struct SeedHash {
+  typedef
+  unordered_map<size_t,
+		pair<typename vector<T>::const_iterator,
+		     typename vector<T>::const_iterator> > type;
+};
+typedef unordered_multimap<size_t, size_t> SeedHashSorter;
+
 
 static void
 get_read_words(const vector<string> &reads, vector<size_t> &read_words) {
@@ -77,34 +84,52 @@ get_read_words(const vector<string> &reads, vector<size_t> &read_words) {
 
 static void
 get_read_matches(const size_t the_seed, const vector<size_t> &read_words,
-		 SeedHash &seed_hash) {
+		 SeedHashSorter &sh_sorter) {
   for (size_t i = 0; i < read_words.size(); ++i)
-    seed_hash.insert(SeedHash::value_type(the_seed & read_words[i], i));
+    sh_sorter.insert(SeedHashSorter::value_type(the_seed & read_words[i], i));
 }
 
 
 template <class T> void
-sort_by_key(const SeedHash &sh, vector<T> &in) {
+sort_by_key(const SeedHashSorter &sh, vector<T> &in) {
   vector<T> tmp(in.size(), in.front());
   size_t j = 0;
-  for (SeedHash::const_iterator i(sh.begin()); i != sh.end(); ++i, ++j)
+  for (SeedHashSorter::const_iterator i(sh.begin()); i != sh.end(); ++i, ++j)
     tmp[j] = in[i->second];
   in.swap(tmp);
 }
 
 
 template <class T> void
-sort_by_key(SeedHash &seed_hash, vector<MultiMapResultPE> &best_maps,
+sort_by_key(SeedHashSorter &sh_sorter, vector<MultiMapResultPE> &best_maps,
 	    vector<size_t> &reads, vector<vector<size_t> > &read_index, 
 	    vector<T> &fast_reads_left, vector<T> &fast_reads_right) {
-  sort_by_key(seed_hash, best_maps);
-  sort_by_key(seed_hash, reads);
-  sort_by_key(seed_hash, read_index);
-  sort_by_key(seed_hash, fast_reads_left);
-  sort_by_key(seed_hash, fast_reads_right);
+  sort_by_key(sh_sorter, best_maps);
+  sort_by_key(sh_sorter, reads);
+  sort_by_key(sh_sorter, read_index);
+  sort_by_key(sh_sorter, fast_reads_left);
+  sort_by_key(sh_sorter, fast_reads_right);
   size_t j = 0;
-  for (SeedHash::iterator i(seed_hash.begin()); i != seed_hash.end(); ++i, ++j)
+  for (SeedHashSorter::iterator i(sh_sorter.begin()); i != sh_sorter.end(); ++i, ++j)
     i->second = j;
+}
+
+
+template <class T> void
+build_seed_hash(const SeedHashSorter &sh_sorter, const vector<T> &fast_reads,
+		typename SeedHash<T>::type &seed_hash) {
+  typename vector<T>::const_iterator frb(fast_reads.begin());
+  size_t prev_key = 0, prev_idx = 0, curr_idx = 0;
+  for (SeedHashSorter::const_iterator shs(sh_sorter.begin()); 
+       shs != sh_sorter.end(); ++shs) {
+    curr_idx = shs->second;
+    if (shs->first != prev_key) {
+      seed_hash[prev_key] = make_pair(frb + prev_idx, frb + curr_idx);
+      prev_key = shs->first;
+      prev_idx = curr_idx;
+    }
+  }
+  seed_hash[prev_key] = make_pair(frb + prev_idx, frb + curr_idx);
 }
 
 
@@ -131,21 +156,19 @@ load_seeds(const bool VERBOSE,
 ////
 ////
 template <class T> void
-map_reads(const string &chrom, const size_t chrom_id, 
-	  const size_t profile, const size_t read_width, 
-	  const size_t max_diffs, 
+map_reads(const string &chrom, const size_t chrom_id, const size_t profile, 
+	  const size_t read_width, const size_t max_diffs, 
 	  const size_t min_sep, const size_t max_sep, 
 	  const vector<T> &reads_left, const vector<T> &reads_right,
-	  const SeedHash &seed_hash, const bool strand, 
+	  const typename SeedHash<T>::type &seed_hash, const bool strand, 
 	  vector<MultiMapResultPE> &best_maps) {
   
   MASK_t bad_bases = rmap_bits::all_ones;
   MASK_t read_word = rmap_bits::all_zeros;
   T fast_read;
   
-  // const size_t key_diff = read_width - min(read_width, SeedMaker::max_seed_part);
   const size_t chrom_size = chrom.size();
-
+  
   vector<T> possible_lefts(max_sep);
   
   size_t chrom_offset = 0;
@@ -163,20 +186,20 @@ map_reads(const string &chrom, const size_t chrom_id,
     SeedMaker::update_read_word(key_base, read_word);
     
     if ((bad_bases & profile) == 0) {
-      std::pair<SeedHash::const_iterator, SeedHash::const_iterator>
-	bucket(seed_hash.equal_range((read_word & profile)));
-      if (bucket.first != bucket.second) {
-	const SeedHash::const_iterator  limit(bucket.second);
-	for (SeedHash::const_iterator to_test(bucket.first); to_test != limit; ++to_test) {
-	  const size_t score = reads_right[to_test->second].score(fast_read);
+      typename SeedHash<T>::type::const_iterator bucket(seed_hash.find(read_word & profile));
+      if (bucket != seed_hash.end()) {
+	const typename vector<T>::const_iterator limit(bucket->second.second);
+	for (typename vector<T>::const_iterator to_test(bucket->second.first); 
+	     to_test != limit; ++to_test) {
+	  const size_t score = to_test->score(fast_read);
 	  if (score <= max_diffs) {
+	    const size_t idx = (to_test - reads_right.begin());
 	    const size_t lookback_limit = chrom_offset - min_sep;
 	    for (size_t i = (chrom_offset > max_sep) ? 
 		   chrom_offset - max_sep : 0; i < lookback_limit; ++i) {
 	      const size_t pair_score = score + 
-		reads_left[to_test->second].score(possible_lefts[i % max_sep]);
-	      const vector<MultiMapResultPE>::iterator current(best_maps.begin() + 
-							       to_test->second);
+		reads_left[idx].score(possible_lefts[i % max_sep]);
+	      const vector<MultiMapResultPE>::iterator current(best_maps.begin() + idx);
 	      if (pair_score <= current->score) {
 		const size_t left_start = i - read_width + 1;
 		const size_t right_start = chrom_offset - read_width + 1;
@@ -212,10 +235,13 @@ iterate_over_seeds(const bool VERBOSE,
       cerr << "[SEED:" << j + 1 << "/" << the_seeds.size() << "] "
 	   << "[FORMATTING READS]" << endl;
     
-    SeedHash seed_hash;
-    get_read_matches(the_seeds[j], read_words, seed_hash);
-    sort_by_key(seed_hash, best_maps, read_words, read_index, 
+    SeedHashSorter sh_sorter;
+    get_read_matches(the_seeds[j], read_words, sh_sorter);
+    sort_by_key(sh_sorter, best_maps, read_words, read_index, 
 		fast_reads_left, fast_reads_right);
+    typename SeedHash<T>::type seed_hash;
+    build_seed_hash(sh_sorter, fast_reads_right, seed_hash);
+    sh_sorter.clear();
     
     for (size_t i = 0; i < chrom_files.size() && !fast_reads_left.empty(); ++i) {
       
