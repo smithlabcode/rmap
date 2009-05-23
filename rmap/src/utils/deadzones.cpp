@@ -304,7 +304,7 @@ main(int argc, const char **argv) {
     /****************** END COMMAND LINE OPTIONS *****************/
     
     string long_seq;
-    vector<size_t> seqlens, seqoffsets;
+    vector<size_t> seqoffsets;
     vector<string> chrom_names;
     
     if (VERBOSE)
@@ -336,24 +336,21 @@ main(int argc, const char **argv) {
     sort_index(VERBOSE, BISULFITE, kmer, prefix_len, long_seq, ambigs);
     long_seq.clear();
     
-    if (BISULFITE) {
-      if (VERBOSE)
-	cerr << "[PREPARING BS DEADZONES]" << endl;
-      get_dead_bs(VERBOSE, outfile, kmer, seqoffsets, chrom_names, ambigs);
+    if (ambigs.empty()) {
+      if (VERBOSE) cerr << "[NO DEADZONES FOUND]" << endl;
     }
     else {
-      if (VERBOSE)
-	cerr << "[PREPARING DEADZONES]" << endl;
-      vector<SimpleGenomicRegion> dead;
-      get_dead(kmer, seqoffsets, seqlens, chrom_names, ambigs, dead);
-      if (VERBOSE)
-	cerr << "[WRITING OUTPUT]" << endl;
-      std::ofstream out(outfile.c_str());
-      copy(dead.begin(), dead.end(), 
-	   std::ostream_iterator<SimpleGenomicRegion>(out, "\n"));
-      out.close();
+      if (BISULFITE) {
+	if (VERBOSE)
+	  cerr << "[PREPARING BS DEADZONES]" << endl;
+	get_dead_bs(VERBOSE, outfile, kmer, seqoffsets, chrom_names, ambigs);
+      }
+      else {
+	if (VERBOSE)
+	  cerr << "[PREPARING DEADZONES]" << endl;
+	get_dead(VERBOSE, outfile, kmer, seqoffsets, chrom_names, ambigs);
+      }
     }
-    
   }
   catch (RMAPException &e) {
     cerr << "ERROR: " << e.what() << endl;
