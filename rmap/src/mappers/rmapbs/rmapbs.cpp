@@ -544,6 +544,9 @@ load_read_names(const size_t INPUT_MODE,
   else read_fasta_file(reads_file.c_str(), read_names, reads);
   reads.clear();
   scores.clear();
+  for (vector<string>::iterator i(read_names.begin()); 
+       i != read_names.end(); ++i)
+    i->erase(i->begin() + i->find_first_of(" \t"), i->end());
 }
 
 
