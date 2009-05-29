@@ -152,16 +152,19 @@ get_dead(const bool VERBOSE, const string &outfile, const size_t kmer,
   ambigs.erase(std::unique(ambigs.begin(), ambigs.end()), ambigs.end());
   
   vector<size_t> offset_idx;
-  for (size_t i = 0, j = 0; i < seqoffsets.size(); ++i) {
-    while (ambigs[j] < seqoffsets[i]) ++j;
+  size_t n_ambigs = ambigs.size();
+  for (size_t i = 0, j = 0; i < seqoffsets.size() && j < n_ambigs; ++i) {
+    while (j < n_ambigs && ambigs[j] < seqoffsets[i]) ++j;
     offset_idx.push_back(j);
-    assert(j <= ambigs.size());
   }
   
   size_t total_length = 0;
+  n_ambigs = ambigs.size();
   for (size_t i = 0, prev_idx = 0; i < offset_idx.size(); ++i) {
-    for (size_t j = prev_idx; j < offset_idx[i]; ++j)
+    for (size_t j = prev_idx; j < offset_idx[i]; ++j) {
+      assert(j < n_ambigs);
       ambigs[j] -= total_length;
+    }
     prev_idx = offset_idx[i];
     total_length = seqoffsets[i];
   }
@@ -195,7 +198,7 @@ get_dead_bs(const bool VERBOSE, const string &outfile, const size_t kmer,
   vector<size_t> offset_idx;
   size_t n_ambigs = ambigs.size();
   for (size_t i = 0, j = 0; i < seqoffsets.size() && j < n_ambigs; ++i) {
-    while (ambigs[j] < seqoffsets[i] && j < n_ambigs) ++j;
+    while (j < n_ambigs && ambigs[j] < seqoffsets[i]) ++j;
     offset_idx.push_back(j);
   }
   
@@ -227,7 +230,7 @@ get_dead_bs(const bool VERBOSE, const string &outfile, const size_t kmer,
   offset_idx.clear();
   n_ambigs = ambigs.size();
   for (size_t i = 0, j = 0; i < seqoffsets.size() && j < n_ambigs; ++i) {
-    while (ambigs[j] < seqoffsets[i] && j < n_ambigs) ++j;
+    while (j < n_ambigs && ambigs[j] < seqoffsets[i]) ++j;
     offset_idx.push_back(j);
   }
   
