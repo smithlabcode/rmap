@@ -128,9 +128,9 @@ is_sequence_line(const char *buffer) {
 
 
 void
-parse_score_line(const char *buffer, vector<double> &scr) {
+parse_score_line(const char *buffer, vector<char> &scr) {
   for (const char *i = buffer; *i != '\0'; ++i)
-    scr.push_back(quality_character_to_solexa(*i) - 5);
+    scr.push_back(*i);
 }
 
 
@@ -165,7 +165,8 @@ read_fastq_file(const char *filename, vector<string> &names,
     throw RMAPException("cannot open input file " + string(filename));
   
   string s, name;
-  vector<double> scr;
+  vector<char> scr;
+  vector<vector<char> > scrs;
   bool first_line = true;
   bool is_sequence_line = false, is_score_line = false;
   size_t line_count = 0;
@@ -187,7 +188,7 @@ read_fastq_file(const char *filename, vector<string> &names,
       if (first_line == false && s.length() > 0) {
 	names.push_back(name);
 	sequences.push_back(s);
-	scores.push_back(scr);
+	scrs.push_back(scr);
       }
       else first_line = false;
       name = buffer;
@@ -217,10 +218,33 @@ read_fastq_file(const char *filename, vector<string> &names,
   if (!first_line && s.length() > 0) {
     names.push_back(name);
     sequences.push_back(s);
-    scores.push_back(scr);
+    scrs.push_back(scr);
+  }
+
+  using std::ptr_fun;
+  using std::not1;
+  bool phred_scores = true, solexa_scores = true;
+  for (size_t i = 0; i < scrs.size() && phred_scores && solexa_scores; ++i) {
+    phred_scores = (phred_scores && 
+		    (find_if(scrs[i].begin(), scrs[i].end(),
+			     not1(ptr_fun(&valid_phred_score))) == scrs[i].end()));
+    solexa_scores = (solexa_scores && 
+		     (find_if(scrs[i].begin(), scrs[i].end(),
+			      not1(ptr_fun(&valid_solexa_score))) == scrs[i].end()));
+  }  
+  
+  if (!phred_scores && !solexa_scores)
+    throw RMAPException("invalid quality scores in FASTQ file");
+  
+  for (size_t i = 0; i < scrs.size(); ++i) {
+    scores.push_back(vector<double>(scrs[i].size()));
+    for (size_t j = 0; j < scrs[i].size(); ++j)
+      scores[i][j] = (solexa_scores) ?
+	quality_character_to_solexa(scrs[i][j] - 5) :
+	quality_character_to_phred(scrs[i][j]);
+    scrs[i].clear();
   }
 }
-
 
 
 void
