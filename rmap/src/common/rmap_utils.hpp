@@ -334,4 +334,14 @@ solexa_to_quality_character(const double s) {
   return char(std::min(40.0, s) + 64);
 }
 
+// convert TO quality characters (i.e. the characters in FASTQ files)
+inline bool
+valid_phred_score(const char c) {
+  return (c >= 33 && c <= 93);
+}
+inline bool
+valid_solexa_score(const char c) {
+  return (c >= 59 && c <= 104);
+}
+
 #endif
