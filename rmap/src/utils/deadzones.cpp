@@ -193,10 +193,10 @@ get_dead_bs(const bool VERBOSE, const string &outfile, const size_t kmer,
   
   // make a partition vector of the offsets, the last being "lim"
   vector<size_t> offset_idx;
-  for (size_t i = 0, j = 0; i < seqoffsets.size(); ++i) {
-    while (ambigs[j] < seqoffsets[i]) ++j;
+  size_t n_ambigs = ambigs.size();
+  for (size_t i = 0, j = 0; i < seqoffsets.size() && j < n_ambigs; ++i) {
+    while (ambigs[j] < seqoffsets[i] && j < n_ambigs) ++j;
     offset_idx.push_back(j);
-    assert(j <= lim);
   }
   
   size_t total_length = 0;
@@ -225,10 +225,10 @@ get_dead_bs(const bool VERBOSE, const string &outfile, const size_t kmer,
   reverse(ambigs.begin(), ambigs.end());
 
   offset_idx.clear();
-  for (size_t i = 0, j = 0; i < seqoffsets.size(); ++i) {
-    while (ambigs[j] < seqoffsets[i]) ++j;
+  n_ambigs = ambigs.size();
+  for (size_t i = 0, j = 0; i < seqoffsets.size() && j < n_ambigs; ++i) {
+    while (ambigs[j] < seqoffsets[i] && j < n_ambigs) ++j;
     offset_idx.push_back(j);
-    assert(j <= ambigs.size());
   }
   
   total_length = 0;
