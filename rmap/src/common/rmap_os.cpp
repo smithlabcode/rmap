@@ -280,7 +280,9 @@ read_fasta_file(const char *filename, vector<string> &names,
       s = "";
     }
     else s += buffer;
+    in.peek();
   }
+
   if (!first_line && s.length() > 0) {
     names.push_back(name);
     sequences.push_back(s);
