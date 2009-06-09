@@ -762,6 +762,10 @@ main(int argc, const char **argv) {
       cerr << "must specify chroms file/dir or filenames file" << endl;
       return EXIT_FAILURE;
     }
+    if (chrom_file.empty() && filenames_file.empty()) {
+      cerr << "must specify chroms file/dir or filenames file" << endl;
+      return EXIT_FAILURE;
+    }
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
 
