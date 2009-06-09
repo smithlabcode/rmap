@@ -158,7 +158,8 @@ template <class T> void
 map_reads(const string &chrom, const size_t chrom_id,
 	  const size_t profile, const size_t read_width, 
 	  const size_t max_diffs, const vector<T> &fast_reads, 
-	  const typename SeedHash<T>::type &seed_hash, 
+	  //const 
+	  typename SeedHash<T>::type &seed_hash, 
 	  const bool strand, vector<MultiMapResult> &best_maps) {
   
   MASK_t bad_bases = rmap_bits::all_ones;
@@ -512,19 +513,26 @@ identify_chromosomes(const bool VERBOSE,
 
 
 static void
-load_read_names(const size_t INPUT_MODE, 
-		string reads_file, vector<string> &read_names) {
-  vector<string> reads;
-  vector<vector<double> > scores;
-  if (INPUT_MODE == FASTQ_FILE)
-    read_fastq_file(reads_file.c_str(), read_names,
-		    reads, scores);
-  else read_fasta_file(reads_file.c_str(), read_names, reads);
-  reads.clear();
-  scores.clear();
-  for (vector<string>::iterator i(read_names.begin()); 
-       i != read_names.end(); ++i)
-    i->erase(i->begin() + i->find_first_of(" \t"), i->end());
+load_read_names(string filename, vector<string> &names) {
+  static const size_t INPUT_BUFFER_SIZE = 10000;
+  std::ifstream in(filename.c_str(), std::ios::binary);
+  if (!in)
+    throw RMAPException("cannot open input file " + string(filename));
+  while (!in.eof()) {
+    char buffer[INPUT_BUFFER_SIZE + 1];
+    in.getline(buffer, INPUT_BUFFER_SIZE);
+    if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
+      throw RMAPException("Line in " + filename + "\nexceeds max length: " +
+                          toa(INPUT_BUFFER_SIZE));
+    if (buffer[0] == '>' || buffer[0] == '@') {
+      names.push_back(buffer + 1);
+      const size_t name_end = names.back().find_first_of(" \t");
+      if (name_end != string::npos)
+        names.back().erase(names.back().begin() + name_end,
+                           names.back().end());
+    }
+  }
+  in.close();
 }
 
 
@@ -806,7 +814,7 @@ main(int argc, const char **argv) {
     // LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
     //
     vector<string> read_names;
-    load_read_names(INPUT_MODE, reads_file, read_names);
+    load_read_names(reads_file, read_names);
 
 
     //////////////////////////////////////////////////////////////
