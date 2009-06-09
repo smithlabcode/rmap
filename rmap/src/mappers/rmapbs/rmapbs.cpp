@@ -721,7 +721,7 @@ main(int argc, const char **argv) {
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
 		      false , outfile);
     opt_parse.add_opt("chrom", 'c', "FASTA file or dir containing chromosome(s)", 
-		      true , chrom_file);
+		      false , chrom_file);
     opt_parse.add_opt("suffix", 's', "suffix of FASTA files "
 		      "(assumes -c indicates dir)", false , fasta_suffix);
     opt_parse.add_opt("filenames", 'F', "file listing names of "
@@ -757,6 +757,10 @@ main(int argc, const char **argv) {
     if (leftover_args.empty()) {
       cerr << opt_parse.help_message() << endl;
       return EXIT_SUCCESS;
+    }
+    if (chrom_file.empty() && filenames_file.empty()) {
+      cerr << "must specify chroms file/dir or filenames file" << endl;
+      return EXIT_FAILURE;
     }
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
