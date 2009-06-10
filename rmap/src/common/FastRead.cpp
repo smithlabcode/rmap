@@ -124,9 +124,10 @@ FastRead::FastRead(const std::string &s_) {
 
 FastRead::FastRead(std::string::const_iterator a,
 		   const std::string::const_iterator b) {
+  wp.resize(segments + 1);
   for (size_t i = 0; i < segments; ++i) {
     const string this_seg(a + i*rmap_bits::word_size, 
-			  a + (i + 1));
+			  a + (i + 1)*rmap_bits::word_size);
     wp[i] = WordPair(this_seg);
   }
   wp[segments] = WordPair(string(a + segments*rmap_bits::word_size, b));
@@ -137,7 +138,7 @@ FastRead::tostring_bases() const {
   std::ostringstream ss;
   for (size_t i = 0; i < segments; ++i)
     ss << wp[i].tostring_bases(rmap_bits::all_ones);
-  ss << wp[segments-1].tostring_bases(score_mask);
+  ss << wp[segments].tostring_bases(score_mask);
   return ss.str();
 }
 
