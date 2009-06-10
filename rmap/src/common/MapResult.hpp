@@ -31,7 +31,7 @@ struct MapResult {
 	    bool str = true) : site(ste), chrom(chr), strand(str) {}
   void set(size_t ste, size_t chr, bool str);
   unsigned site   : 32;
-  unsigned chrom  : 15;
+  unsigned chrom  : 31;
   unsigned strand : 1;
   bool operator<(const MapResult& rhs) const {
     return (chrom < rhs.chrom || (chrom == rhs.chrom && site < rhs.site));
