@@ -63,22 +63,16 @@ char
 BisulfiteFastRead::WordPair::get_char(size_t mask, size_t pos) const {
   // 00 -> A, 01 -> C, 10 -> G, 11 -> T
   const MASK_t selector = (rmap_bits::low_bit << (pos - 1));
-  
   if ((mask & bads) & selector)
     return 'N';
-  
-  if ((mask & a_vec) & selector) {
+  if ((mask & a_vec) & selector)
     return 'A';
-  }
-  if (((mask & c_vec) & selector) && !((mask & t_vec) & selector)) {
+  if (((mask & c_vec) & selector) && !((mask & t_vec) & selector))
     return 'C';
-  }
-  if ((mask & g_vec) & selector) {
+  if ((mask & g_vec) & selector)
     return 'G';
-  }
-  if ((mask & t_vec) & selector) {
+  if ((mask & t_vec) & selector)
     return 'T';
-  }
   return 'N';
 }
 
