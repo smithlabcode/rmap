@@ -25,6 +25,7 @@
 #include "bisulfite_utils.hpp"
 #include "RNG.hpp"
 #include "OptionParser.hpp"
+#include "QualityScore.hpp"
 
 #include <string>
 #include <vector>

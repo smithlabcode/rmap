@@ -58,7 +58,8 @@ install: all
 	$(CXX) $(CFLAGS) -c -o $@ $< -I$(INCLUDEDIR)
 
 $(PROGS): $(addprefix $(COMMON_DIR), sim_utils.o GenomicRegion.o \
-	bisulfite_utils.o RNG.o rmap_os.o rmap_utils.o OptionParser.o)
+	bisulfite_utils.o RNG.o rmap_os.o rmap_utils.o OptionParser.o\
+	QualityScore.o)
 
 %: %.cpp
 	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR) -L$(LIBDIR) $(LIBS)

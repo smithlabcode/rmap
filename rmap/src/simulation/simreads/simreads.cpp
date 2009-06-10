@@ -25,6 +25,7 @@
 #include "sim_utils.hpp"
 #include "bisulfite_utils.hpp"
 #include "OptionParser.hpp"
+#include "QualityScore.hpp"
 
 #include <string>
 #include <vector>
