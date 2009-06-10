@@ -33,6 +33,7 @@
 #include "SeedMaker.hpp"
 #include "MapResultPE.hpp"
 #include "OptionParser.hpp"
+#include "load_paired_end_reads.hpp"
 
 using std::tr1::unordered_multimap;
 
@@ -64,22 +65,6 @@ template <typename T> struct SeedHash {
 		     typename vector<T>::const_iterator> > type;
 };
 typedef unordered_multimap<size_t, size_t> SeedHashSorter;
-
-
-static void
-get_read_words(const vector<string> &reads, vector<size_t> &read_words) {
-  read_words.resize(reads.size());
-  for (size_t i = 0; i < reads.size(); ++i) {
-    const size_t truncate_to = min(reads[i].length(), SeedMaker::max_seed_part);
-    // Need to replace the Ns because otherwise they will destroy the
-    // conversion from DNA to integers. Could replace with random
-    // bases, but everyone hates non-deterministic programs.
-    string s;
-    replace_copy(reads[i].end() - truncate_to, reads[i].end(),
-		 std::back_inserter(s), 'N', 'A');
-    read_words[i] = SeedMaker::make_read_word(s);
-  }
-}
 
 
 static void
@@ -169,7 +154,6 @@ map_reads(const string &chrom, const size_t chrom_id, const size_t profile,
   T fast_read;
   
   const size_t chrom_size = chrom.size();
-  
   vector<T> possible_lefts(max_sep);
   
   size_t chrom_offset = 0;
@@ -277,9 +261,8 @@ iterate_over_seeds(const bool VERBOSE,
 	const clock_t end(clock());
 	
 	if (VERBOSE)
-	  cerr << "[" << static_cast<float>(end - start)/CLOCKS_PER_SEC << " SEC] ";
+	  cerr << "[" << static_cast<float>(end - start)/CLOCKS_PER_SEC << " SEC]" << endl;
       }
-      if (VERBOSE) cerr << endl;
     }
     if (j == 0) {
       if (VERBOSE)
@@ -301,94 +284,6 @@ iterate_over_seeds(const bool VERBOSE,
   
   fast_reads_left.clear();
   fast_reads_right.clear();
-}
-
-
-////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////
-////
-////  CODE FOR VALIDATING THE READS TO ENSURE QUALITY OF MAPPED READS
-////
-////
-// NOTE: BAD POSITIONS ARE THOSE FOR WHICH THE HIGHEST QUALITY SCORE
-// IS LESS THAN OR EQUAL TO -5 AND AT MOST 20 SUCH POSITIONS ARE
-// ALLOWED IN A GOOD READ.
-static bool
-good_read(const vector<vector<double> > &read) {
-  size_t bad_count = 0;
-  for (size_t i = 0; i < read.size(); ++i)
-    bad_count += (*std::max_element(read[i].begin(), read[i].end()) <= -5.0);
-  return (bad_count <= 20);
-}
-
-
-static void
-clean_reads(const size_t min_match_score, const size_t read_width,
-	    const vector<size_t> &input_read_index,
-	    vector<string> &reads_left, 
-	    vector<string> &reads_right, 
-	    vector<vector<vector<double> > > &scores_left,
-	    vector<vector<vector<double> > > &scores_right,
-	    vector<vector<size_t> > &read_index) {
-  vector<vector<vector<double> > > good_scores_left, good_scores_right;
-  vector<string> good_reads_left, good_reads_right;
-  for (size_t i = 0; i < reads_left.size(); ++i) {
-    if (good_read(scores_left[i]) && good_read(scores_right[i])) {
-      if (reads_left[i].length() > read_width) {
-	reads_left[i] = reads_left[i].substr(0, read_width);
-	scores_left[i].erase(scores_left[i].begin() + read_width, scores_left[i].end());
-	reads_right[i] = reads_right[i].substr(0, read_width);
-	scores_right[i].erase(scores_right[i].begin() + read_width, scores_right[i].end());
-      }
-      read_index.push_back(vector<size_t>(1, input_read_index[i]));
-      good_reads_left.push_back(reads_left[i]);
-      good_scores_left.push_back(scores_left[i]);
-      good_reads_right.push_back(reads_right[i]);
-      good_scores_right.push_back(scores_right[i]);
-    }
-  }
-  reads_left.swap(good_reads_left);
-  scores_left.swap(good_scores_left);
-  
-  reads_right.swap(good_reads_right);
-  scores_right.swap(good_scores_right);
-}
-
-
-static char
-to_base_symbol(char c) {return (isvalid(c)) ? toupper(c) : 'N';}
-
-
-static void
-clean_reads(const size_t max_diffs, const size_t read_width,
-	    const vector<size_t> &input_read_index,
-	    vector<string> &reads_left, 
-	    vector<string> &reads_right, 
-	    vector<vector<size_t> > &read_index) {
-  vector<pair<pair<string, string>, size_t> > sorter;
-  for (size_t i = 0; i < reads_left.size(); ++i) {
-    transform(reads_left[i].begin(), reads_left[i].end(), reads_left[i].begin(),
-	      std::ptr_fun(&to_base_symbol));
-    transform(reads_right[i].begin(), reads_right[i].end(), reads_right[i].begin(),
-	      std::ptr_fun(&to_base_symbol));
-    if (count(reads_left[i].begin(), reads_left[i].end(), 'N') <=
-	static_cast<int>(max_diffs) &&
-	count(reads_right[i].begin(), reads_right[i].end(), 'N') <=
-	static_cast<int>(max_diffs))
-      sorter.push_back(make_pair(make_pair(reads_left[i], reads_right[i]),
-				 input_read_index[i]));
-  }
-  sort(sorter.begin(), sorter.end());
-  reads_left.clear();
-  reads_right.clear();
-  for (size_t i = 0; i < sorter.size(); ++i) {
-    if (i == 0 || sorter[i - 1].first != sorter[i].first) {
-      reads_left.push_back(sorter[i].first.first);
-      reads_right.push_back(sorter[i].first.second);
-      read_index.push_back(vector<size_t>(1, sorter[i].second));
-    }
-    else read_index.back().push_back(sorter[i].second);
-  }
 }
 
 
@@ -477,78 +372,6 @@ eliminate_ambigs(const size_t max_mismatches, vector<MultiMapResultPE> &best_map
 
 
 static void
-process_score_data(const size_t read_width, const size_t max_mismatches,
-		   double &max_quality_score, double &max_match_score,
-		   vector<vector<vector<double> > > &left,
-		   vector<vector<vector<double> > > &right) {
-  
-  double min_quality_score = numeric_limits<double>::max();
-  for (size_t i = 0; i < left.size(); ++i)
-    for (size_t j = 0; j < left[i].size(); ++j) {
-      max_quality_score =
-	max(max_quality_score, 
-	    max(*max_element(left[i][j].begin(), left[i][j].end()),
-		*max_element(right[i][j].begin(), right[i][j].end())));
-      min_quality_score =
-	min(min_quality_score, 
-	    min(*min_element(left[i][j].begin(), left[i][j].end()),
-		*min_element(right[i][j].begin(), right[i][j].end())));
-    }
-  
-  FastReadQuality::set_read_properties(read_width, 0,
-				       max_quality_score - 
-				       min_quality_score);
-  FastReadWC::set_read_properties(read_width, 0, max_quality_score - 
- 				  min_quality_score);
-  max_match_score = max_mismatches*
-    FastReadQuality::quality_to_value(max_quality_score - min_quality_score);
-  
-  for (size_t i = 0; i < left.size(); ++i) {
-    for (size_t j = 0; j < left[i].size(); ++j) {
-      const double max_score_left = 
-	*max_element(left[i][j].begin(), left[i][j].end());
-      const double max_score_right = 
-	*max_element(right[i][j].begin(), right[i][j].end());
-      for (size_t k = 0; k < left[i][j].size(); ++k) {
-	left[i][j][k] = max_score_left - left[i][j][k];
-	right[i][j][k] = max_score_right - right[i][j][k];
-      }
-    }
-  }
-}
-
-
-static void
-fastq_to_prb(const vector<string> &reads,
-	     const vector<vector<double> > &fastq_scores, 
-	     vector<vector<vector<double> > > &scores) {
-  typedef vector<double> vv;
-  scores.resize(reads.size());
-  for (size_t i = 0; i < reads.size(); ++i) {
-    for (size_t j = 0; j < reads[i].length(); ++j) {
-      const double score = 
-	solexa_to_error_probability(fastq_scores[i][j]);
-      const double other_scores = 
-	error_probability_to_solexa(1 - score);
-      scores[i].push_back(vv(rmap::alphabet_size, other_scores));
-      if (isvalid(reads[i][j]))
-	scores[i].back()[base2int(reads[i][j])] = score;
-    }
-  }
-}
-
-
-// static void
-// set_read_width(const vector<string> &reads, size_t &read_width) {
-//   if (read_width == 0) {
-//     read_width = reads.front().size();
-//     for (size_t i = 1; i < reads.size(); ++i)
-//       read_width = min(read_width, reads[i].length());
-//   }
-// }
-
-
-static void
 identify_chromosomes(const bool VERBOSE,
 		     const string filenames_file,
 		     const string fasta_suffix,
@@ -612,15 +435,19 @@ get_input_mode(const bool VERBOSE,
 
 
 static size_t
-get_run_mode(const bool VERBOSE, const size_t INPUT_MODE, const bool WILDCARD) {
+get_run_mode(const bool VERBOSE, const size_t INPUT_MODE, 
+	     const bool WILDCARD, const bool QUALITY) {
   size_t RUN_MODE = RUN_MODE_MISMATCH;
+  if (WILDCARD and QUALITY)
+    throw RMAPException("wildcard and quality matching: mutually exclusive");
   if (WILDCARD) {
     if (INPUT_MODE == FASTA_FILE)
       throw RMAPException("quality score information "
 			  "required to use wildcards");
     RUN_MODE = RUN_MODE_WILDCARD;
   }
-  else if (INPUT_MODE == FASTA_AND_PRB || INPUT_MODE == FASTQ_FILE)
+  else if (INPUT_MODE == FASTA_AND_PRB || 
+	   (INPUT_MODE == FASTQ_FILE && QUALITY))
     RUN_MODE = RUN_MODE_WEIGHT_MATRIX;
   
   if (VERBOSE)
@@ -632,179 +459,56 @@ get_run_mode(const bool VERBOSE, const size_t INPUT_MODE, const bool WILDCARD) {
 }  
 
 
-
-////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////
-//////
-////// FOR PAIRED-END READS
-static void
-split_scores(const size_t read_width,
-	     vector<vector<vector<double> > > &scores, 
-	     vector<vector<vector<double> > > &left,
-	     vector<vector<vector<double> > > &right) {
-  typedef vector<vector<double> > vv;
-  for (size_t i = 0; i < scores.size(); ++i) {
-    left.push_back(vv(scores[i].begin(), scores[i].begin() + read_width));
-    right.push_back(vv(scores[i].end() - read_width, scores[i].end()));
-    reverse(right.back().begin(), right.back().end());
-    for (size_t j = 0; j < read_width; ++j)
-      reverse(right.back()[j].begin(), right.back()[j].end());
-    scores[i].clear();
-  }
-  scores.clear();
-}
-
-
-static void
-split_reads(const size_t read_width, vector<string> &reads,
-	    vector<string> &left, vector<string> &right) {
-  for (size_t i = 0; i < reads.size(); ++i) {
-    left.push_back(reads[i].substr(0, read_width));
-    right.push_back(revcomp(reads[i].substr(reads[i].length() - read_width)));
-  }
-  reads.clear();
-}
-
-
-static size_t
-determine_read_width(const vector<string> &reads, size_t read_width) {
-  size_t both_ends = reads.front().size();
-  for (size_t i = 1; i < reads.size(); ++i)
-    if (both_ends != reads[i].length())
-      throw RMAPException("paired-end reads must have uniform width");
-  if (read_width == 0)
-    read_width = std::floor(both_ends/2);
-  else if (read_width > both_ends/2)
-    read_width = both_ends - read_width;
-  return read_width;
-}
-
-
-
 static void
 load_reads(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_MODE,
 	   const size_t max_mismatches,
 	   const string &reads_file, const string &prb_file,
-	   vector<FastRead> &fast_reads_left, 
-	   vector<FastRead> &fast_reads_right, 
-	   vector<FastReadWC> &fast_reads_wc_left,
-	   vector<FastReadWC> &fast_reads_wc_right,
-	   vector<FastReadQuality> &fast_reads_q_left,
-	   vector<FastReadQuality> &fast_reads_q_right,
-	   vector<vector<size_t> > &read_index, vector<size_t> &read_words,
-	   size_t &read_width,
-	   double &max_match_score) {
+ 	   vector<FastRead> &fast_reads_left, 
+ 	   vector<FastRead> &fast_reads_right, 
+ 	   vector<FastReadWC> &fast_reads_wc_left,
+ 	   vector<FastReadWC> &fast_reads_wc_right,
+ 	   vector<FastReadQuality> &fast_reads_q_left,
+ 	   vector<FastReadQuality> &fast_reads_q_right,
+	   vector<vector<size_t> > &read_index_in, vector<size_t> &read_words,
+	   size_t &read_width) {
 
+  vector<size_t> read_index;
   //////////////////////////////////////////////////////////////
   // LOAD THE READS (AS SEQUENCES OR PROBABILITIES) FROM DISK
   if (VERBOSE) cerr << "[LOADING READ SEQUENCES] ";
-  vector<string> reads, read_names;
-  vector<vector<vector<double> > > scores;
-
+  vector<string> reads;
   if (INPUT_MODE == FASTQ_FILE) {
-    vector<vector<double> > fastq_scores;
-    read_fastq_file(reads_file.c_str(), read_names, reads, fastq_scores);
-    read_names.clear();
-    fastq_to_prb(reads, fastq_scores, scores);
+    if (RUN_MODE == RUN_MODE_WILDCARD)
+      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+				 fast_reads_wc_left, fast_reads_wc_right, 
+				 read_words, read_index);
+    else if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
+      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+				 fast_reads_q_left, fast_reads_q_right, 
+				 read_words, read_index);
+    else
+      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+				 fast_reads_left, fast_reads_right, 
+				 read_words, read_index);
   }
   else if (INPUT_MODE == FASTA_AND_PRB) {
-    read_fasta_file(reads_file.c_str(), read_names, reads);
-    // set_read_width(reads, read_width);
-    read_names.clear();
-    read_prb_file(prb_file.c_str(), scores);
-    if (scores.size() != reads.size())
-      throw RMAPException("different number of reads in prb and reads files");
+    if (RUN_MODE == RUN_MODE_WILDCARD)
+      load_reads_from_prb_file(prb_file, max_mismatches, read_width,
+			       fast_reads_wc_left, fast_reads_wc_right,
+			       read_words, read_index);
+    else load_reads_from_prb_file(prb_file, max_mismatches, read_width,
+				  fast_reads_q_left, fast_reads_q_right, 
+				  read_words, read_index);
   }
-  else {
-    read_fasta_file(reads_file.c_str(), read_names, reads);
-    if (reads.empty())
-      throw RMAPException("empty reads file:\"" + reads_file + "\"");
-    read_names.clear();
-  }
+  else load_reads_from_fasta_file(reads_file, max_mismatches, read_width,
+				  fast_reads_left, fast_reads_right, 
+				  read_words, read_index);
+  
+  for (size_t i = 0; i < read_index.size(); ++i)
+    read_index_in.push_back(vector<size_t>(1, read_index[i]));
   if (VERBOSE)
     cerr << "[DONE]" << endl
-	 << "TOTAL READS: " << reads.size() << endl;
-
-
-  //////////////////////////////////////////////////////////////
-  // SET THE READ WIDTH (IMPORTANT PARAMETER!)
-  read_width = determine_read_width(reads, read_width);
-  // set_read_width(reads, read_width);
-  if (VERBOSE) cerr << "READ WIDTH: " << read_width << endl;
-  
-  
-  vector<string> reads_left, reads_right;
-  split_reads(read_width, reads, reads_left, reads_right);
-  reads.clear();
-  vector<vector<vector<double> > > scores_left, scores_right;
-  if (INPUT_MODE > 0) {
-    split_scores(read_width, scores, scores_left, scores_right);
-    scores.clear();
-  }
-  
-  //////////////////////////////////////////////////////////////
-  // BUILD THE INDEX FOR THE READ NAMES, AND CHECK THE READS FOR
-  // QUALITY
-  if (VERBOSE) cerr << "[CLEANING READS] ";
-  vector<size_t> dummy_read_index(reads_left.size(), 1ul);
-  partial_sum(dummy_read_index.begin(), dummy_read_index.end(),
-	      dummy_read_index.begin());
-  transform(dummy_read_index.begin(), dummy_read_index.end(),
-	    dummy_read_index.begin(), std::bind2nd(std::minus<size_t>(), 1ul));
-  if (INPUT_MODE > 0)
-    clean_reads(max_mismatches, read_width, dummy_read_index, 
-		reads_left, reads_right, scores_left, scores_right, read_index);
-  else clean_reads(max_mismatches, read_width, dummy_read_index, 
-		   reads_left, reads_right, read_index);
-  dummy_read_index.clear();
-  if (VERBOSE)
-    cerr << "[DONE]" << endl
-	 << "TOTAL READS (HQ): " << read_index.size() << endl;
-  
-  //////////////////////////////////////////////////////////////
-  // CONVERT THE READS INTO FASTREADS
-  if (VERBOSE) cerr << "[BUILDING FAST READS] ";
-  double max_quality_score = 0;
-  if (RUN_MODE == RUN_MODE_WILDCARD) {
-    process_score_data(read_width, max_mismatches,
-		       max_quality_score, max_match_score, 
-		       scores_left, scores_right);
-    for (size_t i = 0; i < reads_left.size(); ++i) {
-      fast_reads_wc_left.push_back(FastReadWC(scores_left[i]));
-      fast_reads_wc_right.push_back(FastReadWC(scores_right[i]));
-      scores_left[i].clear();
-      scores_right[i].clear();
-    }
-    scores_left.clear();
-    scores_right.clear();
-  }
-  else if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) {
-    process_score_data(read_width, max_mismatches,
-		       max_quality_score, max_match_score, 
-		       scores_left, scores_right);
-    for (size_t i = 0; i < reads_left.size(); ++i) {
-      fast_reads_q_left.push_back(FastReadQuality(scores_left[i]));
-      fast_reads_q_right.push_back(FastReadQuality(scores_right[i]));
-      scores_left[i].clear();
-      scores_right[i].clear();
-    }
-    scores_left.clear();
-    scores_right.clear();
-  }
-  else {
-    FastRead::set_read_width(read_width);
-    for (size_t i = 0; i < reads_left.size(); ++i) {
-      fast_reads_left.push_back(FastRead(reads_left[i]));
-      fast_reads_right.push_back(FastRead(reads_right[i]));
-    }
-  }
-  if (VERBOSE) cerr << "[DONE]" << endl;
-  
-  //////////////////////////////////////////////////////////////
-  // GET THE 2-BIT FORMAT OF THE FIRST PART OF EACH READ
-  get_read_words(reads_right, read_words);
-  reads_left.clear();
-  reads_right.clear();
+	 << "TOTAL HQ READS: " << read_index.size() << endl;
 }
 
 
@@ -830,6 +534,7 @@ main(int argc, const char **argv) {
     
     bool VERBOSE = false;
     bool WILDCARD = false;
+    bool QUALITY = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("rmappe", "The rmappe mapping tool for "
@@ -860,6 +565,8 @@ main(int argc, const char **argv) {
 		      false, max_mappings);
     opt_parse.add_opt("wc", 'W', "wildcard matching based on quality scores", 
 		      false, WILDCARD);
+    opt_parse.add_opt("qual", 'Q', "use quality scores (input must be FASTQ)", 
+		      false, QUALITY);
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
     vector<string> leftover_args;
     opt_parse.parse(argc, argv, leftover_args);
@@ -891,7 +598,7 @@ main(int argc, const char **argv) {
     //  CHECK HOW QUALITY SCORES ARE USED
     //
     const size_t INPUT_MODE = get_input_mode(VERBOSE, reads_file, prb_file);
-    const size_t RUN_MODE = get_run_mode(VERBOSE, INPUT_MODE, WILDCARD);
+    const size_t RUN_MODE = get_run_mode(VERBOSE, INPUT_MODE, WILDCARD, QUALITY);
     
     //////////////////////////////////////////////////////////////
     //  DETERMINE WHICH CHROMOSOMES WILL USED IN MAPPING
@@ -908,14 +615,14 @@ main(int argc, const char **argv) {
     vector<FastReadQuality> fast_reads_q_left, fast_reads_q_right;
     vector<vector<size_t> > read_index;
     vector<size_t> read_words;
-    double max_match_score = 0;
     load_reads(VERBOSE, INPUT_MODE, RUN_MODE, max_mismatches, 
 	       reads_file, prb_file, 
 	       fast_reads_left, fast_reads_right, 
 	       fast_reads_wc_left, fast_reads_wc_right,
 	       fast_reads_q_left, fast_reads_q_right, 
-	       read_index, read_words, read_width, max_match_score);
+	       read_index, read_words, read_width);
     
+    double max_match_score = max_mismatches*FastReadQuality::get_scaler();
     
     //////////////////////////////////////////////////////////////
     // INITIALIZE THE SEED STRUCTURES
@@ -928,7 +635,7 @@ main(int argc, const char **argv) {
     // INITIALIZE THE STRUCTURES THAT HOLD THE RESULTS
     //
     MultiMapResultPE::init(max_mappings);
-    vector<MultiMapResultPE> 
+    vector<MultiMapResultPE>
       best_maps(read_words.size(), MultiMapResultPE((RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ?
 						    2*max_match_score : 2*max_mismatches));
     
@@ -999,7 +706,9 @@ main(int argc, const char **argv) {
       new std::ofstream(outfile.c_str()) : &cout;
     copy(hits.begin(), hits.end(), ostream_iterator<GenomicRegion>(*out, "\n"));
     if (out != &cout) delete out;
-
+    if (VERBOSE)
+      cerr << "[DONE] " << endl
+	   << "TOTAL READS MAPPED: " << hits.size()/2 << endl;
   }
   catch (const RMAPException &e) {
     cerr << e.what() << endl;

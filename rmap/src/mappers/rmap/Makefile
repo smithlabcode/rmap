@@ -51,10 +51,11 @@ endif
 all:	$(PROGS)
 
 %.o: %.cpp %.hpp
-	$(CXX) $(CFLAGS) -c -o $@ $<
+	$(CXX) $(CFLAGS) -c -o $@ $< -I$(COMMON_DIR)
 
 rmap: $(addprefix $(COMMON_DIR), SeedMaker.o GenomicRegion.o rmap_os.o FastReadWC.o \
-	rmap_utils.o OptionParser.o FastRead.o FastReadQuality.o)
+	rmap_utils.o OptionParser.o FastRead.o FastReadQuality.o QualityScore.o \
+	load_reads.o)
 
 install: all
 	@mkdir -p $(RMAP)/bin

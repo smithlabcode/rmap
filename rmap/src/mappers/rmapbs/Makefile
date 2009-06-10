@@ -54,9 +54,11 @@ all:	$(PROGS)
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
 rmapbs: $(addprefix $(COMMON_DIR), SeedMaker.o GenomicRegion.o \
-	rmap_os.o rmap_utils.o OptionParser.o)
+	rmap_os.o rmap_utils.o OptionParser.o QualityScore.o)
+
 rmapbs: $(addprefix $(COMMON_DIR), BisulfiteFastRead.o \
-	BisulfiteFastReadQuality.o BisulfiteFastReadWC.o)
+	BisulfiteFastReadQuality.o BisulfiteFastReadWC.o \
+	load_bisulfite_reads.o)
 
 install: all
 	@mkdir -p $(RMAP)/bin

@@ -1,4 +1,4 @@
-/*    rmap: a program for mapping Solexa reads
+/*    Rmap: A Program For Mapping Solexa reads
  *    Copyright (C) 2009 University of Southern California and
  *                       Andrew D. Smith
  *
@@ -33,6 +33,7 @@
 #include "SeedMaker.hpp"
 #include "MapResult.hpp"
 #include "OptionParser.hpp"
+#include "load_reads.hpp"
 
 using std::tr1::unordered_multimap;
 
@@ -57,29 +58,14 @@ enum { RUN_MODE_MISMATCH, RUN_MODE_WILDCARD, RUN_MODE_WEIGHT_MATRIX };
 ////  THIS STUFF DEALS WITH THE HASHING OF KEYS
 ////
 ////
-template <typename T> struct SeedHash {
+template <typename T> 
+struct SeedHash {
   typedef
   unordered_map<size_t,
 		pair<typename vector<T>::const_iterator,
 		     typename vector<T>::const_iterator> > type;
 };
 typedef unordered_multimap<size_t, size_t> SeedHashSorter;
-
-
-static void
-get_read_words(const vector<string> &reads, vector<size_t> &read_words) {
-  read_words.resize(reads.size());
-  for (size_t i = 0; i < reads.size(); ++i) {
-    const size_t truncate_to = min(reads[i].length(), SeedMaker::max_seed_part);
-    // Need to replace the Ns because otherwise they will destroy the
-    // conversion from DNA to integers. Could replace with random
-    // bases, but everyone hates non-deterministic programs.
-    string s;
-    replace_copy(reads[i].begin(), reads[i].begin() + truncate_to,
-		 std::back_inserter(s), 'N', 'A');
-    read_words[i] = SeedMaker::make_read_word(s);
-  }
-}
 
 
 static void
@@ -136,7 +122,6 @@ static void
 load_seeds(const bool VERBOSE, 
 	   const size_t read_width, const size_t n_seeds, 
 	   const size_t seed_weight, vector<size_t> &the_seeds) {
-  
   SeedMaker::first_last_seeds(min(read_width, SeedMaker::max_seed_part),
 			      n_seeds, seed_weight, the_seeds);
   if (VERBOSE) {
@@ -196,7 +181,7 @@ map_reads(const string &chrom, const size_t chrom_id,
 	    const vector<MultiMapResult>::iterator 
 	      current(best_maps.begin() + (to_test - fast_reads.begin()));
 	    if (score <= current->score)
-	      current->add(score, chrom_id, 
+	      current->add(score, chrom_id,
 			   chrom_offset - read_width + 1, strand);
 	  }
 	}
@@ -240,12 +225,10 @@ iterate_over_seeds(const bool VERBOSE,
       read_fasta_file(chrom_files[i].c_str(), tmp_chrom_names, chroms);
       
       for (size_t k = 0; k < chroms.size(); ++k) {
-	
 	if (j == 0) {
 	  chrom_sizes.push_back(chroms[k].length());
 	  chrom_names.push_back(tmp_chrom_names[k]);
 	}
-	
 	transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(), 
 		  std::ptr_fun(&toupper));
 	
@@ -261,9 +244,8 @@ iterate_over_seeds(const bool VERBOSE,
 	const clock_t end(clock());
 	
 	if (VERBOSE)
-	  cerr << "[" << static_cast<float>(end - start)/CLOCKS_PER_SEC << " SEC] ";
+	  cerr << "[" << static_cast<float>(end - start)/CLOCKS_PER_SEC << " SEC]" << endl;
       }
-      if (VERBOSE) cerr << endl;
     }
     if (j == 0) {
       if (VERBOSE)
@@ -281,79 +263,6 @@ iterate_over_seeds(const bool VERBOSE,
     cerr << "[AMBIG=" << ambigs.size() << "] " << endl;
   
   fast_reads.clear();
-}
-
-
-////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////
-////
-////  CODE FOR VALIDATING THE READS TO ENSURE QUALITY OF MAPPED READS
-////
-////
-// NOTE: BAD POSITIONS ARE THOSE FOR WHICH THE HIGHEST QUALITY SCORE
-// IS LESS THAN OR EQUAL TO -5 AND AT MOST 20 SUCH POSITIONS ARE
-// ALLOWED IN A GOOD READ.
-static bool
-good_read(const vector<vector<double> > &read) {
-  size_t bad_count = 0;
-  for (size_t i = 0; i < read.size(); ++i)
-    bad_count += (*std::max_element(read[i].begin(), read[i].end()) <= -5.0);
-  return (bad_count <= 20);
-}
-
-
-static void
-clean_reads(const size_t min_match_score, const size_t read_width,
-	    const vector<size_t> &input_read_index,
-	    vector<string> &reads, vector<vector<vector<double> > > &scores,
-	    vector<vector<size_t> > &read_index) {
-  vector<vector<vector<double> > > good_scores;
-  vector<string> good_reads;
-  for (size_t i = 0; i < reads.size(); ++i) {
-    if (good_read(scores[i])) {
-      if (reads[i].length() > read_width) {
-	reads[i] = reads[i].substr(0, read_width);
-	scores[i].erase(scores[i].begin() + read_width, scores[i].end());
-      }
-      read_index.push_back(vector<size_t>(1, input_read_index[i]));
-      good_reads.push_back(reads[i]);
-      good_scores.push_back(scores[i]);
-    }
-  }
-  reads.swap(good_reads);
-  scores.swap(good_scores);
-}
-
-
-static char
-to_base_symbol(char c) {return (isvalid(c)) ? toupper(c) : 'N';}
-
-static void
-clean_reads(const size_t max_diffs, const size_t read_width,
-	    const vector<size_t> &input_read_index,
-	    vector<string> &reads, vector<vector<size_t> > &read_index) {
-  vector<pair<string, size_t> > sorter;
-  for (size_t i = 0; i < reads.size(); ++i) {
-    if (reads[i].length() != read_width) {
-      if (reads[i].length() < read_width)
-	throw RMAPException("Incorrect read width");
-      else reads[i] = reads[i].substr(0, read_width);
-    }
-    transform(reads[i].begin(), reads[i].end(), reads[i].begin(),
-	      std::ptr_fun(&to_base_symbol));
-    if (count(reads[i].begin(), reads[i].end(), 'N') <=
-	static_cast<int>(max_diffs))
-      sorter.push_back(make_pair(reads[i], input_read_index[i]));
-  }
-  sort(sorter.begin(), sorter.end());
-  reads.clear();
-  for (size_t i = 0; i < sorter.size(); ++i) {
-    if (i == 0 || sorter[i - 1].first != sorter[i].first) {
-      reads.push_back(sorter[i].first);
-      read_index.push_back(vector<size_t>(1, sorter[i].second));
-    }
-    else read_index.back().push_back(sorter[i].second);
-  }
 }
 
 
@@ -426,69 +335,6 @@ eliminate_ambigs(const size_t max_mismatches, vector<MultiMapResult> &best_maps,
 
 
 static void
-process_score_data(const size_t read_width, const size_t max_mismatches,
-		   double &max_quality_score, double &max_match_score,
-		   vector<vector<vector<double> > > &scores) {
-  double min_quality_score = numeric_limits<double>::max();
-  for (size_t i = 0; i < scores.size(); ++i)
-    for (size_t j = 0; j < scores[i].size(); ++j) {
-      max_quality_score = max(max_quality_score, 
-			      *max_element(scores[i][j].begin(), 
-					   scores[i][j].end()));
-      min_quality_score = min(min_quality_score, 
-			      *min_element(scores[i][j].begin(), 
-					   scores[i][j].end()));
-    }
-  
-  FastReadQuality::set_read_properties(read_width, 0, max_quality_score - 
- 				       min_quality_score);
-  FastReadWC::set_read_properties(read_width, 0, max_quality_score - 
-				  min_quality_score);
-  max_match_score = max_mismatches*
-    FastReadQuality::quality_to_value(max_quality_score - min_quality_score);
-  
-  for (size_t i = 0; i < scores.size(); ++i) {
-    for (size_t j = 0; j < scores[i].size(); ++j) {
-      const double max_score = *max_element(scores[i][j].begin(), 
-					    scores[i][j].end());
-      for (size_t k = 0; k < scores[i][j].size(); ++k)
-	scores[i][j][k] = max_score - scores[i][j][k];
-    }
-  }
-}
-
-
-static void
-fastq_to_prb(const vector<string> &reads,
-	     const vector<vector<double> > &fastq_scores, 
-	     vector<vector<vector<double> > > &scores) {
-  typedef vector<double> vv;
-  scores.resize(reads.size());
-  for (size_t i = 0; i < reads.size(); ++i) {
-    for (size_t j = 0; j < reads[i].length(); ++j) {
-      const double score = 
-	solexa_to_error_probability(fastq_scores[i][j]);
-      const double other_scores = 
-	error_probability_to_solexa(1 - score);
-      scores[i].push_back(vv(rmap::alphabet_size, other_scores));
-      if (isvalid(reads[i][j]))
-	scores[i].back()[base2int(reads[i][j])] = score;
-    }
-  }
-}
-
-
-static void
-set_read_width(const vector<string> &reads, size_t &read_width) {
-  if (read_width == 0) {
-    read_width = reads.front().size();
-    for (size_t i = 1; i < reads.size(); ++i)
-      read_width = min(read_width, reads[i].length());
-  }
-}
-
-
-static void
 identify_chromosomes(const bool VERBOSE,
 		     const string filenames_file,
 		     const string fasta_suffix,
@@ -550,17 +396,20 @@ get_input_mode(const bool VERBOSE,
   return INPUT_MODE;
 }  
 
-
 static size_t
-get_run_mode(const bool VERBOSE, const size_t INPUT_MODE, const bool WILDCARD) {
+get_run_mode(const bool VERBOSE, const size_t INPUT_MODE, 
+	     const bool WILDCARD, const bool QUALITY) {
   size_t RUN_MODE = RUN_MODE_MISMATCH;
+  if (WILDCARD and QUALITY)
+    throw RMAPException("wildcard and quality matching: mutually exclusive");
   if (WILDCARD) {
     if (INPUT_MODE == FASTA_FILE)
       throw RMAPException("quality score information "
 			  "required to use wildcards");
     RUN_MODE = RUN_MODE_WILDCARD;
   }
-  else if (INPUT_MODE == FASTA_AND_PRB || INPUT_MODE == FASTQ_FILE)
+  else if (INPUT_MODE == FASTA_AND_PRB || 
+	   (INPUT_MODE == FASTQ_FILE && QUALITY))
     RUN_MODE = RUN_MODE_WEIGHT_MATRIX;
   
   if (VERBOSE)
@@ -578,98 +427,40 @@ load_reads(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_MODE,
 	   const string &reads_file, const string &prb_file,
 	   vector<FastRead> &fast_reads, vector<FastReadWC> &fast_reads_wc,
 	   vector<FastReadQuality> &fast_reads_q,
-	   vector<vector<size_t> > &read_index, vector<size_t> &read_words,
-	   size_t &read_width,
-	   double &max_match_score) {
+	   vector<vector<size_t> > &read_index_in, vector<size_t> &read_words,
+	   size_t &read_width) {
 
+  vector<size_t> read_index;
   //////////////////////////////////////////////////////////////
   // LOAD THE READS (AS SEQUENCES OR PROBABILITIES) FROM DISK
   if (VERBOSE) cerr << "[LOADING READ SEQUENCES] ";
-  vector<string> reads, read_names;
-  vector<vector<vector<double> > > scores;
-
+  vector<string> reads;
   if (INPUT_MODE == FASTQ_FILE) {
-    vector<vector<double> > fastq_scores;
-    read_fastq_file(reads_file.c_str(), read_names, reads, fastq_scores);
-    read_names.clear();
-    fastq_to_prb(reads, fastq_scores, scores);
+    if (RUN_MODE == RUN_MODE_WILDCARD)
+      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+				 fast_reads_wc, read_words, read_index);
+    else if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
+      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+				 fast_reads_q, read_words, read_index);
+    else
+      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+				 fast_reads, read_words, read_index);
   }
   else if (INPUT_MODE == FASTA_AND_PRB) {
-    read_fasta_file(reads_file.c_str(), read_names, reads);
-    read_names.clear();
-    read_prb_file(prb_file.c_str(), scores);
-    if (scores.size() != reads.size())
-      throw RMAPException("different number of reads in prb and reads files");
+    if (RUN_MODE == RUN_MODE_WILDCARD)
+      load_reads_from_prb_file(prb_file, max_mismatches, read_width,
+			       fast_reads_wc, read_words, read_index);
+    else load_reads_from_prb_file(prb_file, max_mismatches, read_width,
+				  fast_reads_q, read_words, read_index);
   }
-  else {
-    read_fasta_file(reads_file.c_str(), read_names, reads);
-    if (reads.empty())
-      throw RMAPException("empty reads file:\"" + reads_file + "\"");
-    read_names.clear();
-  }
+  else load_reads_from_fasta_file(reads_file, max_mismatches, read_width,
+				  fast_reads, read_words, read_index);
+  
+  for (size_t i = 0; i < read_index.size(); ++i)
+    read_index_in.push_back(vector<size_t>(1, read_index[i]));
   if (VERBOSE)
     cerr << "[DONE]" << endl
-	 << "TOTAL READS: " << reads.size() << endl;
-
-  //////////////////////////////////////////////////////////////
-  // SET THE READ WIDTH (IMPORTANT PARAMETER!)
-  set_read_width(reads, read_width);
-  if (VERBOSE) cerr << "READ WIDTH: " << read_width << endl;
-  
-  //////////////////////////////////////////////////////////////
-  // BUILD THE INDEX FOR THE READ NAMES, AND CHECK THE READS FOR
-  // QUALITY
-  if (VERBOSE) cerr << "[CLEANING READS] ";
-  vector<size_t> dummy_read_index(reads.size(), 1ul);
-  partial_sum(dummy_read_index.begin(), dummy_read_index.end(),
-	      dummy_read_index.begin());
-  transform(dummy_read_index.begin(), dummy_read_index.end(),
-	    dummy_read_index.begin(), std::bind2nd(std::minus<size_t>(), 1ul));
-  if (INPUT_MODE > 0)
-    clean_reads(max_mismatches, read_width, dummy_read_index, 
-		reads, scores, read_index);
-  else clean_reads(max_mismatches, read_width, dummy_read_index, 
-		   reads, read_index);
-  dummy_read_index.clear();
-  if (VERBOSE)
-    cerr << "[DONE]" << endl
-	 << "TOTAL READS (HQ): " << read_index.size() << endl;
-  
-  //////////////////////////////////////////////////////////////
-  // CONVERT THE READS INTO FASTREADS
-  if (VERBOSE) cerr << "[BUILDING FAST READS] ";
-  double max_quality_score = 0;
-  if (RUN_MODE == RUN_MODE_WILDCARD) {
-    process_score_data(read_width, max_mismatches,
-		       max_quality_score, max_match_score, scores);
-    for (size_t i = 0; i < reads.size(); ++i) {
-      fast_reads_wc.push_back(FastReadWC(scores[i]));
-      scores[i].clear();
-    }
-    scores.clear();
-  }
-  else if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) {
-    process_score_data(read_width, max_mismatches,
-		       max_quality_score, max_match_score, scores);
-    for (size_t i = 0; i < reads.size(); ++i) {
-      fast_reads_q.push_back(FastReadQuality(scores[i]));
-      scores[i].clear();
-    }
-    scores.clear();
-  }
-  else {
-    FastRead::set_read_width(read_width);
-    for (size_t i = 0; i < reads.size(); ++i)
-      fast_reads.push_back(FastRead(reads[i]));
-  }
-  if (VERBOSE) cerr << "[DONE]" << endl;
-  
-  //////////////////////////////////////////////////////////////
-  // GET THE 2-BIT FORMAT OF THE FIRST PART OF EACH READ
-  if (VERBOSE) cerr << "[FORMATTING READS FOR HASHING] ";
-  get_read_words(reads, read_words);
-  reads.clear();
-  if (VERBOSE) cerr << "[DONE]" << endl;
+	 << "TOTAL HQ READS: " << read_index.size() << endl;
 }
 
 
@@ -692,6 +483,7 @@ main(int argc, const char **argv) {
     
     bool VERBOSE = false;
     bool WILDCARD = false;
+    bool QUALITY = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("rmap", "The rmap mapping tool for Solexa reads",
@@ -717,6 +509,8 @@ main(int argc, const char **argv) {
 		      false, max_mappings);
     opt_parse.add_opt("wc", 'W', "wildcard matching based on quality scores", 
 		      false, WILDCARD);
+    opt_parse.add_opt("qual", 'Q', "use quality scores (input must be FASTQ)", 
+		      false, QUALITY);
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
     vector<string> leftover_args;
     opt_parse.parse(argc, argv, leftover_args);
@@ -742,13 +536,13 @@ main(int argc, const char **argv) {
     }
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
-
+    
     
     //////////////////////////////////////////////////////////////
     //  CHECK HOW QUALITY SCORES ARE USED
     //
     const size_t INPUT_MODE = get_input_mode(VERBOSE, reads_file, prb_file);
-    const size_t RUN_MODE = get_run_mode(VERBOSE, INPUT_MODE, WILDCARD);
+    const size_t RUN_MODE = get_run_mode(VERBOSE, INPUT_MODE, WILDCARD, QUALITY);
     
     //////////////////////////////////////////////////////////////
     //  DETERMINE WHICH CHROMOSOMES WILL USED IN MAPPING
@@ -765,13 +559,13 @@ main(int argc, const char **argv) {
     vector<FastReadQuality> fast_reads_q;
     vector<vector<size_t> > read_index;
     vector<size_t> read_words;
-    double max_match_score = 0;
     load_reads(VERBOSE, INPUT_MODE, RUN_MODE, max_mismatches, 
 	       reads_file, prb_file, fast_reads, fast_reads_wc,
 	       fast_reads_q, read_index, read_words, 
-	       read_width, max_match_score);
+	       read_width);
     
-
+    double max_match_score = max_mismatches*FastReadQuality::get_scaler();
+    
     //////////////////////////////////////////////////////////////
     // INITIALIZE THE SEED STRUCTURES
     //
@@ -783,7 +577,7 @@ main(int argc, const char **argv) {
     // INITIALIZE THE STRUCTURES THAT HOLD THE RESULTS
     //
     MultiMapResult::init(max_mappings);
-    vector<MultiMapResult> 
+    vector<MultiMapResult>
       best_maps(read_words.size(), MultiMapResult((RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ?
 						  max_match_score : max_mismatches));
     
@@ -824,9 +618,15 @@ main(int argc, const char **argv) {
     //////////////////////////////////////////////////////////////
     // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
     //
-    if (!ambiguous_file.empty())
+    if (!ambiguous_file.empty()) {
+      if (VERBOSE)
+	cerr << "[WRITING AMBIGS] ";
       write_non_uniques(ambiguous_file, ambigs, read_names);
-
+      if (VERBOSE)
+	cerr << "[DONE]" << endl
+	     << "TOTAL AMBIGS: " << ambigs.size() << endl;
+      ambigs.clear();
+    }
     
     //////////////////////////////////////////////////////////////
     // TRANSFORM THE RESULT STRUCTURES INTO BED FORMAT FOR OUTPUT
@@ -834,7 +634,7 @@ main(int argc, const char **argv) {
     vector<GenomicRegion> hits;
     sites_to_regions(read_width, chrom_names, chrom_sizes, read_index, read_names,
 		     best_maps, hits);
-
+    
 
     //////////////////////////////////////////////////////////////
     // CORRECT SCORES IF WEIGHT MATRIX MATCHING USED
@@ -842,19 +642,23 @@ main(int argc, const char **argv) {
     if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
       for (size_t i = 0; i < hits.size(); ++i)
 	hits[i].set_score(FastReadQuality::value_to_quality(hits[i].get_score()));
-    
+
     
     //////////////////////////////////////////////////////////////
     // OUTPUT THE RESULTS
     //
+    if (VERBOSE)
+      cerr << "[WRITING MAPS] ";
     std::ostream* out = (!outfile.empty()) ? 
       new std::ofstream(outfile.c_str()) : &cout;
     copy(hits.begin(), hits.end(), ostream_iterator<GenomicRegion>(*out, "\n"));
     if (out != &cout) delete out;
-
+    if (VERBOSE)
+      cerr << "[DONE] " << endl
+	   << "TOTAL READS MAPPED: " << hits.size() << endl;
   }
   catch (const RMAPException &e) {
-    cerr << e.what() << endl;
+    cerr << "ERROR:\t" << e.what() << endl;
     return EXIT_FAILURE;
   }
   catch (std::bad_alloc &ba) {
