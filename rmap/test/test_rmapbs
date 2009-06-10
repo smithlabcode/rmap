@@ -29,7 +29,7 @@ TEST_READS_FQ=$1/input/test_reads_bs.fq
 TEST_PRB=$1/input/test_reads_bs.prb
 
 ./rmapbs -o test_reads_bs.bed -a test_reads_bs.amb -c  ${TEST_CHROM} ${TEST_READS}
-./rmapbs -o test_reads_bs_fq.bed -a test_reads_bs_fq.amb -c  ${TEST_CHROM} ${TEST_READS_FQ}
+./rmapbs -Q -o test_reads_bs_fq.bed -a test_reads_bs_fq.amb -c  ${TEST_CHROM} ${TEST_READS_FQ}
 ./rmapbs -o test_reads_bs_prb.bed -a test_reads_bs_prb.amb -c  ${TEST_CHROM} -p ${TEST_PRB} ${TEST_READS}
 
 if [ "`diff --brief test_reads_bs.bed $1/output`" = "" ] && \

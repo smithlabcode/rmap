@@ -29,7 +29,7 @@ TEST_READS_FQ=$1/input/test_reads_pe.fq
 TEST_PRB=$1/input/test_reads_pe.prb
 
 ./rmappe -o test_reads_pe.bed -a test_reads_pe.amb -c  ${TEST_CHROM} ${TEST_READS}
-./rmappe -o test_reads_pe_fq.bed -a test_reads_pe_fq.amb -c  ${TEST_CHROM} ${TEST_READS_FQ}
+./rmappe -Q -o test_reads_pe_fq.bed -a test_reads_pe_fq.amb -c  ${TEST_CHROM} ${TEST_READS_FQ}
 ./rmappe -o test_reads_pe_prb.bed -a test_reads_pe_prb.amb -c  ${TEST_CHROM} -p ${TEST_PRB} ${TEST_READS}
 
 if [ "`diff --brief test_reads_pe.bed $1/output`" = "" ] && \
