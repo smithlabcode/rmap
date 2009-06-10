@@ -34,17 +34,21 @@ class FastReadQuality {
 public:
 //   FastReadQuality(const std::string &s);
   FastReadQuality(const std::vector<std::vector<double> > &s);
-  FastReadQuality() {words.resize(segments);}
+  FastReadQuality(std::vector<std::vector<double> >::iterator a,
+		  const std::vector<std::vector<double> >::iterator b); 
+  FastReadQuality() {words.resize(segments + 1);}
   std::string tostring_values() const;
   std::string tostring_bits() const;
   std::string tostring() const {return tostring_values() + "\n" + tostring_bits();}
   size_t score(const FastReadQuality &other) const;
   void shift(const size_t i);
-  static void set_read_properties(const size_t rw, const double minqs, const double maxqs);
+  static void set_read_width(const size_t rw);
   
   static double value_to_quality(size_t val);
   static size_t quality_to_value(double val);
-  
+
+  static double get_scaler() {return scaler;}
+
 private:
   struct Words {
   public:
@@ -86,8 +90,6 @@ private:
   static size_t right_most_bit;
   
   static double scaler;
-  static double min_quality_score;
-  static double max_quality_score;
   
   static const size_t n_val_bits = 4;
   static const size_t segment_size = 16;
