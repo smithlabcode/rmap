@@ -35,34 +35,29 @@ size_t BisulfiteFastReadQuality::score_mask = 0;
 size_t BisulfiteFastReadQuality::segments = 0;
 size_t BisulfiteFastReadQuality::read_width = 0;
 size_t BisulfiteFastReadQuality::right_most_bit = 0;
-
 double BisulfiteFastReadQuality::scaler = 0;
-double BisulfiteFastReadQuality::min_quality_score = 0;
-double BisulfiteFastReadQuality::max_quality_score = 0;
 
 ////////////////////////////////////////////////////////////////////////
 // WORD PAIR
 
 double
 BisulfiteFastReadQuality::value_to_quality(size_t val) {
-  return ((double(val)/scaler)*(max_quality_score - min_quality_score) + 
-	  read_width*min_quality_score)/max_quality_score;
+  return val/scaler;
 }
 
 size_t
 BisulfiteFastReadQuality::quality_to_value(double quality) {
-  return static_cast<size_t>(scaler*std::min(1.0, (quality - min_quality_score)/(max_quality_score - 
-										 min_quality_score)));
+  return round(scaler*quality);
 }
 
 size_t
 BisulfiteFastReadQuality::Words::quality_to_value(double quality) {
-  return static_cast<size_t>(scaler*std::min(1.0, (quality - min_quality_score)/(max_quality_score - min_quality_score)));
+  return round(scaler*quality);
 }
 
 double
 BisulfiteFastReadQuality::Words::value_to_quality(size_t val) {
-  return min_quality_score + (val/scaler)*(max_quality_score - min_quality_score);
+  return val/scaler;
 }
 
 BisulfiteFastReadQuality::Words::Words(const vector<vector<double> > &s) : 
@@ -70,7 +65,7 @@ BisulfiteFastReadQuality::Words::Words(const vector<vector<double> > &s) :
   const vector<vector<double> >::const_iterator limit = s.end();
   for (vector<vector<double> >::const_iterator i(s.begin()); i != limit; ++i) {
     a_vec = ((a_vec << n_val_bits) + (quality_to_value((*i)[0])));
-    c_vec = ((c_vec << n_val_bits) + (quality_to_value((*i)[1])));
+    c_vec = ((c_vec << n_val_bits) + (std::min(quality_to_value((*i)[1]), quality_to_value((*i)[3]))));
     g_vec = ((g_vec << n_val_bits) + (quality_to_value((*i)[2])));
     t_vec = ((t_vec << n_val_bits) + (quality_to_value((*i)[3])));
   }
@@ -157,14 +152,11 @@ BisulfiteFastReadQuality::Words::tostring_values(size_t mask) const {
 // FAST READ
 
 void
-BisulfiteFastReadQuality::set_read_properties(const size_t rw, const double minqs, const double maxqs) {
+BisulfiteFastReadQuality::set_read_width(const size_t rw) {
   read_width = rw;
   segments = static_cast<size_t>(std::ceil(rw*n_val_bits/static_cast<float>(rmap_bits::word_size)));
   right_most_bit = (rmap_bits::word_size - (rw*n_val_bits % rmap_bits::word_size));
   score_mask = (rmap_bits::all_ones << right_most_bit);
-  
-  min_quality_score = minqs;
-  max_quality_score = maxqs;
   scaler = pow(2.0, n_val_bits) - 1;
 }
 
@@ -177,12 +169,6 @@ BisulfiteFastReadQuality::BisulfiteFastReadQuality(const vector<vector<double> >
   const vector<vector<double> > this_seg(s.begin() + (segments - 1)*segment_size, s.end());
   words.push_back(Words(this_seg));
 }
-
-// BisulfiteFastReadQuality::BisulfiteFastReadQuality(const string &s) {
-//   for (size_t i = 0; i < segments - 1; ++i)
-//     words.push_back(Words(s.begin() + i*segment_size, s.begin() + (i + 1)*segment_size));
-//   words.push_back(Words(s.begin() + (segments - 1)*segment_size, s.end()));
-// }
 
 string
 BisulfiteFastReadQuality::tostring_values() const {
