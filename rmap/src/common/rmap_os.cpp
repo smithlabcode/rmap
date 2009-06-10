@@ -23,6 +23,7 @@
 
 #include "rmap_os.hpp"
 #include "rmap_utils.hpp"
+#include "QualityScore.hpp"
 
 #include <fstream>
 #include <iostream>
