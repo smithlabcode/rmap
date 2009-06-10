@@ -32,7 +32,6 @@
 
 class BisulfiteFastReadQuality {
 public:
-  // BisulfiteFastReadQuality(const std::string &s);
   BisulfiteFastReadQuality(const std::vector<std::vector<double> > &s);
   BisulfiteFastReadQuality() {words.resize(segments);}
   std::string tostring_values() const;
@@ -40,10 +39,12 @@ public:
   std::string tostring() const {return tostring_values() + "\n" + tostring_bits();}
   size_t score(const BisulfiteFastReadQuality &other) const;
   void shift(const size_t i);
-  static void set_read_properties(const size_t rw, const double minqs, const double maxqs);
+  static void set_read_width(const size_t rw);
   
   static double value_to_quality(size_t val);
   static size_t quality_to_value(double val);
+
+  static double get_scaler() {return scaler;}
   
 private:
   struct Words {
