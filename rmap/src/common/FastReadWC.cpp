@@ -36,17 +36,14 @@ size_t FastReadWC::segments = 0;
 size_t FastReadWC::read_width = 0;
 size_t FastReadWC::right_most_bit = 0;
 
-double FastReadWC::min_quality_score = 0;
-double FastReadWC::max_quality_score = 0;
-
 ////////////////////////////////////////////////////////////////////////
 // WORD PAIR
 
 size_t
 FastReadWC::Words::quality_to_value(double quality) {
-  return static_cast<size_t>((2*(quality - min_quality_score)) > 
-			     (max_quality_score - min_quality_score));
+  return quality > 0.25;
 }
+
 
 FastReadWC::Words::Words(const vector<vector<double> > &s) : 
   a_vec(0), c_vec(0), g_vec(0), t_vec(0) {
@@ -65,6 +62,7 @@ FastReadWC::Words::Words(const vector<vector<double> > &s) :
     t_vec <<= additional_shift;
   }
 }
+
 
 FastReadWC::Words::Words(string::const_iterator i, const string::const_iterator limit) :
   a_vec(0), c_vec(0), g_vec(0), t_vec(0) {
@@ -107,11 +105,8 @@ FastReadWC::Words::bits2string(size_t mask, size_t bits) {
 
 string
 FastReadWC::Words::tostring_bits(size_t mask) const {
-  return (bits2string(mask, a_vec) + "\n" +
-	  bits2string(mask, c_vec) + "\n" +
-	  bits2string(mask, g_vec) + "\n" +
-	  bits2string(mask, t_vec) + "\n");
-
+  return (bits2string(mask, a_vec) + "\n" + bits2string(mask, c_vec) + "\n" +
+	  bits2string(mask, g_vec) + "\n" + bits2string(mask, t_vec) + "\n");
 }
 
 
@@ -119,40 +114,49 @@ FastReadWC::Words::tostring_bits(size_t mask) const {
 // FAST READ
 
 void
-FastReadWC::set_read_properties(const size_t rw, const double minqs, const double maxqs) {
+FastReadWC::set_read_width(const size_t rw) {
   read_width = rw;
-  segments = static_cast<size_t>(std::ceil(rw/static_cast<double>(segment_size)));
-  //   cerr << "SEGMENTS\t" << segments << endl;
+  segments = static_cast<size_t>(std::ceil(rw/static_cast<double>(segment_size))) - 1;
   right_most_bit = (rmap_bits::word_size - (rw % rmap_bits::word_size));
   score_mask = (rmap_bits::all_ones << right_most_bit);
-  
-  min_quality_score = minqs;
-  max_quality_score = maxqs;
 }
 
 FastReadWC::FastReadWC(const vector<vector<double> > &s) {
-  //   cerr << segments << endl;
-  for (size_t i = 0; i < segments - 1; ++i) {
+  assert(s.size() > 0);
+  words.resize(segments + 1);
+  for (size_t i = 0; i < segments; ++i) {
     const vector<vector<double> > 
-      this_seg(s.begin() + i*segment_size, s.begin() + (i + 1)*segment_size);
-    words.push_back(Words(this_seg));
+      this_seg(s.begin() + i*rmap_bits::word_size, s.begin() + (i + 1)*rmap_bits::word_size);
+    words[i] = Words(this_seg);
   }
   const vector<vector<double> > this_seg(s.begin() + 
-					 (segments - 1)*segment_size, s.end());
-  words.push_back(Words(this_seg));
+					 segments*rmap_bits::word_size, s.end());
+  words[segments] = Words(this_seg);
 }
 
 FastReadWC::FastReadWC(const string &s) {
-  for (size_t i = 0; i < segments - 1; ++i)
-    words.push_back(Words(s.begin() + i*segment_size, s.begin() + (i + 1)*segment_size));
-  words.push_back(Words(s.begin() + (segments - 1)*segment_size, s.end()));
+  words.resize(segments + 1);
+  for (size_t i = 0; i < segments; ++i)
+    words[i] = Words(s.begin() + i*segment_size, s.begin() + (i + 1)*rmap_bits::word_size);
+  words[segments] = Words(s.begin() + (segments - 1)*rmap_bits::word_size, s.end());
+}
+
+FastReadWC::FastReadWC(vector<vector<double> >::iterator a,
+		       const vector<vector<double> >::iterator b) {
+  words.resize(segments + 1);
+  for (size_t i = 0; i < segments; ++i) {
+    const vector<vector<double> > this_seg(a + i*rmap_bits::word_size, 
+					   a + (i + 1)*rmap_bits::word_size);
+    words[i] = Words(this_seg);
+  }
+  words[segments] = Words(vector<vector<double> >(a + segments*rmap_bits::word_size, b));
 }
 
 string
 FastReadWC::tostring_bits() const {
   std::ostringstream ss;
-  for (size_t i = 0; i < words.size() - 1; ++i)
+  for (size_t i = 0; i < segments; ++i)
     ss << words[i].tostring_bits(rmap_bits::all_ones) << endl;
-  ss << words.back().tostring_bits(score_mask);
+  ss << words[segments].tostring_bits(score_mask);
   return ss.str();
 }
