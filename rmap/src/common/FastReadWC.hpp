@@ -34,12 +34,14 @@ class FastReadWC {
 public:
   FastReadWC(const std::string &s);
   FastReadWC(const std::vector<std::vector<double> > &s);
-  FastReadWC() {words.resize(segments);}
+  FastReadWC(std::vector<std::vector<double> >::iterator a,
+	     const std::vector<std::vector<double> >::iterator b); 
+  FastReadWC() {words.resize(segments + 1);}
   std::string tostring_bits() const;
   std::string tostring() const {return tostring_bits();}
   size_t score(const FastReadWC &other) const;
   void shift(const size_t i);
-  static void set_read_properties(const size_t rw, const double minqs, const double maxqs);
+  static void set_read_width(const size_t rw);
   
   static double value_to_quality(size_t val);
   static size_t quality_to_value(double val);
@@ -83,10 +85,6 @@ private:
   static size_t segments;
   static size_t read_width;
   static size_t right_most_bit;
-  
-  static double scaler;
-  static double min_quality_score;
-  static double max_quality_score;
   
   static const size_t n_val_bits = 1;
   static const size_t segment_size = 64;
