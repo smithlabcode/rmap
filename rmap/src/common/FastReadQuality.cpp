@@ -35,32 +35,28 @@ size_t FastReadQuality::read_width = 0;
 size_t FastReadQuality::right_most_bit = 0;
 
 double FastReadQuality::scaler = 0;
-double FastReadQuality::min_quality_score = 0;
-double FastReadQuality::max_quality_score = 0;
 
 ////////////////////////////////////////////////////////////////////////
 // WORD PAIR
 
 double
 FastReadQuality::value_to_quality(size_t val) {
-  return ((double(val)/scaler)*(max_quality_score - min_quality_score) + 
-	  read_width*min_quality_score)/max_quality_score;
+  return val/scaler;
 }
 
 size_t
 FastReadQuality::quality_to_value(double quality) {
-  return static_cast<size_t>(scaler*std::min(1.0, (quality - min_quality_score)/(max_quality_score - 
-										 min_quality_score)));
+  return round(scaler*quality);
 }
 
 size_t
 FastReadQuality::Words::quality_to_value(double quality) {
-  return static_cast<size_t>(scaler*std::min(1.0, (quality - min_quality_score)/(max_quality_score - min_quality_score)));
+  return round(scaler*quality);
 }
 
 double
 FastReadQuality::Words::value_to_quality(size_t val) {
-  return min_quality_score + (val/scaler)*(max_quality_score - min_quality_score);
+  return val/scaler;
 }
 
 FastReadQuality::Words::Words(const vector<vector<double> > &s) : 
@@ -123,11 +119,8 @@ FastReadQuality::Words::bits2string(size_t mask, size_t bits) {
 
 string
 FastReadQuality::Words::tostring_bits(size_t mask) const {
-  return (bits2string(mask, a_vec) + "\n" +
-	  bits2string(mask, c_vec) + "\n" +
-	  bits2string(mask, g_vec) + "\n" +
-	  bits2string(mask, t_vec) + "\n");
-
+  return (bits2string(mask, a_vec) + "\n" + bits2string(mask, c_vec) + "\n" +
+	  bits2string(mask, g_vec) + "\n" + bits2string(mask, t_vec) + "\n");
 }
 
 
@@ -155,31 +148,43 @@ FastReadQuality::Words::tostring_values(size_t mask) const {
 // FAST READ
 
 void
-FastReadQuality::set_read_properties(const size_t rw, const double minqs, const double maxqs) {
+FastReadQuality::set_read_width(const size_t rw) {
   read_width = rw;
-  segments = static_cast<size_t>(std::ceil(rw*n_val_bits/static_cast<float>(rmap_bits::word_size)));
+  segments = static_cast<size_t>(std::ceil(rw*n_val_bits/static_cast<float>(rmap_bits::word_size))) - 1;
   right_most_bit = (rmap_bits::word_size - (rw*n_val_bits % rmap_bits::word_size));
   score_mask = (rmap_bits::all_ones << right_most_bit);
   
-  min_quality_score = minqs;
-  max_quality_score = maxqs;
   scaler = pow(2.0, n_val_bits) - 1;
 }
 
 FastReadQuality::FastReadQuality(const vector<vector<double> > &s) {
-  for (size_t i = 0; i < segments - 1; ++i) {
+  words.resize(segments + 1);
+  for (size_t i = 0; i < segments; ++i) {
     const vector<vector<double> > this_seg(s.begin() + i*segment_size,
 					   s.begin() + (i + 1)*segment_size);
-    words.push_back(Words(this_seg));
+    words[i] = Words(this_seg);
   }
-  const vector<vector<double> > this_seg(s.begin() + (segments - 1)*segment_size, s.end());
-  words.push_back(Words(this_seg));
+  const vector<vector<double> > this_seg(s.begin() + segments*segment_size, s.end());
+  words.back() = Words(this_seg);
 }
+
+
+FastReadQuality::FastReadQuality(vector<vector<double> >::iterator a,
+				 const vector<vector<double> >::iterator b) {
+  words.resize(segments + 1);
+  for (size_t i = 0; i < segments; ++i) {
+    const vector<vector<double> > this_seg(a + i*segment_size, 
+					   a + (i + 1)*segment_size);
+    words[i] = Words(this_seg);
+  }
+  words.back() = Words(vector<vector<double> >(a + segments*segment_size, b));
+}
+
 
 string
 FastReadQuality::tostring_values() const {
   std::ostringstream ss;
-  for (size_t i = 0; i < segments - 1; ++i)
+  for (size_t i = 0; i < segments; ++i)
     ss << words[i].tostring_values(rmap_bits::all_ones) << std::endl;
   ss << words.back().tostring_values(score_mask);
   return ss.str();
@@ -188,8 +193,8 @@ FastReadQuality::tostring_values() const {
 string
 FastReadQuality::tostring_bits() const {
   std::ostringstream ss;
-  for (size_t i = 0; i < segments - 1; ++i)
+  for (size_t i = 0; i < segments; ++i)
     ss << words[i].tostring_bits(rmap_bits::all_ones) << std::endl;
-  ss << words.back().tostring_bits(score_mask);
+  ss << words[segments].tostring_bits(score_mask);
   return ss.str();
 }
