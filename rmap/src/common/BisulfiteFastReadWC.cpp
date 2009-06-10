@@ -28,22 +28,20 @@
 
 using std::string;
 using std::vector;
+using std::cerr;
+using std::endl;
 
 size_t BisulfiteFastReadWC::score_mask = 0;
 size_t BisulfiteFastReadWC::segments = 0;
 size_t BisulfiteFastReadWC::read_width = 0;
 size_t BisulfiteFastReadWC::right_most_bit = 0;
 
-double BisulfiteFastReadWC::min_quality_score = 0;
-double BisulfiteFastReadWC::max_quality_score = 0;
-
 ////////////////////////////////////////////////////////////////////////
 // WORD PAIR
 
 size_t
 BisulfiteFastReadWC::Words::quality_to_value(double quality) {
-  return static_cast<size_t>((2*(quality - min_quality_score)) > 
-			     (max_quality_score - min_quality_score));
+  return quality > 0.25;
 }
 
 BisulfiteFastReadWC::Words::Words(const vector<vector<double> > &s) : 
@@ -51,7 +49,7 @@ BisulfiteFastReadWC::Words::Words(const vector<vector<double> > &s) :
   const vector<vector<double> >::const_iterator limit = s.end();
   for (vector<vector<double> >::const_iterator i(s.begin()); i != limit; ++i) {
     a_vec = ((a_vec << 1) + (quality_to_value((*i)[0])));
-    c_vec = ((c_vec << 1) + (quality_to_value((*i)[1])));
+    c_vec = ((c_vec << 1) + (std::min(quality_to_value((*i)[1]), quality_to_value((*i)[3]))));
     g_vec = ((g_vec << 1) + (quality_to_value((*i)[2])));
     t_vec = ((t_vec << 1) + (quality_to_value((*i)[3])));
   }
@@ -117,38 +115,30 @@ BisulfiteFastReadWC::Words::tostring_bits(size_t mask) const {
 // FAST READ
 
 void
-BisulfiteFastReadWC::set_read_properties(const size_t rw, const double minqs, const double maxqs) {
+BisulfiteFastReadWC::set_read_width(const size_t rw) {
   read_width = rw;
-  segments = static_cast<size_t>(std::ceil(rw/static_cast<double>(segment_size)));
+  segments = static_cast<size_t>(std::ceil(rw/static_cast<double>(segment_size))) - 1;
   right_most_bit = (rmap_bits::word_size - (rw % rmap_bits::word_size));
   score_mask = (rmap_bits::all_ones << right_most_bit);
-  
-  min_quality_score = minqs;
-  max_quality_score = maxqs;
 }
 
 
 BisulfiteFastReadWC::BisulfiteFastReadWC(const vector<vector<double> > &s) {
-  for (size_t i = 0; i < segments - 1; ++i) {
+  words.resize(segments + 1);
+  for (size_t i = 0; i < segments; ++i) {
     const vector<vector<double> > 
       this_seg(s.begin() + i*segment_size, s.begin() + (i + 1)*segment_size);
-    words.push_back(Words(this_seg));
+    words[i] = Words(this_seg);
   }
-  const vector<vector<double> > this_seg(s.begin() + 
-					 (segments - 1)*segment_size, s.end());
-  words.push_back(Words(this_seg));
+  const vector<vector<double> > this_seg(s.begin() + segments*segment_size, s.end());
+  words.back() = Words(this_seg);
 }
 
-BisulfiteFastReadWC::BisulfiteFastReadWC(const string &s) {
-  for (size_t i = 0; i < segments - 1; ++i)
-    words.push_back(Words(s.begin() + i*segment_size, s.begin() + (i + 1)*segment_size));
-  words.push_back(Words(s.begin() + (segments - 1)*segment_size, s.end()));
-}
 
 string
 BisulfiteFastReadWC::tostring_bits() const {
   std::ostringstream ss;
-  for (size_t i = 0; i < segments - 1; ++i)
+  for (size_t i = 0; i < segments; ++i)
     ss << words[i].tostring_bits(rmap_bits::all_ones) << std::endl;
   ss << words.back().tostring_bits(score_mask);
   return ss.str();
