@@ -227,6 +227,7 @@ iterate_over_seeds(const bool VERBOSE,
     build_seed_hash(sh_sorter, fast_reads, seed_hash);
     sh_sorter.clear();
     
+    size_t prev_chrom_count = 0;
     for (size_t i = 0; i < chrom_files.size() && !fast_reads.empty(); ++i) {
       
       vector<string> tmp_chrom_names, chroms;
@@ -234,7 +235,7 @@ iterate_over_seeds(const bool VERBOSE,
 	cerr << "[SEED:" << j + 1 << "/" << the_seeds.size() << "] "
 	     << "[LOADING CHROM] ";
       read_fasta_file(chrom_files[i].c_str(), tmp_chrom_names, chroms);
-
+      
       if (VERBOSE)
 	cerr << "[SCANNING=" << tmp_chrom_names.front() << "] ";
       
@@ -247,25 +248,33 @@ iterate_over_seeds(const bool VERBOSE,
 	transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(), 
 		  std::ptr_fun(&toupper));
 	treat_cpgs(chroms[k]);
-	map_reads(chroms[k], i, the_seeds[j], read_width, max_mismatches,
-		  fast_reads, seed_hash, true, best_maps);
+	
+	if (VERBOSE)
+	  cerr << "[SCANNING POS=" << tmp_chrom_names[k] << "] ";
+	map_reads(chroms[k], prev_chrom_count + k, the_seeds[j], read_width, 
+		  max_mismatches, fast_reads, seed_hash, true, best_maps);
+	chroms[k].clear();
       }
       
       chroms.clear();
       tmp_chrom_names.clear();
       read_fasta_file(chrom_files[i].c_str(), tmp_chrom_names, chroms);
-
+      
       for (size_t k = 0; k < chroms.size(); ++k) {
 	revcomp_inplace(chroms[k]);
 	transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(), 
 		  std::ptr_fun(&toupper));
 	treat_cpgs(chroms[k]);
-	map_reads(chroms[k], i, the_seeds[j], read_width, max_mismatches,
-		  fast_reads, seed_hash, false, best_maps);
+	if (VERBOSE)
+	  cerr << "[SCANNING NEG=" << tmp_chrom_names[k] << "] ";
+	map_reads(chroms[k], prev_chrom_count + k, the_seeds[j], read_width, 
+		  max_mismatches, fast_reads, seed_hash, false, best_maps);
+	chroms[k].clear();
       }
       const clock_t end(clock());
       if (VERBOSE)
 	cerr << "[" << static_cast<float>(end - start)/CLOCKS_PER_SEC << " SEC]" << endl;
+      prev_chrom_count += chroms.size();
     }
     if (j == 0) {
       if (VERBOSE)
@@ -275,7 +284,7 @@ iterate_over_seeds(const bool VERBOSE,
 	cerr << "[AMBIG=" << ambigs.size() << "] " << endl;
     }
   }
-
+  
   if (VERBOSE)
     cerr << "[FINAL CLEANING] ";
   eliminate_ambigs(max_mismatches, best_maps, read_index, read_words, ambigs, fast_reads);

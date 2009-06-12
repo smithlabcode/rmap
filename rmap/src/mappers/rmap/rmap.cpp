@@ -216,12 +216,13 @@ iterate_over_seeds(const bool VERBOSE,
     build_seed_hash(sh_sorter, fast_reads, seed_hash);
     sh_sorter.clear();
     
+    size_t prev_chrom_count = 0;
     for (size_t i = 0; i < chrom_files.size() && !fast_reads.empty(); ++i) {
       
-      vector<string> tmp_chrom_names, chroms;
       if (VERBOSE)
 	cerr << "[SEED:" << j + 1 << "/" << the_seeds.size() << "] "
 	     << "[LOADING CHROM] ";
+      vector<string> tmp_chrom_names, chroms;
       read_fasta_file(chrom_files[i].c_str(), tmp_chrom_names, chroms);
       
       for (size_t k = 0; k < chroms.size(); ++k) {
@@ -234,18 +235,21 @@ iterate_over_seeds(const bool VERBOSE,
 	
 	if (VERBOSE)
 	  cerr << "[SCANNING=" << tmp_chrom_names[k] << "] ";
-	  
+	
 	const clock_t start(clock());
-	map_reads(chroms[k], i, the_seeds[j], read_width, max_mismatches,
+	map_reads(chroms[k], prev_chrom_count + k, 
+		  the_seeds[j], read_width, max_mismatches,
 		  fast_reads, seed_hash, true, best_maps);
 	revcomp_inplace(chroms[k]);
-	map_reads(chroms[k], i, the_seeds[j], read_width, max_mismatches,
+	map_reads(chroms[k], prev_chrom_count + k, 
+		  the_seeds[j], read_width, max_mismatches,
 		  fast_reads, seed_hash, false, best_maps);
 	const clock_t end(clock());
-	
 	if (VERBOSE)
 	  cerr << "[" << static_cast<float>(end - start)/CLOCKS_PER_SEC << " SEC]" << endl;
+	chroms[k].clear();
       }
+      prev_chrom_count += chroms.size();
     }
     if (j == 0) {
       if (VERBOSE)
