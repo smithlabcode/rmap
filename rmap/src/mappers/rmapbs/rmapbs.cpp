@@ -113,7 +113,7 @@ build_seed_hash(const SeedHashSorter &sh_sorter, const vector<T> &fast_reads,
       prev_idx = curr_idx;
     }
   }
-  seed_hash[prev_key] = make_pair(frb + prev_idx, frb + curr_idx);
+  seed_hash[prev_key] = make_pair(frb + prev_idx, fast_reads.end());
 }
 
 
