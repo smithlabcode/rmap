@@ -47,7 +47,7 @@ FastRead::WordPair::WordPair(const string &s) :
     upper <<= additional_shift;
     lower <<= additional_shift;
     bads <<= additional_shift;
-    bads += ((1 << additional_shift) - 1);
+    bads += ((1ul << additional_shift) - 1);
   }
 }
 
