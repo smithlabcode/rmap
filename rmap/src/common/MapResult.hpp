@@ -53,6 +53,7 @@ public:
   MultiMapResult(size_t scr) : score(scr) {}
   bool empty() const {return mr.empty();}
   void sort() {std::sort(mr.begin(), mr.end());}
+  void clear() {mr.clear();}
   void swap(MultiMapResult &rhs) {
     mr.swap(rhs.mr);
     std::swap(score, rhs.score);
