@@ -299,6 +299,7 @@ sites_to_regions(const size_t read_len,
 					 read_names[read_index[i][k]], 
 					 score, strand));
 	}
+      bests[i].clear();
     }
 }
 
