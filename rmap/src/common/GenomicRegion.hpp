@@ -28,7 +28,6 @@
 
 #include <string>
 #include <vector>
-// #include <ext/hash_map>
 #include <fstream>
 #include <tr1/unordered_map>
 #include <limits>
@@ -85,6 +84,10 @@ public:
   bool operator==(const SimpleGenomicRegion& rhs) const;
   bool operator!=(const SimpleGenomicRegion& rhs) const;
 
+  bool same_chrom(const SimpleGenomicRegion &other) const {
+    return chrom == other.chrom;
+  }
+  
   friend void
   separate_chromosomes(const std::vector<SimpleGenomicRegion>& regions,
 		       std::vector<std::vector<SimpleGenomicRegion> >& 
@@ -168,6 +171,10 @@ public:
   bool operator<=(const GenomicRegion& rhs) const;
   bool operator!=(const GenomicRegion& rhs) const;
   bool operator==(const GenomicRegion& rhs) const;
+
+  bool same_chrom(const GenomicRegion &other) const {
+    return chrom == other.chrom;
+  }
 
   friend void
   separate_chromosomes(const std::vector<GenomicRegion>& regions,
