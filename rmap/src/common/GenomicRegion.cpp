@@ -401,7 +401,7 @@ is_track_line(const char *line) {
 
 void
 ReadBEDFile(string filename, vector<GenomicRegion> &the_regions) {
-  static const size_t buffer_size = 1000; // Magic
+  static const size_t buffer_size = 10000; // Magic
   
   // open and check the file
   std::ifstream in(filename.c_str());
