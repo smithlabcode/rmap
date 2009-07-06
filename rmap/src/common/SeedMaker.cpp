@@ -80,7 +80,7 @@ SeedMaker::first_last_seeds(const size_t read_width, const size_t n_seeds,
       profs.push_back((first_profs[i] | last_profs[j]));
 
   vector<size_t> non_redundant_profs;
-  const size_t mask = (1ul << 2*read_width) - 1;
+  const size_t mask = (2ul << (2*read_width - 1)) - 1;
   for (size_t i = 0; i < profs.size(); ++i) {
     bool found_containing = false;
     for (size_t j = 0; j < non_redundant_profs.size() && !found_containing; ++j)
