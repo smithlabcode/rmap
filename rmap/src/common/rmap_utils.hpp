@@ -279,7 +279,7 @@ bits2string_for_positions(size_t positions, size_t bits) {
 
 inline size_t
 percent(const size_t a, const size_t b) {
-  return static_cast<size_t>(100*a/b);
+  return static_cast<size_t>((100.0*a)/b);
 }
 
 #endif
