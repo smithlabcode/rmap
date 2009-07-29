@@ -186,8 +186,12 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
 	      vector<size_t> &read_index, size_t &read_count) {
   
   if (read_width == 0) read_width = read.length();
-  else if (read.length() != read_width)
+  else if (read.length() < read_width)
     throw RMAPException("Incorrect read width");
+  else {
+    read.erase(read_width);
+    score_line.erase(read_width);
+  }
   
   if (read_count == 0)
     BisulfiteFastReadWC::set_read_width(read_width);
@@ -266,8 +270,12 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
 	      vector<size_t> &read_index, size_t &read_count) {
   
   if (read_width == 0) read_width = read.length();
-  else if (read.length() != read_width)
+  else if (read.length() < read_width)
     throw RMAPException("Incorrect read width");
+  else {
+    read.erase(read_width);
+    score_line.erase(read_width);
+  }
   if (read_count == 0)
     BisulfiteFastReadQuality::set_read_width(read_width);
   
@@ -358,8 +366,9 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
   
   // check the read width
   if (read_width == 0) read_width = parts.size()/rmap::alphabet_size;
-  else if (parts.size()/rmap::alphabet_size != read_width)
+  else if (parts.size()/rmap::alphabet_size < read_width)
     throw RMAPException("Incorrect read width");
+  else parts.resize(read_width*rmap::alphabet_size);
   if (read_count == 0)
     BisulfiteFastReadWC::set_read_width(read_width);
 
@@ -438,8 +447,9 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
   
   // check the read width
   if (read_width == 0) read_width = parts.size()/rmap::alphabet_size;
-  else if (parts.size()/rmap::alphabet_size != read_width)
+  else if (parts.size()/rmap::alphabet_size < read_width)
     throw RMAPException("Incorrect read width");
+  else parts.resize(read_width*rmap::alphabet_size);
   if (read_count == 0)
     BisulfiteFastReadQuality::set_read_width(read_width);
   

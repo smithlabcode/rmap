@@ -185,7 +185,10 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
   if (read_width == 0) read_width = read.length();
   else if (read.length() < read_width)
     throw RMAPException("Incorrect read width");
-  else read.erase(read_width);
+  else {
+    read.erase(read_width);
+    score_line.erase(read_width);
+  }
   
   if (read_count == 0)
     FastReadWC::set_read_width(read_width);
@@ -266,7 +269,10 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
   if (read_width == 0) read_width = read.length();
   else if (read.length() < read_width)
     throw RMAPException("Incorrect read width");
-  else read.erase(read_width);
+  else {
+    read.erase(read_width);
+    score_line.erase(read_width);
+  }
 
   if (read_count == 0)
     FastReadQuality::set_read_width(read_width);
