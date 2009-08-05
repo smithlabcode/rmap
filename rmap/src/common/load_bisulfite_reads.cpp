@@ -90,7 +90,7 @@ load_reads_from_fasta_file(const string &filename, const size_t max_diffs,
   
   char buffer[INPUT_BUFFER_SIZE + 1];
   
-  size_t read_count = 0;
+  size_t read_count = 0, line_count = 0;
   while (!in.eof()) {
     in.getline(buffer, INPUT_BUFFER_SIZE);
     if (in.gcount() > 1) {
@@ -101,11 +101,14 @@ load_reads_from_fasta_file(const string &filename, const size_t max_diffs,
       const size_t last_pos = in.gcount() - 2;//strlen(buffer) - 1;
       if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
       if (buffer[0] != '>') {
+	if ((line_count & 1ul) == 0)
+	  throw RMAPException("empty/multi-line reads or bad FASTA header");
 	string read(buffer);
 	check_and_add(read, max_diffs, read_width, fast_reads, 
 		      read_words, read_index, read_count);
       }
     }
+    ++line_count;
     in.peek();
   }
   if (fast_reads.empty())
@@ -181,7 +184,7 @@ load_reads_from_fastq_file(const string &filename, const size_t max_diffs,
 
 static void
 check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
-	      const string &score_line, string &read, size_t &read_width, 
+	      string &score_line, string &read, size_t &read_width, 
 	      vector<BisulfiteFastReadWC> &fast_reads, vector<size_t> &read_words, 
 	      vector<size_t> &read_index, size_t &read_count) {
   
@@ -250,7 +253,7 @@ load_reads_from_fastq_file(const string &filename, const size_t max_diffs,
       // 	if (buffer[0] != '+')
       // 	  throw RMAPException("invalid FASTQ score name line: " + string(buffer));
       if (is_fastq_score_line(line_count)) {
-	const string score_line(buffer);
+	string score_line(buffer);
 	check_and_add(score_format, max_diffs, score_line, sequence, read_width, 
 		      fast_reads, read_words, read_index, read_count);
       }
@@ -265,7 +268,7 @@ load_reads_from_fastq_file(const string &filename, const size_t max_diffs,
 
 static void
 check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
-	      const string &score_line, string &read, size_t &read_width, 
+	      string &score_line, string &read, size_t &read_width, 
 	      vector<BisulfiteFastReadQuality> &fast_reads, vector<size_t> &read_words, 
 	      vector<size_t> &read_index, size_t &read_count) {
   
@@ -336,7 +339,7 @@ load_reads_from_fastq_file(const string &filename, const size_t max_diffs,
       //       if (is_fastq_score_name_line(line_count))
       // 	;
       if (is_fastq_score_line(line_count)) {
-	const string score_line(buffer);
+	string score_line(buffer);
 	check_and_add(score_format, max_diffs, score_line, sequence, 
 		      read_width, fast_reads, read_words, read_index, read_count);
       }
