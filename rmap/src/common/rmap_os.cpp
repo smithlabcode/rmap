@@ -137,22 +137,22 @@ parse_score_line(const char *buffer, vector<char> &scr) {
 
 inline bool
 is_fastq_name_line(size_t line_count) {
-  return ((line_count % 4) == 0);
+  return ((line_count & 3ul) == 0ul);
 }
 
 inline bool
 is_fastq_sequence_line(size_t line_count) {
-  return ((line_count % 4) == 1);
+  return ((line_count & 3ul) == 1ul);
 }
 
 inline bool
 is_fastq_score_name_line(size_t line_count) {
-  return ((line_count % 4) == 2);
+  return ((line_count & 3ul) == 2ul);
 }
 
 inline bool
 is_fastq_score_line(size_t line_count) {
-  return ((line_count % 4) == 3);
+  return ((line_count & 3ul) == 3ul);
 }
 
 void
@@ -244,6 +244,71 @@ read_fastq_file(const char *filename, vector<string> &names,
 	quality_character_to_solexa(scrs[i][j] - 5) :
 	quality_character_to_phred(scrs[i][j]);
     scrs[i].clear();
+  }
+}
+
+
+void
+read_fastq_file(const char *filename, vector<string> &names, 
+		vector<string> &sequences, vector<string> &scores) {
+  
+  static const size_t INPUT_BUFFER_SIZE = 1000000;
+  
+  std::ifstream in(filename);
+  if (!in)
+    throw RMAPException("cannot open input file " + string(filename));
+  
+  string s, name, scr;
+  bool first_line = true;
+  bool is_sequence_line = false, is_score_line = false;
+  size_t line_count = 0;
+  while (!in.eof()) {
+    char buffer[INPUT_BUFFER_SIZE + 1];
+    in.getline(buffer, INPUT_BUFFER_SIZE);
+    if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
+      throw RMAPException("Line in " + name + "\nexceeds max length: " +
+			  toa(INPUT_BUFFER_SIZE));
+    if (in.gcount() == 0) break;
+
+    // correct for dos carriage returns before newlines
+    if (buffer[strlen(buffer) - 1] == '\r')
+      buffer[strlen(buffer) - 1] = '\0';
+
+    if (is_fastq_name_line(line_count)) {
+      if (buffer[0] != '@')
+	throw RMAPException("invalid FASTQ name line: " + string(buffer));
+      if (first_line == false && s.length() > 0) {
+	names.push_back(name);
+	sequences.push_back(s);
+	scores.push_back(scr);
+      }
+      else first_line = false;
+      name = buffer;
+      name = name.substr(name.find_first_not_of("@ "));
+      is_sequence_line = true;
+    }
+    if (is_fastq_sequence_line(line_count)) {
+      assert(is_sequence_line);
+      s = buffer;
+      is_sequence_line = false;
+    }
+    if (is_fastq_score_name_line(line_count)) {
+      if (buffer[0] != '+')
+	throw RMAPException("invalid FASTQ score name line: " + 
+			    string(buffer));
+      is_score_line = true;
+    }
+    if (is_fastq_score_line(line_count)) {
+      assert(is_score_line);
+      scr = buffer;
+      is_score_line = false;
+    }
+    ++line_count;
+  }
+  if (!first_line && s.length() > 0) {
+    names.push_back(name);
+    sequences.push_back(s);
+    scores.push_back(scr);
   }
 }
 

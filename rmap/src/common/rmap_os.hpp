@@ -62,6 +62,12 @@ read_fastq_file(const char *filename,
 		std::vector<std::vector<double> > &scores);
 
 void
+read_fastq_file(const char *filename, 
+		std::vector<std::string> &names, 
+		std::vector<std::string> &sequences,
+		std::vector<std::string> &scores);
+
+void
 read_prb_file(std::string filename, 
 	      std::vector<std::vector<std::vector<double> > > &scores);
 
