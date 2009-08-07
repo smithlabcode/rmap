@@ -666,6 +666,10 @@ main(int argc, const char **argv) {
     //////////////////////////////////////////////////////////////
     // TRANSFORM THE RESULT STRUCTURES INTO BED FORMAT FOR OUTPUT
     //
+    // First make sure the chrom names don't have spaces (cause
+    // problems for later processing)
+    for (size_t i = 0; i < chrom_names.size(); ++i)
+      chrom_names[i].erase(chrom_names[i].find_first_of(" \t"));
     vector<GenomicRegion> hits;
     sites_to_regions(read_width, chrom_names, chrom_sizes, read_index, read_names,
 		     best_maps, hits);
