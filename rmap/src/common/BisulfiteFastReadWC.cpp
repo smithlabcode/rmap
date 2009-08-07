@@ -41,7 +41,7 @@ size_t BisulfiteFastReadWC::right_most_bit = 0;
 
 size_t
 BisulfiteFastReadWC::Words::quality_to_value(double quality) {
-  return quality > 0.75;
+  return quality > 0.995;
 }
 
 BisulfiteFastReadWC::Words::Words(const vector<vector<double> > &s) : 

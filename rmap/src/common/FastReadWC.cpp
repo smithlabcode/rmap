@@ -41,7 +41,7 @@ size_t FastReadWC::right_most_bit = 0;
 
 size_t
 FastReadWC::Words::quality_to_value(double quality) {
-  return quality > 0.75;
+  return quality > 0.995;
 }
 
 
