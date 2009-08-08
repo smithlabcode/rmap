@@ -668,8 +668,11 @@ main(int argc, const char **argv) {
     //
     // First make sure the chrom names don't have spaces (cause
     // problems for later processing)
-    for (size_t i = 0; i < chrom_names.size(); ++i)
-      chrom_names[i].erase(chrom_names[i].find_first_of(" \t"));
+    for (size_t i = 0; i < chrom_names.size(); ++i) {
+      const size_t chr_name_end = chrom_names[i].find_first_of(" \t");
+      if (chr_name_end != string::npos)
+	chrom_names[i].erase(chr_name_end);
+    }
     vector<GenomicRegion> hits;
     sites_to_regions(read_width, chrom_names, chrom_sizes, read_index, read_names,
 		     best_maps, hits);
