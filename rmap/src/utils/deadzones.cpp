@@ -276,7 +276,7 @@ main(int argc, const char **argv) {
   
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("deadzones", "program for finding deadzones",
-			   "<fasta-chrom-files>");
+			   "<1-or-more-FASTA-chrom-files>");
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
 		      true, outfile);
     opt_parse.add_opt("kmer", 'k', "Width of k-mers", true, kmer);
@@ -313,6 +313,9 @@ main(int argc, const char **argv) {
     if (VERBOSE)
       cerr << "[READING SEQUENCE FILES]" << endl;
     for (size_t i = 0; i < seqfiles.size(); ++i) {
+      if (isdir(seqfiles[i].c_str()))
+	throw RMAPException("\"" + seqfiles[i] + 
+			    "\" not a FASTA format sequence file?");
       vector<string> names, sequences;
       read_fasta_file(seqfiles[i].c_str(), names, sequences);
       for (size_t j = 0; j < sequences.size(); ++j) {
