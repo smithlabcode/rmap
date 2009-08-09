@@ -179,7 +179,8 @@ map_reads(const string &chrom, const size_t chrom_id, const size_t profile,
 	  const size_t score = to_test->score(fast_read);
 	  if (score <= max_diffs) {
 	    const size_t idx = (to_test - reads_right.begin());
-	    const size_t lookback_limit = chrom_offset - min_sep;
+	    const size_t lookback_limit = (chrom_offset > min_sep) ? 
+	      chrom_offset - min_sep : chrom_offset;
 	    for (size_t i = (chrom_offset > max_sep) ? 
 		   chrom_offset - max_sep : 0; i < lookback_limit; ++i) {
 	      const size_t pair_score = score + 
