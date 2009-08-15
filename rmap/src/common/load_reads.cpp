@@ -56,7 +56,7 @@ get_read_word(const string &read) {
 static void
 check_and_add(string &read, const int max_diffs,
 	      size_t &read_width, vector<FastRead> &fast_reads, 
-	      vector<size_t> &read_words, vector<size_t> &read_index, 
+	      vector<size_t> &read_words, vector<unsigned int> &read_index, 
 	      size_t &read_count) {
   if (read_width == 0) read_width = read.length();
   else if (read.length() < read_width)
@@ -82,7 +82,7 @@ check_and_add(string &read, const int max_diffs,
 void
 load_reads_from_fasta_file(const string &filename, const size_t max_diffs,
 			   size_t &read_width, vector<FastRead> &fast_reads,
-			   vector<size_t> &read_words, vector<size_t> &read_index) {
+			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in) throw RMAPException("cannot open input file " + filename);
   
@@ -141,7 +141,7 @@ is_fastq_score_line(size_t line_count) {
 void
 load_reads_from_fastq_file(const string &filename, const size_t max_diffs,
 			   size_t &read_width, vector<FastRead> &fast_reads,
-			   vector<size_t> &read_words, vector<size_t> &read_index) {
+			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in) throw RMAPException("cannot open input file " + filename);
   char buffer[INPUT_BUFFER_SIZE + 1];
@@ -183,7 +183,7 @@ static void
 check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
 	      string &score_line, string &read, size_t &read_width, 
 	      vector<FastReadWC> &fast_reads, vector<size_t> &read_words, 
-	      vector<size_t> &read_index, size_t &read_count) {
+	      vector<unsigned int> &read_index, size_t &read_count) {
   
   if (read_width == 0) read_width = read.length();
   else if (read.length() < read_width)
@@ -220,7 +220,7 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
 void
 load_reads_from_fastq_file(const string &filename, const size_t max_diffs,
 			   size_t &read_width, vector<FastReadWC> &fast_reads,
-			   vector<size_t> &read_words, vector<size_t> &read_index) {
+			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
 
   FASTQScoreType score_format = fastq_score_type(filename);
   
@@ -267,7 +267,7 @@ static void
 check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
 	      string &score_line, string &read, size_t &read_width, 
 	      vector<FastReadQuality> &fast_reads, vector<size_t> &read_words, 
-	      vector<size_t> &read_index, size_t &read_count) {
+	      vector<unsigned int> &read_index, size_t &read_count) {
 
   if (read_width == 0) read_width = read.length();
   else if (read.length() < read_width)
@@ -309,7 +309,7 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
 void
 load_reads_from_fastq_file(const string &filename, const size_t max_diffs,
 			   size_t &read_width, vector<FastReadQuality> &fast_reads,
-			   vector<size_t> &read_words, vector<size_t> &read_index) {
+			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
   FASTQScoreType score_format = fastq_score_type(filename);
 
   std::ifstream in(filename.c_str(), std::ios::binary);
@@ -357,7 +357,7 @@ static void
 check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
 	      const string &score_line, size_t &read_width, 
 	      vector<FastReadWC> &fast_reads, vector<size_t> &read_words, 
-	      vector<size_t> &read_index, size_t &read_count) {
+	      vector<unsigned int> &read_index, size_t &read_count) {
   
   // parse the score line
   vector<string> parts;
@@ -406,7 +406,7 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
 void
 load_reads_from_prb_file(const string &filename, const size_t max_diffs,
 			 size_t &read_width, vector<FastReadWC> &fast_reads,
-			 vector<size_t> &read_words, vector<size_t> &read_index) {
+			 vector<size_t> &read_words, vector<unsigned int> &read_index) {
 
   FASTQScoreType score_format = FASTQ_Solexa;
 
@@ -439,14 +439,14 @@ static void
 check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
 	      const string &score_line, size_t &read_width, 
 	      vector<FastReadQuality> &fast_reads, vector<size_t> &read_words, 
-	      vector<size_t> &read_index, size_t &read_count) {
+	      vector<unsigned int> &read_index, size_t &read_count) {
   
   // parse the score line
   vector<string> parts;
   rmap::split_whitespace(score_line, parts);
   if (parts.size() % rmap::alphabet_size != 0)
     throw RMAPException("bad format:\n" + score_line);
-  
+
   // check the read width
   if (read_width == 0) read_width = parts.size()/rmap::alphabet_size;
   else if (parts.size()/rmap::alphabet_size < read_width)
@@ -489,7 +489,7 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
 void
 load_reads_from_prb_file(const string &filename, const size_t max_diffs,
 			 size_t &read_width, vector<FastReadQuality> &fast_reads,
-			 vector<size_t> &read_words, vector<size_t> &read_index) {
+			 vector<size_t> &read_words, vector<unsigned int> &read_index) {
   FASTQScoreType score_format = FASTQ_Solexa;
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in) throw RMAPException("cannot open input file " + filename);
