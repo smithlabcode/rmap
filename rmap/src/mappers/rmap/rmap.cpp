@@ -144,7 +144,7 @@ load_seeds(const bool VERBOSE, const bool FASTER_MODE,
   if (VERBOSE) {
     cerr << endl << "SEED STRUCTURES:" << endl;
     for (size_t i = 0; i < the_seeds.size(); ++i)
-      cerr << bits2string_masked(rmap_bits::all_ones, the_seeds[i]) << "\t" << the_seeds[i] << endl;
+      cerr << bits2string_masked(rmap_bits::all_ones, the_seeds[i]) << endl;
     cerr << endl;
   }
 }
@@ -299,14 +299,14 @@ iterate_over_seeds(const bool VERBOSE,
 	const clock_t end(clock());
 	if (VERBOSE)
 	  cerr << "[" << static_cast<float>(end - start)/CLOCKS_PER_SEC << " SEC]" << endl;
-	chroms[k].clear();
+	string().swap(chroms[k]);
       }
       prev_chrom_count += chroms.size();
     }
     if (j == 0) {
       if (VERBOSE)
 	cerr << "[CLEANING] ";
-      eliminate_ambigs(0, best_maps, read_index, read_words, ambigs, fast_reads);
+      eliminate_ambigs(1, best_maps, read_index, read_words, ambigs, fast_reads);
       if (VERBOSE)
 	cerr << "[AMBIG=" << ambigs.size() << "] " << endl;
     }
