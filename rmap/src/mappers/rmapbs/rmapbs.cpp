@@ -359,7 +359,7 @@ iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD,
     sort_by_key(sh_sorter, best_maps, read_words, read_index, fast_reads);
     typename SeedHash<T>::type seed_hash;
     build_seed_hash(sh_sorter, fast_reads, seed_hash);
-    SeedHashSorter().swap(sh_sorter);
+    sh_sorter = SeedHashSorter();
     
     size_t prev_chrom_count = 0;
     for (size_t i = 0; i < chrom_files.size() && !fast_reads.empty(); ++i) {
