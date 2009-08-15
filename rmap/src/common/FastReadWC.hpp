@@ -39,8 +39,12 @@ public:
   FastReadWC() {words.resize(segments + 1);}
   std::string tostring_bits() const;
   std::string tostring() const {return tostring_bits();}
+  std::string tostring_bases() const;
   size_t score(const FastReadWC &other) const;
+  size_t score_tc(const FastReadWC &other) const {return score(other);}
+  size_t score_ag(const FastReadWC &other) const {return score(other);}
   void shift(const size_t i);
+  void bisulfite_treatment(bool AG_WILD = false);
   static void set_read_width(const size_t rw);
   
   static double value_to_quality(size_t val);
@@ -55,9 +59,10 @@ private:
     char get_char(size_t mask, size_t pos) const;
     void shift_last(const size_t i);
     void shift(const Words &other);
-
+    void bisulfite_treatment(bool AG_WILD = false);
+    
     static size_t get_val(MASK_t mask, MASK_t base_vec, size_t pos);
-
+    
     size_t score(const Words &other, size_t mask) const;
     std::string tostring_values(size_t mask) const;
     std::string tostring_bits(size_t mask) const;

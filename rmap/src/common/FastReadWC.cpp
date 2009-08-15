@@ -110,6 +110,19 @@ FastReadWC::Words::tostring_bits(size_t mask) const {
 }
 
 
+void
+FastReadWC::Words::bisulfite_treatment(bool AG_WILD) {
+  size_t mask = 1ul;
+  for (size_t i = 0; i < rmap_bits::word_size; ++i) {
+    if (AG_WILD)
+      g_vec = ((g_vec & ~mask) | (g_vec & a_vec & mask));
+    else
+      c_vec = ((c_vec & ~mask) | (c_vec & t_vec & mask));
+    mask <<= 1;
+  }
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // FAST READ
 
@@ -158,5 +171,19 @@ FastReadWC::tostring_bits() const {
   for (size_t i = 0; i < segments; ++i)
     ss << words[i].tostring_bits(rmap_bits::all_ones) << endl;
   ss << words[segments].tostring_bits(score_mask);
+  return ss.str();
+}
+
+
+void
+FastReadWC::bisulfite_treatment(bool AG_WILD) {
+  for (size_t i = 0; i < words.size(); ++i)
+    words[i].bisulfite_treatment(AG_WILD);
+}
+
+string
+FastReadWC::tostring_bases() const {
+  std::ostringstream ss;
+  ss << "FUNCTION tostring_bases() NOT IMPLEMENTED for FastReadWC";
   return ss.str();
 }
