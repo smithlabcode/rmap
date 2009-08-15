@@ -1,4 +1,5 @@
 /*    rmapbs: a program for mapping bisulfite treated Solexa reads
+ *
  *    Copyright (C) 2009 University of Southern California and
  *                       Andrew D. Smith
  *
@@ -26,14 +27,14 @@
 #include <cmath>
 #include <tr1/unordered_map>
 
-#include "BisulfiteFastRead.hpp"
-#include "BisulfiteFastReadWC.hpp"
-#include "BisulfiteFastReadQuality.hpp"
+#include "FastRead.hpp"
+#include "FastReadWC.hpp"
+#include "FastReadQuality.hpp"
 #include "rmap_os.hpp"
 #include "SeedMaker.hpp"
 #include "MapResult.hpp"
 #include "OptionParser.hpp"
-#include "load_bisulfite_reads.hpp"
+#include "load_reads.hpp"
 
 using std::tr1::unordered_multimap;
 
@@ -48,9 +49,19 @@ using std::min;
 using std::numeric_limits;
 using std::pair;
 using std::make_pair;
+using std::ptr_fun;
 
 enum { FASTA_FILE, FASTQ_FILE, FASTA_AND_PRB };
 enum { RUN_MODE_MISMATCH, RUN_MODE_WILDCARD, RUN_MODE_WEIGHT_MATRIX };
+
+static void
+bisulfite_treatment(bool AG_WC, size_t &x) {
+  if (AG_WC)
+    x = ((x & 0x5555555555555555ul) | 
+	 (((x & 0x5555555555555555ul) << 1) & 
+	  (x & 0xAAAAAAAAAAAAAAAAul)));
+  else x |= ((x & 0x5555555555555555ul) << 1);
+}
 
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
@@ -87,7 +98,7 @@ sort_by_key(const SeedHashSorter &sh, vector<T> &in) {
 
 template <class T> void
 sort_by_key(SeedHashSorter &seed_hash, vector<MultiMapResult> &best_maps,
-	    vector<size_t> &reads, vector<vector<size_t> > &read_index, 
+	    vector<size_t> &reads, vector<unsigned int> &read_index, 
 	    vector<T> &fast_reads) {
   sort_by_key(seed_hash, best_maps);
   sort_by_key(seed_hash, reads);
@@ -118,12 +129,27 @@ build_seed_hash(const SeedHashSorter &sh_sorter, const vector<T> &fast_reads,
 
 
 static void
-load_seeds(const bool VERBOSE, 
+load_seeds(const bool VERBOSE, const bool FASTER_MODE,
 	   const size_t read_width, const size_t n_seeds, 
 	   const size_t seed_weight, vector<size_t> &the_seeds) {
-  
-  SeedMaker::first_last_seeds(min(read_width, SeedMaker::max_seed_part),
-			      n_seeds, seed_weight, the_seeds);
+  if (FASTER_MODE) {
+    // 0b0000111111001100001111110011000011111100110000111111001111111111
+    the_seeds.push_back(1138354285449573375ul);
+    // 0b1111110011000011111100110000111111001100001111110011000000111100
+    the_seeds.push_back(18213668567193169980ul);
+    // 0b0011111100110000111111001100001111110011000011111100110000001111
+    the_seeds.push_back(4553417141798292495ul);
+    // 0b1100001111110011000011111100110000111111001100001111110000110011
+    the_seeds.push_back(14119646626644556851ul);
+    // 0b0011000011111100110000111111001100001111110011000011111111110000
+    the_seeds.push_back(3529911656661139440ul);
+    // 0b1100110000111111001100001111110011000011111100110000111111001100
+    the_seeds.push_back(14717535969447448524ul);
+    // 0b1111001100001111110011000011111100110000111111001100001111000011
+    the_seeds.push_back(17514442047644025795ul);
+  }
+  else SeedMaker::first_last_seeds(min(read_width, SeedMaker::max_seed_part),
+				   n_seeds, seed_weight, the_seeds);
   if (VERBOSE) {
     cerr << endl << "SEED STRUCTURES:" << endl;
     for (size_t i = 0; i < the_seeds.size(); ++i)
@@ -132,6 +158,13 @@ load_seeds(const bool VERBOSE,
   }
 }
 
+inline size_t
+bisulfite_treatment_tc(char c) {
+  switch(c) {
+  case 1 : return 3;
+  default : return c;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
@@ -140,12 +173,12 @@ load_seeds(const bool VERBOSE,
 ////
 ////
 template <class T> void
-map_reads(const string &chrom, const size_t chrom_id,
-	  const size_t profile, const size_t read_width, 
-	  const size_t max_diffs, const vector<T> &fast_reads, 
-	  //const
-	  typename SeedHash<T>::type &seed_hash, 
-	  const bool strand, vector<MultiMapResult> &best_maps) {
+map_reads_tc(const string &chrom, const size_t chrom_id,
+	     const size_t profile, const size_t read_width, 
+	     const size_t max_diffs, const vector<T> &fast_reads, 
+	     //const
+	     typename SeedHash<T>::type &seed_hash, 
+	     const bool strand, vector<MultiMapResult> &best_maps) {
   
   MASK_t bad_bases = rmap_bits::all_ones;
   MASK_t read_word = rmap_bits::all_zeros;
@@ -155,35 +188,108 @@ map_reads(const string &chrom, const size_t chrom_id,
   const size_t chrom_size = chrom.size();
   
   size_t chrom_offset = 0;
-  for (chrom_offset = 0; chrom_offset < key_diff; ++chrom_offset)
-    fast_read.shift(base2int(chrom[chrom_offset]));
+  while(chrom_offset < min(chrom_size, key_diff))
+    fast_read.shift(base2int(chrom[chrom_offset++]));
   
-  for (; chrom_offset < read_width - 1; ++chrom_offset) {
-    const size_t key_base = base2int_bs(chrom[chrom_offset - key_diff]);
-    fast_read.shift(base2int(chrom[chrom_offset]));
+  while (chrom_offset < min(chrom_size, read_width - 1)) {
+    const size_t key_base = 
+      base2int_bs_upper_only(chrom[chrom_offset - key_diff]);
+    fast_read.shift(base2int(chrom[chrom_offset++]));
     SeedMaker::update_bad_bases(key_base, bad_bases);
     SeedMaker::update_read_word(key_base, read_word);
   }
   
-  for (; chrom_offset < chrom_size; ++chrom_offset) {
-    const size_t key_base = base2int_bs(chrom[chrom_offset - key_diff]);
-    fast_read.shift(base2int(chrom[chrom_offset]));
+  string::const_iterator key_pos(chrom.begin() + (chrom_offset - key_diff));
+  const string::const_iterator chrom_lim(chrom.end());
+  for (string::const_iterator chrom_pos(chrom.begin() + chrom_offset); 
+       chrom_pos < chrom_lim; ++chrom_pos, ++key_pos) {
+    const size_t key_base = bisulfite_treatment_tc(*key_pos);
+    fast_read.shift(*chrom_pos);
     SeedMaker::update_bad_bases(key_base, bad_bases);
     SeedMaker::update_read_word(key_base, read_word);
-    
     if ((bad_bases & profile) == 0) {
-      typename SeedHash<T>::type::const_iterator bucket(seed_hash.find(read_word & profile));
+      typename SeedHash<T>::type::const_iterator 
+	bucket(seed_hash.find(read_word & profile));
       if (bucket != seed_hash.end()) {
-	const typename vector<T>::const_iterator limit(bucket->second.second);
-	for (typename vector<T>::const_iterator to_test(bucket->second.first); 
+	pair<typename vector<T>::const_iterator, 
+	  typename vector<T>::const_iterator> tmp(bucket->second);
+	const typename vector<T>::const_iterator limit(tmp.second);
+	for (typename vector<T>::const_iterator to_test(tmp.first); 
 	     to_test != limit; ++to_test) {
-	  const size_t score = to_test->score(fast_read);
+	  const size_t score = to_test->score_tc(fast_read);
 	  if (score <= max_diffs) {
 	    const vector<MultiMapResult>::iterator 
 	      current(best_maps.begin() + (to_test - fast_reads.begin()));
 	    if (score <= current->score)
-	      current->add(score, chrom_id, 
-			   chrom_offset - read_width + 1, strand);
+	      current->add(score, chrom_id, distance(chrom.begin(), chrom_pos) 
+			   - read_width + 1, strand);
+	  }
+	}
+      }
+    }
+  }
+}
+
+
+inline size_t
+bisulfite_treatment_ag(char c) {
+  switch(c) {
+  case 2 : return 0;
+  default : return c;
+  }
+}
+
+
+template <class T> void
+map_reads_ag(const string &chrom, const size_t chrom_id,
+	     const size_t profile, const size_t read_width, 
+	     const size_t max_diffs, const vector<T> &fast_reads, 
+	     //const
+	     typename SeedHash<T>::type &seed_hash, 
+	     const bool strand, vector<MultiMapResult> &best_maps) {
+  
+  MASK_t bad_bases = rmap_bits::all_ones;
+  MASK_t read_word = rmap_bits::all_zeros;
+  T fast_read;
+  
+  const size_t key_diff = read_width - min(read_width, SeedMaker::max_seed_part);
+  const size_t chrom_size = chrom.size();
+  
+  size_t chrom_offset = 0;
+  while(chrom_offset < min(chrom_size, key_diff))
+    fast_read.shift(base2int(chrom[chrom_offset++]));
+  
+  while (chrom_offset < min(chrom_size, read_width - 1)) {
+    const size_t key_base = base2int_bs(chrom[chrom_offset - key_diff]);
+    fast_read.shift(base2int(chrom[chrom_offset++]));
+    SeedMaker::update_bad_bases(key_base, bad_bases);
+    SeedMaker::update_read_word(key_base, read_word);
+  }
+  
+  string::const_iterator key_pos(chrom.begin() + (chrom_offset - key_diff));
+  const string::const_iterator chrom_lim(chrom.end());
+  for (string::const_iterator chrom_pos(chrom.begin() + chrom_offset); 
+       chrom_pos < chrom_lim; ++chrom_pos, ++key_pos) {
+    const size_t key_base = bisulfite_treatment_ag(*key_pos);
+    fast_read.shift(*chrom_pos);
+    SeedMaker::update_bad_bases(key_base, bad_bases);
+    SeedMaker::update_read_word(key_base, read_word);
+    if ((bad_bases & profile) == 0) {
+      typename SeedHash<T>::type::const_iterator 
+	bucket(seed_hash.find(read_word & profile));
+      if (bucket != seed_hash.end()) {
+	pair<typename vector<T>::const_iterator, 
+	  typename vector<T>::const_iterator> tmp(bucket->second);
+	const typename vector<T>::const_iterator limit(tmp.second);
+	for (typename vector<T>::const_iterator to_test(tmp.first); 
+	     to_test != limit; ++to_test) {
+	  const size_t score = to_test->score_ag(fast_read);
+	  if (score <= max_diffs) {
+	    const vector<MultiMapResult>::iterator 
+	      current(best_maps.begin() + distance(fast_reads.begin(), to_test));
+	    if (score <= current->score)
+	      current->add(score, chrom_id, distance(chrom.begin(), chrom_pos)
+			   - read_width + 1, strand);
 	  }
 	}
       }
@@ -193,22 +299,50 @@ map_reads(const string &chrom, const size_t chrom_id,
 
 
 static void
-treat_cpgs(string &chrom) {
-  const size_t lim = chrom.length() - 1;
-  for (size_t i = 0; i < lim; ++i) {
-    if (chrom[i] == 'T' and chrom[i + 1] == 'G')
-      chrom[i] = 'C';
+treat_cpgs(const bool AG_WILDCARD, string &chrom) {
+  const size_t lim = chrom.length() - (!AG_WILDCARD);
+  if (AG_WILDCARD) {
+    for (size_t i = 1; i < lim; ++i)
+      if (chrom[i] == 0 and chrom[i - 1] == 1) chrom[i] = 2;
+  }
+  else for (size_t i = 0; i < lim; ++i)
+    if (chrom[i] == 3 and chrom[i + 1] == 2) chrom[i] = 1;
+}
+
+
+unsigned char
+b2i(char c) {
+  switch(c) {
+  case 'A' : return 0;
+  case 'C' : return 1;
+  case 'G' : return 2;
+  case 'T' : return 3;
+  default : return 4;
+  }
+}
+
+
+unsigned char
+b2i_rc(char c) {
+  switch(c) {
+  case 'A' : return 3;
+  case 'C' : return 2;
+  case 'G' : return 1;
+  case 'T' : return 0;
+  default : return 4;
   }
 }
 
 
 template <class T> void
-iterate_over_seeds(const bool VERBOSE, 
-		   const vector<size_t> &the_seeds, const vector<string> &chrom_files,
-		   vector<size_t> &ambigs, 
-		   vector<string> &chrom_names, vector<size_t> &chrom_sizes,
+iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD, 
+		   const bool ALLOW_METH_BIAS,
+		   const vector<size_t> &the_seeds, 
+		   const vector<string> &chrom_files,
+		   vector<size_t> &ambigs, vector<string> &chrom_names, 
+		   vector<size_t> &chrom_sizes,
 		   vector<T> &fast_reads,  vector<size_t> &read_words, 
-		   vector<vector<size_t> > &read_index,
+		   vector<unsigned int> &read_index,
 		   vector<MultiMapResult> &best_maps,
 		   const size_t max_mismatches, const size_t read_width) {
   
@@ -225,7 +359,7 @@ iterate_over_seeds(const bool VERBOSE,
     sort_by_key(sh_sorter, best_maps, read_words, read_index, fast_reads);
     typename SeedHash<T>::type seed_hash;
     build_seed_hash(sh_sorter, fast_reads, seed_hash);
-    sh_sorter.clear();
+    SeedHashSorter().swap(sh_sorter);
     
     size_t prev_chrom_count = 0;
     for (size_t i = 0; i < chrom_files.size() && !fast_reads.empty(); ++i) {
@@ -246,52 +380,53 @@ iterate_over_seeds(const bool VERBOSE,
 	  chrom_names.push_back(tmp_chrom_names[k]);
 	}
 	transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(), 
-		  std::ptr_fun(&toupper));
-	treat_cpgs(chroms[k]);
+		  ptr_fun(&toupper));
+	string tmp_chrom(chroms[k]);
+	transform(chroms[k].begin(), chroms[k].end(), tmp_chrom.begin(),
+		  ptr_fun(&b2i));
+	if (!ALLOW_METH_BIAS)
+	  treat_cpgs(AG_WILDCARD, tmp_chrom);
+	if (AG_WILDCARD)
+	  map_reads_ag(tmp_chrom, prev_chrom_count + k, the_seeds[j], read_width, 
+		       max_mismatches, fast_reads, seed_hash, true, best_maps);
+	else map_reads_tc(tmp_chrom, prev_chrom_count + k, the_seeds[j], read_width, 
+			  max_mismatches, fast_reads, seed_hash, true, best_maps);
+	string().swap(tmp_chrom);
 	
-	if (VERBOSE)
-	  cerr << "[SCANNING POS=" << tmp_chrom_names[k] << "] ";
-	map_reads(chroms[k], prev_chrom_count + k, the_seeds[j], read_width, 
-		  max_mismatches, fast_reads, seed_hash, true, best_maps);
-	chroms[k].clear();
-      }
-      
-      chroms.clear();
-      tmp_chrom_names.clear();
-      read_fasta_file(chrom_files[i].c_str(), tmp_chrom_names, chroms);
-      
-      for (size_t k = 0; k < chroms.size(); ++k) {
-	revcomp_inplace(chroms[k]);
-	transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(), 
-		  std::ptr_fun(&toupper));
-	treat_cpgs(chroms[k]);
-	if (VERBOSE)
-	  cerr << "[SCANNING NEG=" << tmp_chrom_names[k] << "] ";
-	map_reads(chroms[k], prev_chrom_count + k, the_seeds[j], read_width, 
-		  max_mismatches, fast_reads, seed_hash, false, best_maps);
-	chroms[k].clear();
+	std::reverse(chroms[k].begin(), chroms[k].end());
+	transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(),
+		  ptr_fun(&b2i_rc));
+	if (!ALLOW_METH_BIAS)
+	  treat_cpgs(AG_WILDCARD, chroms[k]);
+	if (AG_WILDCARD)
+	  map_reads_ag(chroms[k], prev_chrom_count + k, the_seeds[j], read_width, 
+		       max_mismatches, fast_reads, seed_hash, false, best_maps);
+	else map_reads_tc(chroms[k], prev_chrom_count + k, the_seeds[j], read_width,
+			  max_mismatches, fast_reads, seed_hash, false, best_maps);
+	string().swap(chroms[k]);
       }
       const clock_t end(clock());
       if (VERBOSE)
-	cerr << "[" << static_cast<float>(end - start)/CLOCKS_PER_SEC << " SEC]" << endl;
+	cerr << "[" << static_cast<float>(end - start)/
+	  CLOCKS_PER_SEC << " SEC]" << endl;
       prev_chrom_count += chroms.size();
     }
     if (j == 0) {
       if (VERBOSE)
 	cerr << "[CLEANING] ";
-      eliminate_ambigs(0, best_maps, read_index, read_words, ambigs, fast_reads);
+      eliminate_ambigs(1, best_maps, read_index, read_words, ambigs, fast_reads);
       if (VERBOSE)
 	cerr << "[AMBIG=" << ambigs.size() << "] " << endl;
     }
   }
-  
   if (VERBOSE)
     cerr << "[FINAL CLEANING] ";
-  eliminate_ambigs(max_mismatches, best_maps, read_index, read_words, ambigs, fast_reads);
+  eliminate_ambigs(max_mismatches, best_maps, read_index, 
+		   read_words, ambigs, fast_reads);
   if (VERBOSE)
     cerr << "[AMBIG=" << ambigs.size() << "] " << endl;
-  
-  fast_reads.clear();
+  vector<T>().swap(fast_reads);
+  vector<size_t>().swap(read_words);
 }
 
 
@@ -302,11 +437,16 @@ iterate_over_seeds(const bool VERBOSE,
 ////
 ////
 static void
-sites_to_regions(const size_t read_len,
+sites_to_regions(const bool VERBOSE, const bool RUN_MODE, const size_t read_len,
 		 const vector<string> &chrom, const vector<size_t> &chrom_sizes, 
-		 const vector<vector<size_t> > &read_index, 
-		 const vector<string> &read_names, vector<MultiMapResult> &bests, 
-		 vector<GenomicRegion> &hits) {
+		 const vector<unsigned int> &read_index, 
+		 vector<string> &read_names, vector<MultiMapResult> &bests, 
+		 const string &outfile) {
+  if (VERBOSE)
+    cerr << "[WRITING MAPS] ";
+  std::ostream* out = (!outfile.empty()) ? 
+    new std::ofstream(outfile.c_str()) : &cout;
+  size_t n_reads_mapped = 0;
   for (size_t i = 0; i < bests.size(); ++i)
     if (!bests[i].empty()) {
       bests[i].sort();
@@ -317,14 +457,22 @@ sites_to_regions(const size_t read_len,
 	    bests[i].mr[j].site : 
 	    chrom_sizes[chrom_id] - bests[i].mr[j].site - read_len;
 	  const size_t end = start + read_len;
-	  const size_t score = bests[i].score;
+	  const size_t score = (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ?
+	    FastReadQuality::value_to_quality(bests[i].score) :
+	    bests[i].score;
 	  const char strand = ((bests[i].mr[j].strand) ? '+' : '-');
-	  for (size_t k = 0; k < read_index[i].size(); ++k)
-	    hits.push_back(GenomicRegion(chrom[chrom_id], start, end,
-					 read_names[read_index[i][k]], 
-					 score, strand));
+	  *out << GenomicRegion(chrom[chrom_id], start, end,
+				read_names[read_index[i]], 
+				score, strand) << '\n';
+	  string().swap(read_names[read_index[i]]);
+	  n_reads_mapped++;
 	}
+      bests[i].clear();
     }
+  if (out != &cout) delete out;
+  if (VERBOSE)
+    cerr << "[DONE] " << endl
+	 << "TOTAL READS MAPPED: " << n_reads_mapped << endl;
 }
 
 
@@ -340,17 +488,16 @@ write_non_uniques(string filename, const vector<size_t> &ambigs,
 
 template <class T> void
 eliminate_ambigs(const size_t max_mismatches, vector<MultiMapResult> &best_maps, 
-		 vector<vector<size_t> > &read_index, vector<size_t> &reads, 
+		 vector<unsigned int> &read_index, vector<size_t> &reads, 
 		 vector<size_t> &ambigs, vector<T> &fast_reads) {
   size_t j = 0;
   for (size_t i = 0; i < best_maps.size(); ++i) {
     best_maps[i].collapse();
     if (best_maps[i].ambiguous() && best_maps[i].score <= max_mismatches)
-      for (size_t k = 0; k < read_index[i].size(); ++k)
-	ambigs.push_back(read_index[i][k]);
+      ambigs.push_back(read_index[i]);
     else {
       best_maps[j] = best_maps[i];
-      read_index[j].swap(read_index[i]);
+      read_index[j] = read_index[i];
       reads[j] = reads[i];
       fast_reads[j] = fast_reads[i];
       ++j;
@@ -441,7 +588,6 @@ get_run_mode(const bool VERBOSE, const size_t INPUT_MODE,
   else if (INPUT_MODE == FASTA_AND_PRB || 
 	   (INPUT_MODE == FASTQ_FILE && QUALITY))
     RUN_MODE = RUN_MODE_WEIGHT_MATRIX;
-  
   if (VERBOSE)
     cerr << "MATCH MODE: "
 	 << ((RUN_MODE == RUN_MODE_MISMATCH) ? 
@@ -452,15 +598,15 @@ get_run_mode(const bool VERBOSE, const size_t INPUT_MODE,
 
 
 static void
-load_reads(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_MODE,
+load_reads(const bool VERBOSE, const size_t INPUT_MODE, 
+	   const size_t RUN_MODE, const bool AG_WILDCARD,
 	   const size_t max_mismatches,
 	   const string &reads_file, const string &prb_file,
-	   vector<BisulfiteFastRead> &fast_reads, vector<BisulfiteFastReadWC> &fast_reads_wc,
-	   vector<BisulfiteFastReadQuality> &fast_reads_q,
-	   vector<vector<size_t> > &read_index_in, vector<size_t> &read_words,
+	   vector<FastRead> &fast_reads, vector<FastReadWC> &fast_reads_wc,
+	   vector<FastReadQuality> &fast_reads_q,
+	   vector<unsigned int> &read_index, vector<size_t> &read_words,
 	   size_t &read_width) {
 
-  vector<size_t> read_index;
   //////////////////////////////////////////////////////////////
   // LOAD THE READS (AS SEQUENCES OR PROBABILITIES) FROM DISK
   if (VERBOSE) cerr << "[LOADING READ SEQUENCES] ";
@@ -485,9 +631,12 @@ load_reads(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_MODE,
   }
   else load_reads_from_fasta_file(reads_file, max_mismatches, read_width,
 				  fast_reads, read_words, read_index);
-  
-  for (size_t i = 0; i < read_index.size(); ++i)
-    read_index_in.push_back(vector<size_t>(1, read_index[i]));
+  for (size_t i = 0; i < fast_reads_wc.size(); ++i)
+    fast_reads_wc[i].bisulfite_treatment(AG_WILDCARD);
+  for (size_t i = 0; i < fast_reads_q.size(); ++i)
+    fast_reads_q[i].bisulfite_treatment(AG_WILDCARD);
+  for (size_t i = 0; i < read_words.size(); ++i)
+    bisulfite_treatment(AG_WILDCARD, read_words[i]);
   if (VERBOSE)
     cerr << "[DONE]" << endl
 	 << "TOTAL HQ READS: " << read_index.size() << endl;
@@ -512,8 +661,11 @@ main(int argc, const char **argv) {
     size_t max_mappings = 1;
     
     bool VERBOSE = false;
+    bool FASTER_MODE = false;
     bool WILDCARD = false;
     bool QUALITY = false;
+    bool AG_WILDCARD = false;
+    bool ALLOW_METH_BIAS = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("rmapbs", "The rmapbs mapping tool for Solexa reads"
@@ -542,6 +694,12 @@ main(int argc, const char **argv) {
 		      false, WILDCARD);
     opt_parse.add_opt("qual", 'Q', "use quality scores (input must be FASTQ)", 
 		      false, QUALITY);
+    opt_parse.add_opt("ag-wild", 'A', "map using A/G bisulfite wildcards", 
+		      false, AG_WILDCARD);
+    opt_parse.add_opt("bias", 'B', "allow CpG non-conversion to assist", 
+		      false, ALLOW_METH_BIAS);
+    opt_parse.add_opt("faster", 'f', "faster mapping (sensitive to 2 mismatches)", 
+		      false, FASTER_MODE);
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
     vector<string> leftover_args;
     opt_parse.parse(argc, argv, leftover_args);
@@ -571,7 +729,6 @@ main(int argc, const char **argv) {
     }
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
-
     
     //////////////////////////////////////////////////////////////
     //  CHECK HOW QUALITY SCORES ARE USED
@@ -585,28 +742,27 @@ main(int argc, const char **argv) {
     vector<string> chrom_files;
     identify_chromosomes(VERBOSE, filenames_file, fasta_suffix, chrom_file, chrom_files);
     
-    
     //////////////////////////////////////////////////////////////
     // OBTAIN THE READS
     // 
-    vector<BisulfiteFastRead> fast_reads;
-    vector<BisulfiteFastReadWC> fast_reads_wc;
-    vector<BisulfiteFastReadQuality> fast_reads_q;
-    vector<vector<size_t> > read_index;
+    vector<FastRead> fast_reads;
+    vector<FastReadWC> fast_reads_wc;
+    vector<FastReadQuality> fast_reads_q;
+    vector<unsigned int> read_index;
     vector<size_t> read_words;
-    load_reads(VERBOSE, INPUT_MODE, RUN_MODE, max_mismatches, 
-	       reads_file, prb_file, fast_reads, fast_reads_wc,
-	       fast_reads_q, read_index, read_words, 
-	       read_width);
+    load_reads(VERBOSE, INPUT_MODE, RUN_MODE, AG_WILDCARD,
+	       max_mismatches, reads_file, prb_file, 
+	       fast_reads, fast_reads_wc, fast_reads_q, 
+	       read_index, read_words, read_width);
     
-    double max_match_score = max_mismatches*BisulfiteFastReadQuality::get_scaler();
+    double max_match_score = max_mismatches*FastReadQuality::get_scaler();
     
     //////////////////////////////////////////////////////////////
     // INITIALIZE THE SEED STRUCTURES
     //
     vector<size_t> the_seeds;
-    load_seeds(VERBOSE, read_width, n_seeds, seed_weight, the_seeds);
-    
+    load_seeds(VERBOSE, FASTER_MODE,
+	       read_width, n_seeds, seed_weight, the_seeds);
     
     //////////////////////////////////////////////////////////////
     // INITIALIZE THE STRUCTURES THAT HOLD THE RESULTS
@@ -616,7 +772,6 @@ main(int argc, const char **argv) {
       best_maps(read_words.size(), MultiMapResult((RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ?
 						  max_match_score : max_mismatches));
     
-    
     //////////////////////////////////////////////////////////////
     // THIS IS WHERE THE ACTUAL MAPPING HAPPENS
     //
@@ -624,31 +779,32 @@ main(int argc, const char **argv) {
     vector<string> chrom_names;
     vector<size_t> ambigs;
     if (RUN_MODE == RUN_MODE_MISMATCH)
-      iterate_over_seeds(VERBOSE, the_seeds, chrom_files, ambigs, 
+      iterate_over_seeds(VERBOSE, AG_WILDCARD, ALLOW_METH_BIAS,
+			 the_seeds, chrom_files, ambigs, 
 			 chrom_names, chrom_sizes,
 			 fast_reads, // USE REGULAR FAST READS
 			 read_words, read_index,
 			 best_maps, max_mismatches, read_width);
     if (RUN_MODE == RUN_MODE_WILDCARD)
-      iterate_over_seeds(VERBOSE, the_seeds, chrom_files, ambigs, 
+      iterate_over_seeds(VERBOSE, AG_WILDCARD, ALLOW_METH_BIAS,
+			 the_seeds, chrom_files, ambigs, 
 			 chrom_names, chrom_sizes,
 			 fast_reads_wc, // USE FAST READS FOR WILDCARD MATCHING
 			 read_words, read_index,
 			 best_maps, max_mismatches, read_width);
     if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
-      iterate_over_seeds(VERBOSE, the_seeds, chrom_files, ambigs, 
+      iterate_over_seeds(VERBOSE, AG_WILDCARD, ALLOW_METH_BIAS,
+			 the_seeds, chrom_files, ambigs, 
 			 chrom_names, chrom_sizes,
 			 fast_reads_q, // USE FAST READS FOR QUALITY MATCHING
 			 read_words, read_index,
 			 best_maps, max_match_score, read_width);
-    
     
     //////////////////////////////////////////////////////////////
     // LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
     //
     vector<string> read_names;
     load_read_names(reads_file, read_names);
-    
     
     //////////////////////////////////////////////////////////////
     // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
@@ -673,29 +829,8 @@ main(int argc, const char **argv) {
       if (chr_name_end != string::npos)
 	chrom_names[i].erase(chr_name_end);
     }
-    vector<GenomicRegion> hits;
-    sites_to_regions(read_width, chrom_names, chrom_sizes, read_index, read_names,
-		     best_maps, hits);
-    
-    
-    //////////////////////////////////////////////////////////////
-    // CORRECT SCORES IF WEIGHT MATRIX MATCHING USED
-    //
-    if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
-      for (size_t i = 0; i < hits.size(); ++i)
-	hits[i].set_score(BisulfiteFastReadQuality::value_to_quality(hits[i].get_score()));
-    
-    
-    //////////////////////////////////////////////////////////////
-    // OUTPUT THE RESULTS
-    //
-    std::ostream* out = (!outfile.empty()) ? 
-      new std::ofstream(outfile.c_str()) : &cout;
-    copy(hits.begin(), hits.end(), ostream_iterator<GenomicRegion>(*out, "\n"));
-    if (out != &cout) delete out;
-    if (VERBOSE)
-      cerr << "[DONE] " << endl
-	   << "TOTAL READS MAPPED: " << hits.size() << endl;
+    sites_to_regions(VERBOSE, RUN_MODE, read_width, chrom_names, chrom_sizes, 
+		     read_index, read_names, best_maps, outfile);
   }
   catch (const RMAPException &e) {
     cerr << e.what() << endl;
