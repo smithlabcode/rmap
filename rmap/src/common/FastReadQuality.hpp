@@ -32,7 +32,6 @@
 
 class FastReadQuality {
 public:
-//   FastReadQuality(const std::string &s);
   FastReadQuality(const std::vector<std::vector<double> > &s);
   FastReadQuality(std::vector<std::vector<double> >::iterator a,
 		  const std::vector<std::vector<double> >::iterator b); 
@@ -40,15 +39,20 @@ public:
   std::string tostring_values() const;
   std::string tostring_bits() const;
   std::string tostring() const {return tostring_values() + "\n" + tostring_bits();}
+  std::string tostring_bases() const;
   size_t score(const FastReadQuality &other) const;
+  size_t score_tc(const FastReadQuality &other) const {return score(other);}
+  size_t score_ag(const FastReadQuality &other) const {return score(other);}
   void shift(const size_t i);
+  void bisulfite_treatment(bool AG_WILD = false);
   static void set_read_width(const size_t rw);
   
   static double value_to_quality(size_t val);
   static size_t quality_to_value(double val);
 
   static double get_scaler() {return scaler;}
-
+  
+  
 private:
   struct Words {
   public:
@@ -58,6 +62,7 @@ private:
     char get_char(size_t mask, size_t pos) const;
     void shift_last(const size_t i);
     void shift(const Words &other);
+    void bisulfite_treatment(bool AG_WILD = false);
 
     static size_t get_val(MASK_t mask, MASK_t base_vec, size_t pos);
 
