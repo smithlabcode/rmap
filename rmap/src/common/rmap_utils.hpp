@@ -77,6 +77,17 @@ namespace rmap_bits {
 }
 
 inline size_t
+base2int_upper_only(char c) {
+  switch(c) {
+  case 'A' : return 0;
+  case 'C' : return 1;
+  case 'G' : return 2;
+  case 'T' : return 3;
+  default  : return 4;
+  }
+}
+
+inline size_t
 base2int(char c) {
   switch(c) {
   case 'A' : return 0;
@@ -87,8 +98,19 @@ base2int(char c) {
   case 'c' : return 1;
   case 'g' : return 2;
   case 't' : return 3; 
+  default  : return 4;
   }
-  return 4;
+}
+
+inline size_t
+base2int_bs_upper_only(char c) {
+  switch(c) {
+  case 'A' : return 0;
+  case 'C' : return 3;
+  case 'G' : return 2;
+  case 'T' : return 3;
+  default  : return 4;
+  }
 }
 
 inline size_t
@@ -102,9 +124,39 @@ base2int_bs(char c) {
   case 'c' : return 3;
   case 'g' : return 2;
   case 't' : return 3; 
+  default  : return 4;
   }
-  return 4;
 }
+
+
+inline size_t
+base2int_bs_ag_upper_only(char c) {
+  switch(c) {
+  case 'A' : return 0;
+  case 'C' : return 1;
+  case 'G' : return 0;
+  case 'T' : return 3;
+  default  : return 4;
+  }
+}
+
+
+
+inline size_t
+base2int_bs_ag(char c) {
+  switch(c) {
+  case 'A' : return 0;
+  case 'C' : return 1;
+  case 'G' : return 0;
+  case 'T' : return 3;
+  case 'a' : return 0;
+  case 'c' : return 1;
+  case 'g' : return 0;
+  case 't' : return 3; 
+  default  : return 4;
+  }
+}
+
 
 inline size_t
 base2int_bs_rc(char c) {
@@ -117,14 +169,6 @@ base2int_bs_rc(char c) {
   case 'c' : return 1;
   case 'g' : return 0;
   case 't' : return 3; 
-//   case 'A' : return 3;
-//   case 'C' : return 2;
-//   case 'G' : return 3;
-//   case 'T' : return 0;
-//   case 'a' : return 3;
-//   case 'c' : return 2;
-//   case 'g' : return 3;
-//   case 't' : return 0; 
   }
   return 4;
 }
@@ -219,7 +263,6 @@ struct RMAPException {
   std::string what() const {return message;}
   std::string message;
 };
-
 
 
 template <class T> std::string toa(T t) {
