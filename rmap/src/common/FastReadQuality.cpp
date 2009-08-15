@@ -28,6 +28,7 @@
 
 using std::string;
 using std::vector;
+using std::min;
 
 size_t FastReadQuality::score_mask = 0;
 size_t FastReadQuality::segments = 0;
@@ -143,6 +144,18 @@ FastReadQuality::Words::tostring_values(size_t mask) const {
   return ss.str();
 }
 
+void
+FastReadQuality::Words::bisulfite_treatment(bool AG_WILD) {
+  size_t mask = (1ul << n_val_bits) - 1ul;
+  for (size_t i = 0; i < rmap_bits::word_size/n_val_bits; ++i) {
+    if (AG_WILD)
+      g_vec = (g_vec & ~mask) | (min(g_vec & mask, a_vec & mask));
+    else
+      c_vec = (c_vec & ~mask) | (min(c_vec & mask, t_vec & mask));
+    mask <<= n_val_bits;
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////////////
 // FAST READ
@@ -156,6 +169,7 @@ FastReadQuality::set_read_width(const size_t rw) {
   
   scaler = pow(2.0, n_val_bits) - 1;
 }
+
 
 FastReadQuality::FastReadQuality(const vector<vector<double> > &s) {
   words.resize(segments + 1);
@@ -190,6 +204,7 @@ FastReadQuality::tostring_values() const {
   return ss.str();
 }
 
+
 string
 FastReadQuality::tostring_bits() const {
   std::ostringstream ss;
@@ -197,4 +212,19 @@ FastReadQuality::tostring_bits() const {
     ss << words[i].tostring_bits(rmap_bits::all_ones) << std::endl;
   ss << words[segments].tostring_bits(score_mask);
   return ss.str();
+}
+
+
+string
+FastReadQuality::tostring_bases() const {
+  std::ostringstream ss;
+  ss << "FUNCTION tostring_bases() NOT IMPLEMENTED for FastReadQuality";
+  return ss.str();
+}
+
+
+void
+FastReadQuality::bisulfite_treatment(bool AG_WILD) {
+  for (size_t i = 0; i < words.size(); ++i)
+    words[i].bisulfite_treatment(AG_WILD);
 }
