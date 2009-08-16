@@ -21,74 +21,71 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BISULFITE_FAST_READ_HPP
-#define BISULFITE_FAST_READ_HPP
+#ifndef FAST_READ_HPP
+#define FAST_READ_HPP
 
 #include <string>
 #include <vector>
 #include <iostream>
 #include <ostream>
+#include <valarray>
 #include "rmap_utils.hpp"
 
 class BisulfiteFastRead {
 public:
   BisulfiteFastRead(const std::string &s);
+  BisulfiteFastRead(std::string::const_iterator a,
+	   const std::string::const_iterator b);
   BisulfiteFastRead() {
-    wp.resize(segments);
-    wp.back() = WordPair((rmap_bits::all_ones << right_most_bit));
+    wp.resize(segments + 1);
+    wp[segments] = WordPair((rmap_bits::all_ones << right_most_bit));
   }
+  bool operator<(const BisulfiteFastRead &rhs) const {
+    for (size_t i = 0; i <= segments; ++i) {
+      if (wp[i] < rhs.wp[i]) return true;
+    }
+    return false;
+  }
+
   std::string tostring_bases() const;
   std::string tostring_bits() const;
   size_t score(const BisulfiteFastRead &other) const;
+  size_t score_ag(const BisulfiteFastRead &other) const;
   void shift(const size_t i);
   static void set_read_width(const size_t m);
 private:
   struct WordPair {
   public:
-    WordPair() : a_vec(0), c_vec(0), 
-		 g_vec(0), t_vec(0), bads(rmap_bits::all_ones) {}
-    WordPair(size_t bads_mask) : a_vec(0), c_vec(0), 
-				 g_vec(0), t_vec(0), bads(bads_mask) {}
+    WordPair() : upper(0), lower(0), bads(rmap_bits::all_ones) {}
+    WordPair(size_t bads_mask) : upper(0), lower(0), bads(bads_mask) {}
     WordPair(const std::string &s);
+
+    bool operator<(const WordPair &rhs) const {
+      return (upper < rhs.upper) || 
+	(upper == rhs.upper && lower < rhs.lower) ||
+	(upper == rhs.upper && lower == rhs.lower && bads < rhs.bads);
+    }
+
     char get_char(size_t mask, size_t pos) const;
     void shift(const size_t i);
     void shift(const size_t i, const size_t shifter);
     void shift(const WordPair &other);
     size_t score(const WordPair &other, size_t mask) const;
+    size_t score_ag(const WordPair &other, size_t mask) const;
     std::string tostring_bases(size_t mask) const;
     std::string tostring_bits(size_t mask) const;
   private:
-
-    size_t a_vec;
-    size_t c_vec;
-    size_t g_vec;
-    size_t t_vec;
+    size_t upper;
+    size_t lower;
     size_t bads;
-    
-    static size_t contains_a(char c) {return (c == 'a' || c == 'A');}
-    static size_t contains_c(char c) {return (c == 'c' || c == 'C');}
-    static size_t contains_c_bs(char c) {
-      return contains_c(c) || contains_t(c);}
-    static size_t contains_g(char c) {return (c == 'g' || c == 'G');}
-    static size_t contains_g_bs(char c) {
-      return contains_a(c) || contains_g(c);}
-    static size_t contains_t(char c) {return (c == 't' || c == 'T');}
-    static size_t contains_n(char c) {return (c == 'n' || c == 'N');}
 
-    static size_t contains_a(size_t c) {return (c == 0);}
-    static size_t contains_c(size_t c) {return (c == 1);}
-    static size_t contains_c_bs(size_t c) {
-      return contains_c(c) || contains_t(c);}
-    static size_t contains_g(size_t c) {return (c == 2);}
-    static size_t contains_g_bs(size_t c) {
-      return contains_a(c) || contains_g(c);}
-    static size_t contains_t(size_t c) {return (c == 3);}
-    static size_t contains_n(size_t c) {return (c == 4);}
-    
+    static size_t get_upper(const size_t i) {return bool(i & ~1ul);}
+    static size_t get_lower(const size_t i) {return bool(i &  1ul);}
+    static size_t get_bads(char c) {return bool(c == 4ul);}
     static std::string bits2string(size_t mask, size_t bits);
   };
-  
-  std::vector<WordPair> wp;
+
+  std::valarray<WordPair> wp;
   static size_t score_mask;
   static size_t segments;
   static size_t read_width;
@@ -103,49 +100,76 @@ operator<<(std::ostream& s, const BisulfiteFastRead& fr) {
 
 inline void
 BisulfiteFastRead::WordPair::shift(const size_t i) {
-  a_vec = ((a_vec << 1) + (contains_a(i)));
-  c_vec = ((c_vec << 1) + (contains_c(i)));
-  g_vec = ((g_vec << 1) + (contains_g(i)));
-  t_vec = ((t_vec << 1) + (contains_t(i)));
-  bads =  ((bads  << 1) + (contains_n(i)));
+  upper = ((upper << 1) + bool(i & ~1ul));
+  lower = ((lower << 1) + bool(i &  1ul));
+  bads  = ((bads  << 1) + bool(i == 4ul));
 }
 
 inline void
 BisulfiteFastRead::WordPair::shift(const size_t i, const size_t shifter) {
-  a_vec = ((a_vec << 1) + (contains_a(i) << shifter));
-  c_vec = ((c_vec << 1) + (contains_c(i) << shifter));
-  g_vec = ((g_vec << 1) + (contains_g(i) << shifter));
-  t_vec = ((t_vec << 1) + (contains_t(i) << shifter));
-  bads =  ((bads  << 1) + (contains_n(i) << shifter));
+  upper = ((upper << 1) + (static_cast<size_t>(bool(i & ~1ul)) << shifter));
+  lower = ((lower << 1) + (static_cast<size_t>(bool(i &  1ul)) << shifter));
+  bads  = ((bads << 1)  + (static_cast<size_t>(bool(i == 4ul)) << shifter));
 }
 
 inline void
 BisulfiteFastRead::shift(const size_t idx) {
-  for (size_t i = 0; i < wp.size() - 1; ++i)
+  for (size_t i = 0; i < segments; ++i)
     wp[i].shift(wp[i + 1]);
-  wp.back().shift(idx, right_most_bit);
+  wp[segments].shift(idx, right_most_bit);
 }
 
 inline size_t
 BisulfiteFastRead::score(const BisulfiteFastRead &other) const {
   size_t ss = 0;
-  for (size_t i = 0; i < wp.size() - 1; ++i)
+  for (size_t i = 0; i < segments; ++i)
     ss += wp[i].score(other.wp[i], rmap_bits::all_ones);
-  return ss + wp.back().score(other.wp.back(), score_mask);
+  return ss + wp[segments].score(other.wp[segments], score_mask);
 }
 
 inline size_t
-BisulfiteFastRead::WordPair::score(const BisulfiteFastRead::WordPair &other, const size_t score_mask) const {
-  register size_t bits = (~((other.a_vec & a_vec) | 
-			    (other.c_vec & c_vec) | 
-			    (other.g_vec & g_vec) | 
-			    (other.t_vec & t_vec)) | other.bads | bads) & score_mask;
+BisulfiteFastRead::score_ag(const BisulfiteFastRead &other) const {
+  size_t ss = 0;
+  for (size_t i = 0; i < segments; ++i)
+    ss += wp[i].score_ag(other.wp[i], rmap_bits::all_ones);
+  return ss + wp[segments].score_ag(other.wp[segments], score_mask);
+}
+
+inline size_t
+BisulfiteFastRead::WordPair::score(const BisulfiteFastRead::WordPair &other, 
+				      const size_t score_mask) const {
+  register size_t bits = ((((upper ^ other.upper) | 
+			    (lower ^ other.lower)) & ~(upper & lower & other.lower)) 
+			  | other.bads | bads) & score_mask;
   bits = ((bits & 0xAAAAAAAAAAAAAAAAul) >> 1)  + (bits & 0x5555555555555555ul);
   bits = ((bits & 0xCCCCCCCCCCCCCCCCul) >> 2)  + (bits & 0x3333333333333333ul);
   bits = ((bits & 0xF0F0F0F0F0F0F0F0ul) >> 4)  + (bits & 0x0F0F0F0F0F0F0F0Ful);
   bits = ((bits & 0xFF00FF00FF00FF00ul) >> 8)  + (bits & 0x00FF00FF00FF00FFul);
   bits = ((bits & 0xFFFF0000FFFF0000ul) >> 16) + (bits & 0x0000FFFF0000FFFFul);
   return ((bits & 0xFFFFFFFF00000000ul) >> 32) + (bits & 0x00000000FFFFFFFFul);
+}
+
+
+inline size_t
+BisulfiteFastRead::WordPair::score_ag(const BisulfiteFastRead::WordPair &other, 
+				      const size_t score_mask) const {
+  register size_t bits = ((((upper ^ other.upper) | 
+			    (lower ^ other.lower)) & (~upper | lower | other.lower)) 
+			  | other.bads | bads) & score_mask;
+  bits = ((bits & 0xAAAAAAAAAAAAAAAAul) >> 1)  + (bits & 0x5555555555555555ul);
+  bits = ((bits & 0xCCCCCCCCCCCCCCCCul) >> 2)  + (bits & 0x3333333333333333ul);
+  bits = ((bits & 0xF0F0F0F0F0F0F0F0ul) >> 4)  + (bits & 0x0F0F0F0F0F0F0F0Ful);
+  bits = ((bits & 0xFF00FF00FF00FF00ul) >> 8)  + (bits & 0x00FF00FF00FF00FFul);
+  bits = ((bits & 0xFFFF0000FFFF0000ul) >> 16) + (bits & 0x0000FFFF0000FFFFul);
+  return ((bits & 0xFFFFFFFF00000000ul) >> 32) + (bits & 0x00000000FFFFFFFFul);
+}
+
+
+inline void
+BisulfiteFastRead::WordPair::shift(const BisulfiteFastRead::WordPair &other) {
+  upper = ((upper << 1) | static_cast<size_t>((other.upper & rmap_bits::high_bit) != 0));
+  lower = ((lower << 1) | static_cast<size_t>((other.lower & rmap_bits::high_bit) != 0));
+  bads  = ((bads << 1)  | static_cast<size_t>((other.bads  & rmap_bits::high_bit) != 0));
 }
 
 #endif

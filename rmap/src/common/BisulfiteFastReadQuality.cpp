@@ -60,13 +60,20 @@ BisulfiteFastReadQuality::Words::value_to_quality(size_t val) {
   return val/scaler;
 }
 
-BisulfiteFastReadQuality::Words::Words(const vector<vector<double> > &s) : 
+BisulfiteFastReadQuality::Words::Words(const vector<vector<double> > &s,
+				       bool AG_WILDCARD) : 
   a_vec(0), c_vec(0), g_vec(0), t_vec(0) {
   const vector<vector<double> >::const_iterator limit = s.end();
   for (vector<vector<double> >::const_iterator i(s.begin()); i != limit; ++i) {
     a_vec = ((a_vec << n_val_bits) + (quality_to_value((*i)[0])));
-    c_vec = ((c_vec << n_val_bits) + (std::min(quality_to_value((*i)[1]), quality_to_value((*i)[3]))));
-    g_vec = ((g_vec << n_val_bits) + (quality_to_value((*i)[2])));
+    if (AG_WILDCARD) {
+      c_vec = ((c_vec << n_val_bits) + (quality_to_value((*i)[1])));
+      g_vec = ((g_vec << n_val_bits) + (std::min(quality_to_value((*i)[2]), quality_to_value((*i)[0]))));
+    }
+    else {
+      c_vec = ((c_vec << n_val_bits) + (std::min(quality_to_value((*i)[1]), quality_to_value((*i)[3]))));
+      g_vec = ((g_vec << n_val_bits) + (quality_to_value((*i)[2])));
+    }
     t_vec = ((t_vec << n_val_bits) + (quality_to_value((*i)[3])));
   }
   if (s.size()*n_val_bits < rmap_bits::word_size) {

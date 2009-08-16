@@ -44,13 +44,20 @@ BisulfiteFastReadWC::Words::quality_to_value(double quality) {
   return quality > 0.995;
 }
 
-BisulfiteFastReadWC::Words::Words(const vector<vector<double> > &s) : 
+BisulfiteFastReadWC::Words::Words(const vector<vector<double> > &s,
+				  bool AG_WILDCARD) : 
   a_vec(0), c_vec(0), g_vec(0), t_vec(0) {
   const vector<vector<double> >::const_iterator limit = s.end();
   for (vector<vector<double> >::const_iterator i(s.begin()); i != limit; ++i) {
     a_vec = ((a_vec << 1) + (quality_to_value((*i)[0])));
-    c_vec = ((c_vec << 1) + (std::min(quality_to_value((*i)[1]), quality_to_value((*i)[3]))));
-    g_vec = ((g_vec << 1) + (quality_to_value((*i)[2])));
+    if (AG_WILDCARD) {
+      c_vec = ((c_vec << 1) + (quality_to_value((*i)[1])));
+      g_vec = ((g_vec << 1) + (std::min(quality_to_value((*i)[2]), quality_to_value((*i)[0]))));
+    }
+    else {
+      c_vec = ((c_vec << 1) + (std::min(quality_to_value((*i)[1]), quality_to_value((*i)[3]))));
+      g_vec = ((g_vec << 1) + (quality_to_value((*i)[2])));
+    }
     t_vec = ((t_vec << 1) + (quality_to_value((*i)[3])));
   }
   if (s.size() < rmap_bits::word_size) {

@@ -32,12 +32,14 @@
 
 class BisulfiteFastReadQuality {
 public:
-  BisulfiteFastReadQuality(const std::vector<std::vector<double> > &s);
+  BisulfiteFastReadQuality(const std::vector<std::vector<double> > &s,
+			   bool AG_WILDCARD = false);
   BisulfiteFastReadQuality() {words.resize(segments);}
   std::string tostring_values() const;
   std::string tostring_bits() const;
   std::string tostring() const {return tostring_values() + "\n" + tostring_bits();}
   size_t score(const BisulfiteFastReadQuality &other) const;
+  size_t score_ag(const BisulfiteFastReadQuality &other) const {return score(other);}
   void shift(const size_t i);
   static void set_read_width(const size_t rw);
   
@@ -134,6 +136,7 @@ BisulfiteFastReadQuality::shift(const size_t idx) {
   i->shift_last(idx);
 }
 
+
 inline size_t
 BisulfiteFastReadQuality::score(const BisulfiteFastReadQuality &other) const {
   size_t ss = 0;
@@ -144,6 +147,7 @@ BisulfiteFastReadQuality::score(const BisulfiteFastReadQuality &other) const {
     ss += i->score(*j, rmap_bits::all_ones);
   return ss + i->score(*j, score_mask);
 }
+
 
 inline size_t
 BisulfiteFastReadQuality::Words::score(const BisulfiteFastReadQuality::Words &other, const size_t score_mask) const {

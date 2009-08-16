@@ -32,11 +32,13 @@
 
 class BisulfiteFastReadWC {
 public:
-  BisulfiteFastReadWC(const std::vector<std::vector<double> > &s);
+  BisulfiteFastReadWC(const std::vector<std::vector<double> > &s,
+		      bool AG_WILDCARD = false);
   BisulfiteFastReadWC() {words.resize(segments + 1);}
   std::string tostring_bits() const;
   std::string tostring() const {return tostring_bits();}
   size_t score(const BisulfiteFastReadWC &other) const;
+  size_t score_ag(const BisulfiteFastReadWC &other) const {return score(other);}
   void shift(const size_t i);
   static void set_read_width(const size_t rw);
   
@@ -141,6 +143,7 @@ BisulfiteFastReadWC::score(const BisulfiteFastReadWC &other) const {
     ss += i->score(*j, rmap_bits::all_ones);
   return ss + i->score(*j, score_mask);
 }
+
 
 inline size_t
 BisulfiteFastReadWC::Words::score(const BisulfiteFastReadWC::Words &other, 
