@@ -45,6 +45,9 @@ public:
   last_seeds(const size_t read_width, const size_t n_seeds, 
 	     const size_t seed_weight, std::vector<size_t> &profs);
   static void
+  first_seeds(const size_t read_width, const size_t n_seeds, 
+	      const size_t seed_weight, std::vector<size_t> &profs);
+  static void
   last_two_seeds(const size_t read_width, const size_t n_seeds, 
 		 const size_t seed_weight, std::vector<size_t> &profs);
   static size_t make_read_word(const std::string &s);

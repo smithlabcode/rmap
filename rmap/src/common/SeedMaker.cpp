@@ -96,8 +96,19 @@ SeedMaker::first_last_seeds(const size_t read_width, const size_t n_seeds,
 void
 SeedMaker::last_seeds(const size_t read_width, const size_t n_seeds, 
 		      const size_t seed_weight, vector<size_t> &profs) {
-  const SeedMaker sm_last(read_width, n_seeds, seed_weight, 1, 1, read_width/seed_weight);
+  const SeedMaker sm_last(read_width, n_seeds, seed_weight, 1, 1, n_seeds);
   sm_last.get_seed_profiles(profs);
+}
+
+
+void
+SeedMaker::first_seeds(const size_t read_width, const size_t n_seeds, 
+		       const size_t seed_weight, vector<size_t> &profs) {
+  const size_t shift = 
+    std::ceil(static_cast<double>(read_width - seed_weight)/(n_seeds - 1));
+  const SeedMaker sm_first(read_width, n_seeds,  seed_weight, seed_weight,
+			   shift, read_width);
+  sm_first.get_seed_profiles(profs);
 }
 
 
