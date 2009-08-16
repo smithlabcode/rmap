@@ -40,15 +40,19 @@ public:
   std::string tostring_bits() const;
   std::string tostring() const {return tostring_bits();}
   std::string tostring_bases() const;
+
   size_t score(const FastReadWC &other) const;
   size_t score_tc(const FastReadWC &other) const {return score(other);}
   size_t score_ag(const FastReadWC &other) const {return score(other);}
   void shift(const size_t i);
   void bisulfite_treatment(bool AG_WILD = false);
+
   static void set_read_width(const size_t rw);
   
   static double value_to_quality(size_t val);
   static size_t quality_to_value(double val);
+  static void set_cutoff(double c) {cutoff = c;}
+  static double get_cutoff() {return cutoff;}
   
 private:
   struct Words {
@@ -96,6 +100,7 @@ private:
   static const size_t high_val_bits = 0x8000000000000000;
   static const size_t low_val_bits = 0x0000000000000001;
   static const size_t high_val_bits_to_low_val_bits_shift = 63;
+  static double cutoff;
   
 };
 

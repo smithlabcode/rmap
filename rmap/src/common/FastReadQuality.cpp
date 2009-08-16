@@ -36,6 +36,7 @@ size_t FastReadQuality::read_width = 0;
 size_t FastReadQuality::right_most_bit = 0;
 
 double FastReadQuality::scaler = 0;
+double FastReadQuality::cutoff = 0.99;
 
 ////////////////////////////////////////////////////////////////////////
 // WORD PAIR

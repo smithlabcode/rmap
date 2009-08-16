@@ -35,13 +35,14 @@ size_t FastReadWC::score_mask = 0;
 size_t FastReadWC::segments = 0;
 size_t FastReadWC::read_width = 0;
 size_t FastReadWC::right_most_bit = 0;
+double FastReadWC::cutoff = 0.995;
 
 ////////////////////////////////////////////////////////////////////////
 // WORD PAIR
 
 size_t
 FastReadWC::Words::quality_to_value(double quality) {
-  return quality > 0.995;
+  return quality > cutoff;
 }
 
 

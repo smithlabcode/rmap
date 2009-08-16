@@ -51,7 +51,8 @@ public:
   static size_t quality_to_value(double val);
 
   static double get_scaler() {return scaler;}
-  
+  static void set_cutoff(double c) {cutoff = c;}
+  static double get_cutoff() {return cutoff;}
   
 private:
   struct Words {
@@ -65,7 +66,7 @@ private:
     void bisulfite_treatment(bool AG_WILD = false);
 
     static size_t get_val(MASK_t mask, MASK_t base_vec, size_t pos);
-
+    
     size_t score(const Words &other, size_t mask) const;
     std::string tostring_values(size_t mask) const;
     std::string tostring_bits(size_t mask) const;
@@ -101,6 +102,7 @@ private:
   static const size_t high_val_bits = 0xF000000000000000;
   static const size_t low_val_bits = 0x000000000000000F;
   static const size_t high_val_bits_to_low_val_bits_shift = 60;
+  static double cutoff;
   
 };
 
