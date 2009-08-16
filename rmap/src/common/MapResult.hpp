@@ -39,6 +39,10 @@ struct MapResult {
   bool operator==(const MapResult& rhs) const {
     return site == rhs.site && chrom == rhs.chrom;
   }
+  std::string tostring() const {
+    return rmap::toa(site) + "\t" + rmap::toa(chrom) + "\t" \
+      + rmap::toa(strand);
+  }
 };
 
 inline void 
@@ -53,20 +57,20 @@ public:
   MultiMapResult(size_t scr) : score(scr) {}
   bool empty() const {return mr.empty();}
   void sort() {std::sort(mr.begin(), mr.end());}
-  void clear() {mr.clear();}
+  void clear() {std::vector<MapResult>().swap(mr);}
   void swap(MultiMapResult &rhs) {
     mr.swap(rhs.mr);
     std::swap(score, rhs.score);
   }
   void add(size_t scr, size_t chr, size_t ste, bool str) {
     if (scr < score) {
-      mr.clear();
+      std::vector<MapResult>(1, MapResult(ste, chr, str)).swap(mr);
       score = scr;
     }
     // The "<=" below is not because we want to keep one more than
     // "max_count" but because we need to be able to determine when we
     // have too many. Probably a better way to do this.
-    if (mr.size() <= twice_max_count)
+    else if (mr.size() <= twice_max_count)
       mr.push_back(MapResult(ste, chr, str));
   }
   size_t score;
