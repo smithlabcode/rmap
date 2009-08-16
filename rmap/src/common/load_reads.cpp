@@ -205,7 +205,7 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
     const double other_probs = 1.0 - error_prob/(rmap::alphabet_size - 1);
     scores.push_back(vector<double>(rmap::alphabet_size, other_probs));
     scores[i][base2int(read[i])] = error_prob;
-    bad_count += (error_prob > 0.5);
+    bad_count += (error_prob > FastReadWC::get_cutoff());
   }
   
   const bool good_read = (bad_count <= max_diffs);
@@ -292,7 +292,7 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
     const double other_probs = 1.0 - error_prob/(rmap::alphabet_size - 1);
     scores.push_back(vector<double>(rmap::alphabet_size, other_probs));
     scores[i][base2int(read[i])] = error_prob;
-    bad_count += (error_prob > 0.5);
+    bad_count += (error_prob > FastReadQuality::get_cutoff());
   }
   
   const bool good_read = (bad_count <= max_diffs);
@@ -386,7 +386,8 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
     for (size_t j = 0; j < rmap::alphabet_size; ++j)
       error_probs[i][j] = 
 	quality_score_to_error_probability(score_format, error_probs[i][j]);
-    bad_count += (*min_element(error_probs[i].begin(), error_probs[i].end()) > 0.995);
+    bad_count += (*min_element(error_probs[i].begin(), error_probs[i].end()) > 
+		  FastReadWC::get_cutoff());
   }
   
   const bool good_read = (bad_count <= max_diffs);
@@ -468,7 +469,8 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
     for (size_t j = 0; j < rmap::alphabet_size; ++j)
       error_probs[i][j] = 
 	quality_score_to_error_probability(score_format, error_probs[i][j]);
-    bad_count += (*min_element(error_probs[i].begin(), error_probs[i].end()) > 0.5);
+    bad_count += (*min_element(error_probs[i].begin(), error_probs[i].end()) > 
+		  FastReadQuality::get_cutoff());
   }
   
   const bool good_read = (bad_count <= max_diffs);
