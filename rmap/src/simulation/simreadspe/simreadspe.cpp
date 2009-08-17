@@ -40,6 +40,8 @@ using std::vector;
 using std::ofstream;
 using std::endl;
 using std::cerr;
+using std::ostream;
+using std::ofstream;
 
 using std::max;
 using std::min;
@@ -56,8 +58,56 @@ get_error_log(const string &seq, const string &called_seq,
 }
 
 
+
+
+
 static void
-simreads_pe(const Runif &rng,
+prb_to_fastq(const string &read,
+	     const vector<vector<double> > &prb,
+	     string &fastq) {
+  for (size_t i = 0; i < read.length(); ++i) {
+    const double score = *max_element(prb[i].begin(), prb[i].end());
+    fastq += solexa_to_quality_character(score + 5);
+  }
+}
+
+
+static void
+write_read_fastq(ostream &out, 
+		 const string &read,
+		 const string &read_name,
+		 const vector<vector<double> > &probs) {
+  string fastq;
+  prb_to_fastq(read, probs, fastq);
+  out << '@' << read_name << '\n'
+      << read << "\n+" << read_name << '\n'
+      << fastq << '\n';
+}
+  
+
+static void
+write_read_fasta(ostream &out, const string &read, const string &read_name) {
+  out << '>' << read_name << '\n' << read << '\n';
+}
+
+static void
+write_read_prb(ofstream &out, 
+	       const vector<vector<double> > &probs) {
+  for (size_t j = 0; j < probs.size(); ++j) {
+    if (j != 0) out << '\t';
+    out << probs[j].front();
+    for (size_t k = 1; k < probs[j].size(); ++k)
+      out << '\t' << probs[j][k];
+  }
+  out << '\n';
+}
+
+
+static void
+simreads_pe(const bool FASTQ_OUTPUT,
+	    const string &outfile,
+	    const string &prb_file,
+	    const Runif &rng,
 	    const size_t n_reads, const size_t read_width, 
 	    const size_t min_separation, 
 	    const size_t max_separation, 
@@ -66,6 +116,11 @@ simreads_pe(const Runif &rng,
 	    vector<string> &read_names, vector<string> &reads,
 	    vector<vector<vector<double> > > &probs) {
   
+  ostream *out = (outfile.empty()) ? &std::cout : 
+    new ofstream(outfile.c_str(), std::ios::app);
+  ofstream *prb = (prb_file.empty()) ? 0 : 
+    new ofstream(prb_file.c_str(), std::ios::app);
+
   const size_t lim = sequence.length() - max_separation - read_width + 1;
   
   for (size_t i = 0; i < n_reads; ++i) {
@@ -107,9 +162,9 @@ simreads_pe(const Runif &rng,
       for (size_t k = 0; k < matrix_left[j].size(); ++k)
 	matrix_left[j][k] = 
 	  round(error_probability_to_solexa(1.0 - matrix_left[j][k]));
-
+    
     size_t actual_mismatches_left = count(error_log_left.begin(), error_log_left.end(), '1');
-
+    
     // Do the right end
     vector<vector<double> > matrix_right;
     sequence_to_consensus_matrix(seq_right, matrix_right);
@@ -133,72 +188,74 @@ simreads_pe(const Runif &rng,
 			   error_log_left + "_" + toa(actual_mismatches_left) + "_" +
 			   error_log_right + "_" + toa(actual_mismatches_right));
     
-    // Push back what was sampled
-    reads.push_back(called_seq_left);
-    reads.back() += called_seq_right;
+    const string called_seq = called_seq_left + called_seq_right;
+    matrix_left.insert(matrix_left.end(),
+		       matrix_right.begin(), 
+		       matrix_right.end());
     
-    read_names.push_back(read_name);
-
-    probs.push_back(matrix_left);
-    probs.back().insert(probs.back().end(),
-			matrix_right.begin(), 
-			matrix_right.end());
+    if (FASTQ_OUTPUT)
+      write_read_fastq(*out, called_seq, read_name, matrix_left);
+    else {
+      if (prb != 0)
+	write_read_prb(*prb, matrix_left);
+      write_read_fasta(*out, called_seq, read_name);
+    }
   }
 }
 
 
-static void
-prb_to_fastq(const string &read,
-	     const vector<vector<double> > &prb,
-	     string &fastq) {
-  for (size_t i = 0; i < read.length(); ++i) {
-    const double score = *max_element(prb[i].begin(), prb[i].end());
-    fastq += solexa_to_quality_character(score + 5);
-  }
-}
+// static void
+// prb_to_fastq(const string &read,
+// 	     const vector<vector<double> > &prb,
+// 	     string &fastq) {
+//   for (size_t i = 0; i < read.length(); ++i) {
+//     const double score = *max_element(prb[i].begin(), prb[i].end());
+//     fastq += solexa_to_quality_character(score + 5);
+//   }
+// }
 
 
-static void
-write_reads_fastq(const string &outfile, 
-		  const vector<string> &reads,
-		  const vector<string> &read_names,
-		  const vector<vector<vector<double> > > &probs) {
-  ofstream out(outfile.c_str());
-  for (size_t i = 0; i < reads.size(); ++i) {
-    string fastq;
-    prb_to_fastq(reads[i], probs[i], fastq);
-    out << "@" << read_names[i] << endl
-	<< reads[i] << endl
-	<< "+" << read_names[i] << endl
-	<< fastq << endl;
-  }
-  out.close();
-}
+// static void
+// write_reads_fastq(const string &outfile, 
+// 		  const vector<string> &reads,
+// 		  const vector<string> &read_names,
+// 		  const vector<vector<vector<double> > > &probs) {
+//   ofstream out(outfile.c_str());
+//   for (size_t i = 0; i < reads.size(); ++i) {
+//     string fastq;
+//     prb_to_fastq(reads[i], probs[i], fastq);
+//     out << "@" << read_names[i] << endl
+// 	<< reads[i] << endl
+// 	<< "+" << read_names[i] << endl
+// 	<< fastq << endl;
+//   }
+//   out.close();
+// }
   
 
-static void
-write_reads_fasta(const string &outfile, 
-		  const vector<string> &reads,
-		  const vector<string> &read_names) {
-  ofstream out(outfile.c_str());
-  for (size_t i = 0; i < reads.size(); ++i)
-    out << ">" << read_names[i] << endl << reads[i] << endl;
-  out.close();
-}
+// static void
+// write_reads_fasta(const string &outfile, 
+// 		  const vector<string> &reads,
+// 		  const vector<string> &read_names) {
+//   ofstream out(outfile.c_str());
+//   for (size_t i = 0; i < reads.size(); ++i)
+//     out << ">" << read_names[i] << endl << reads[i] << endl;
+//   out.close();
+// }
 
 
-static void
-write_reads_prb(const string &prb_file, 
-		const vector<vector<vector<double> > > &probs) {
-  ofstream out(prb_file.c_str());
-  for (size_t i = 0; i < probs.size(); ++i) {
-    for (size_t j = 0; j < probs[i].size(); ++j)
-      copy(probs[i][j].begin(), probs[i][j].end(),
-	   ostream_iterator<double>(out, "\t"));
-    out << endl;
-  }
-  out.close();
-}
+// static void
+// write_reads_prb(const string &prb_file, 
+// 		const vector<vector<vector<double> > > &probs) {
+//   ofstream out(prb_file.c_str());
+//   for (size_t i = 0; i < probs.size(); ++i) {
+//     for (size_t j = 0; j < probs[i].size(); ++j)
+//       copy(probs[i][j].begin(), probs[i][j].end(),
+// 	   ostream_iterator<double>(out, "\t"));
+//     out << endl;
+//   }
+//   out.close();
+// }
 
 
 int
@@ -283,6 +340,12 @@ main(int argc, const char **argv) {
     for (size_t i = 0; i < filesizes.size(); ++i)
       samples.push_back(n_reads*filesizes[i]/total);
     
+    if (!outfile.empty())
+      ofstream out(outfile.c_str());
+
+    if (!prb_file.empty())
+      ofstream prb(prb_file.c_str());
+
     for (size_t i = 0; i < filenames.size(); ++i) {
       if (VERBOSE)
 	cerr << filenames[i] << endl;
@@ -293,18 +356,11 @@ main(int argc, const char **argv) {
       for (size_t j = 0; j < names.size(); ++j) {
 	const size_t offset = names[j].find(':');
 	const string name(names[j].substr(0, offset));
-	simreads_pe(rng, samples[i], read_width, 
+	simreads_pe(FASTQ_OUTPUT, outfile, prb_file,
+		    rng, samples[i], read_width, 
 		    min_separation, max_separation, max_errors, 
 		    name, sequences[j], read_names, reads, probs);
       }
-    }
-    
-    if (FASTQ_OUTPUT)
-      write_reads_fastq(outfile, reads, read_names, probs);
-    else {
-      if (!prb_file.empty())
-	write_reads_prb(prb_file, probs);
-      write_reads_fasta(outfile, reads, read_names);
     }
   }      
   catch (std::bad_alloc &ba) {

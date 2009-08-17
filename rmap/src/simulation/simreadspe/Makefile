@@ -59,6 +59,8 @@ install: all
 $(PROGS): $(addprefix $(COMMON_DIR), sim_utils.o GenomicRegion.o \
 	RNG.o rmap_os.o rmap_utils.o OptionParser.o QualityScore.o)
 
+simreadsbspe: $(addprefix $(COMMON_DIR), bisulfite_utils.o)
+
 %: %.cpp
 	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR) -L$(LIBDIR) $(LIBS)
 
