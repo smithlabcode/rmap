@@ -63,6 +63,7 @@ operator<<(std::ostream &os, const MapResultPE &mrp) {
 }
 
 struct MultiMapResultPE {
+  MultiMapResultPE() :score(std::numeric_limits<size_t>::max()) {}
   MultiMapResultPE(size_t scr) : score(scr) {}
   bool empty() const {return mr.empty();}
   void sort() {std::sort(mr.begin(), mr.end());}
@@ -128,6 +129,7 @@ MapResult::set(size_t ste, size_t chr, bool str) {
 
 class MultiMapResult {
 public:
+  MultiMapResult() : score(std::numeric_limits<size_t>::max()) {}
   MultiMapResult(size_t scr) : score(scr) {}
   bool empty() const {return mr.empty();}
   void sort() {std::sort(mr.begin(), mr.end());}
@@ -137,7 +139,7 @@ public:
     std::swap(score, rhs.score);
   }
   void add(size_t scr, size_t chr, size_t ste, bool str) {
-    if (mr.size() <= twice_max_count)
+    if (mr.size() <= max_count)
       mr.push_back(MapResult(ste, chr, str));
     else if (scr < score)
       mr.back() = MapResult(ste, chr, str);
@@ -151,14 +153,11 @@ public:
     mr.erase(std::unique(mr.begin(), mr.end()), mr.end());
   }
   static size_t max_count;
-  static size_t twice_max_count;
   static void init(const size_t mc) {
     max_count = mc;
-    twice_max_count = 2*mc;
   }
 };
 
 size_t MultiMapResult::max_count;
-size_t MultiMapResult::twice_max_count;
 
 #endif
