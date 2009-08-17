@@ -49,7 +49,8 @@ private:
   struct Words {
   public:
     Words() : a_vec(0), c_vec(0), g_vec(0), t_vec(0) {}
-    Words(const std::vector<std::vector<double> > &s);
+    Words(const std::vector<std::vector<double> > &s,
+	  bool AG_WILDCARD);
     Words(std::string::const_iterator i, const std::string::const_iterator limit);
     char get_char(size_t mask, size_t pos) const;
     void shift_last(const size_t i);

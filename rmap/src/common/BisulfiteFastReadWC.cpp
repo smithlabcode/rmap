@@ -130,15 +130,16 @@ BisulfiteFastReadWC::set_read_width(const size_t rw) {
 }
 
 
-BisulfiteFastReadWC::BisulfiteFastReadWC(const vector<vector<double> > &s) {
+BisulfiteFastReadWC::BisulfiteFastReadWC(const vector<vector<double> > &s,
+					 bool AG_WILDCARD) {
   words.resize(segments + 1);
   for (size_t i = 0; i < segments; ++i) {
     const vector<vector<double> > 
       this_seg(s.begin() + i*segment_size, s.begin() + (i + 1)*segment_size);
-    words[i] = Words(this_seg);
+    words[i] = Words(this_seg, AG_WILDCARD);
   }
   const vector<vector<double> > this_seg(s.begin() + segments*segment_size, s.end());
-  words.back() = Words(this_seg);
+  words.back() = Words(this_seg, AG_WILDCARD);
 }
 
 
