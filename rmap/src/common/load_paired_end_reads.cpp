@@ -542,7 +542,7 @@ check_and_add(const FASTQScoreType score_format, const size_t max_diffs,
     matrix_revcomp(error_probs.begin() + half_width,
 		   error_probs.begin() + half_width + read_width);
     fast_reads_right.push_back(FastReadQuality(error_probs.begin() + half_width,
-					  error_probs.begin() + half_width + read_width));
+					       error_probs.begin() + half_width + read_width));
     string read;
     for (size_t i = 0; i < error_probs.size(); ++i)
       read += int2base(min_element(error_probs[i].begin(), 
@@ -607,14 +607,14 @@ get_read_word_cheat(const string &read) {
 
 static void
 check_and_add_cheat(string &read, const int max_diffs,
-	      size_t &read_width, 
-	      vector<FastRead> &fast_reads_left,
-	      vector<FastRead> &fast_reads_right,
-	      vector<size_t> &read_words_l, 
-	      vector<size_t> &read_words_r, 
-	      vector<size_t> &read_index_l, 
-	      vector<size_t> &read_index_r, 
-	      size_t &read_count) {
+		    size_t &read_width, 
+		    vector<FastRead> &fast_reads_left,
+		    vector<FastRead> &fast_reads_right,
+		    vector<size_t> &read_words_l, 
+		    vector<size_t> &read_words_r, 
+		    vector<size_t> &read_index_l, 
+		    vector<size_t> &read_index_r, 
+		    size_t &read_count) {
   const size_t half_width = read.length()/2;
   if (read_width == 0) {
     if (half_width*2 != read.length())
@@ -636,11 +636,11 @@ check_and_add_cheat(string &read, const int max_diffs,
     const string right_read(read.begin() + half_width,
 			    read.begin() + half_width + read_width);
     fast_reads_right.push_back(FastRead(right_read));
-    read_words_r.push_back(get_read_word(right_read));
+    read_words_r.push_back(get_read_word_cheat(right_read));
     read_index_r.push_back(read_count);
     const string left_read(read.begin(), read.begin() + read_width);
     fast_reads_left.push_back(FastRead(left_read));
-    read_words_l.push_back(get_read_word(left_read));
+    read_words_l.push_back(get_read_word_cheat(left_read));
     read_index_l.push_back(read_count);
   }
   ++read_count;
@@ -649,13 +649,13 @@ check_and_add_cheat(string &read, const int max_diffs,
 
 void
 load_reads_from_fasta_file_cheat(const string &filename, const size_t max_diffs,
-			   size_t &read_width, 
-			   vector<FastRead> &fast_reads_left,
-			   vector<FastRead> &fast_reads_right,
-			   vector<size_t> &read_words_l, 
-			   vector<size_t> &read_words_r, 
-			   vector<size_t> &read_index_l,
-			   vector<size_t> &read_index_r) {
+				 size_t &read_width, 
+				 vector<FastRead> &fast_reads_left,
+				 vector<FastRead> &fast_reads_right,
+				 vector<size_t> &read_words_l, 
+				 vector<size_t> &read_words_r, 
+				 vector<size_t> &read_index_l,
+				 vector<size_t> &read_index_r) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in) throw RMAPException("cannot open input file " + filename);
   
@@ -673,8 +673,8 @@ load_reads_from_fasta_file_cheat(const string &filename, const size_t max_diffs,
       if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
       if (buffer[0] != '>') {
 	string read(buffer);
-	check_and_add(read, max_diffs, read_width, fast_reads_left, fast_reads_right,
-		      read_words_l, read_words_r, read_index_l, read_index_r, read_count);
+	check_and_add_cheat(read, max_diffs, read_width, fast_reads_left, fast_reads_right,
+			    read_words_l, read_words_r, read_index_l, read_index_r, read_count);
       }
     }
     in.peek();
@@ -710,14 +710,14 @@ load_reads_from_fasta_file_cheat(const string &filename, const size_t max_diffs,
 
 void
 load_reads_from_fastq_file_cheat(const string &filename, const size_t max_diffs,
-			   size_t &read_width, 
-			   vector<FastRead> &fast_reads_left,
-			   vector<FastRead> &fast_reads_right,
-			   vector<size_t> &read_words_l, 
-			   vector<size_t> &read_words_r, 
-			   vector<size_t> &read_index_l,
-			   vector<size_t> &read_index_r
-			   ) {
+				 size_t &read_width, 
+				 vector<FastRead> &fast_reads_left,
+				 vector<FastRead> &fast_reads_right,
+				 vector<size_t> &read_words_l, 
+				 vector<size_t> &read_words_r, 
+				 vector<size_t> &read_index_l,
+				 vector<size_t> &read_index_r
+				 ) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in) throw RMAPException("cannot open input file " + filename);
   char buffer[INPUT_BUFFER_SIZE + 1];
@@ -738,8 +738,8 @@ load_reads_from_fastq_file_cheat(const string &filename, const size_t max_diffs,
       //     throw RMAPException("invalid FASTQ name line: " + string(buffer));
       if (is_fastq_sequence_line(line_count)) {
 	string read(buffer);
-	check_and_add(read, max_diffs, read_width, fast_reads_left, fast_reads_right, 
-		      read_words_l, read_words_r, read_index_l, read_index_r, read_count);
+	check_and_add_cheat(read, max_diffs, read_width, fast_reads_left, fast_reads_right, 
+			    read_words_l, read_words_r, read_index_l, read_index_r, read_count);
       }
       //  if (is_fastq_score_name_line(line_count))
       //    if (buffer[0] != '+')
@@ -764,14 +764,14 @@ load_reads_from_fastq_file_cheat(const string &filename, const size_t max_diffs,
 
 static void
 check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
-	      const string &score_line, string &read, size_t &read_width, 
-	      vector<FastReadWC> &fast_reads_left, 
-	      vector<FastReadWC> &fast_reads_right, 
-	      vector<size_t> &read_words_l, 
-	      vector<size_t> &read_words_r, 
-	      vector<size_t> &read_index_l, 
-	      vector<size_t> &read_index_r, 
-	      size_t &read_count) {
+		    const string &score_line, string &read, size_t &read_width, 
+		    vector<FastReadWC> &fast_reads_left, 
+		    vector<FastReadWC> &fast_reads_right, 
+		    vector<size_t> &read_words_l, 
+		    vector<size_t> &read_words_r, 
+		    vector<size_t> &read_index_l, 
+		    vector<size_t> &read_index_r, 
+		    size_t &read_count) {
   
   const size_t half_width = read.length()/2;
   if (read_width == 0) {
@@ -803,12 +803,12 @@ check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
 					  scores.begin() + half_width + read_width));
     const string right_read(read.begin() + half_width,
 			    read.begin() + half_width + read_width);
-    read_words_r.push_back(get_read_word(right_read));
+    read_words_r.push_back(get_read_word_cheat(right_read));
     read_index_r.push_back(read_count);
 
     fast_reads_left.push_back(FastReadWC(scores.begin(), scores.begin() + read_width));
     const string left_read(read.begin(), read.begin() + read_width);
-    read_words_l.push_back(get_read_word(left_read));
+    read_words_l.push_back(get_read_word_cheat(left_read));
     read_index_l.push_back(read_count);
   }
   ++read_count;
@@ -816,13 +816,13 @@ check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
 
 void
 load_reads_from_fastq_file_cheat(const string &filename, const size_t max_diffs,
-			   size_t &read_width, 
-			   vector<FastReadWC> &fast_reads_left,
-			   vector<FastReadWC> &fast_reads_right,
-			   vector<size_t> &read_words_l, 
-			   vector<size_t> &read_words_r, 
-			   vector<size_t> &read_index_l,
-			   vector<size_t> &read_index_r) {
+				 size_t &read_width, 
+				 vector<FastReadWC> &fast_reads_left,
+				 vector<FastReadWC> &fast_reads_right,
+				 vector<size_t> &read_words_l, 
+				 vector<size_t> &read_words_r, 
+				 vector<size_t> &read_index_l,
+				 vector<size_t> &read_index_r) {
   
   FASTQScoreType score_format = fastq_score_type(filename);
   
@@ -853,9 +853,9 @@ load_reads_from_fastq_file_cheat(const string &filename, const size_t max_diffs,
       // 	  throw RMAPException("invalid FASTQ score name line: " + string(buffer));
       if (is_fastq_score_line(line_count)) {
 	const string score_line(buffer);
-	check_and_add(score_format, max_diffs, score_line, sequence, read_width, 
-		      fast_reads_left, fast_reads_right, read_words_l, read_words_r, 
-		      read_index_l, read_index_r, read_count);
+	check_and_add_cheat(score_format, max_diffs, score_line, sequence, read_width, 
+			    fast_reads_left, fast_reads_right, read_words_l, read_words_r, 
+			    read_index_l, read_index_r, read_count);
       }
       ++line_count;
     }
@@ -868,14 +868,14 @@ load_reads_from_fastq_file_cheat(const string &filename, const size_t max_diffs,
 
 static void
 check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
-	      const string &score_line, string &read, size_t &read_width, 
-	      vector<FastReadQuality> &fast_reads_left, 
-	      vector<FastReadQuality> &fast_reads_right, 
-	      vector<size_t> &read_words_l, 
-	      vector<size_t> &read_words_r, 
-	      vector<size_t> &read_index_l, 
-	      vector<size_t> &read_index_r, 
-	      size_t &read_count) {
+		    const string &score_line, string &read, size_t &read_width, 
+		    vector<FastReadQuality> &fast_reads_left, 
+		    vector<FastReadQuality> &fast_reads_right, 
+		    vector<size_t> &read_words_l, 
+		    vector<size_t> &read_words_r, 
+		    vector<size_t> &read_index_l, 
+		    vector<size_t> &read_index_r, 
+		    size_t &read_count) {
   
   const size_t half_width = read.length()/2;
   if (read_width == 0) {
@@ -905,15 +905,15 @@ check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
   
   if (good_read) {
     fast_reads_right.push_back(FastReadQuality(scores.begin() + half_width,
-					  scores.begin() + half_width + read_width));
+					       scores.begin() + half_width + read_width));
     const string right_read(read.begin() + half_width,
 			    read.begin() + half_width + read_width);
-    read_words_r.push_back(get_read_word(right_read));
+    read_words_r.push_back(get_read_word_cheat(right_read));
     read_index_r.push_back(read_count);
 
     fast_reads_left.push_back(FastReadQuality(scores.begin(), scores.begin() + read_width));
     const string left_read(read.begin(), read.begin() + read_width);
-    read_words_l.push_back(get_read_word(left_read));
+    read_words_l.push_back(get_read_word_cheat(left_read));
     read_index_l.push_back(read_count);
   }
   ++read_count;
@@ -922,13 +922,13 @@ check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
 
 void
 load_reads_from_fastq_file_cheat(const string &filename, const size_t max_diffs,
-			   size_t &read_width, 
-			   vector<FastReadQuality> &fast_reads_left,
-			   vector<FastReadQuality> &fast_reads_right,
-			   vector<size_t> &read_words_l, 
-			   vector<size_t> &read_words_r, 
-			   vector<size_t> &read_index_l,
-			   vector<size_t> &read_index_r) {
+				 size_t &read_width, 
+				 vector<FastReadQuality> &fast_reads_left,
+				 vector<FastReadQuality> &fast_reads_right,
+				 vector<size_t> &read_words_l, 
+				 vector<size_t> &read_words_r, 
+				 vector<size_t> &read_index_l,
+				 vector<size_t> &read_index_r) {
   FASTQScoreType score_format = fastq_score_type(filename);
 
   std::ifstream in(filename.c_str(), std::ios::binary);
@@ -956,10 +956,10 @@ load_reads_from_fastq_file_cheat(const string &filename, const size_t max_diffs,
       // 	;
       if (is_fastq_score_line(line_count)) {
 	const string score_line(buffer);
-	check_and_add(score_format, max_diffs, score_line, sequence, 
-		      read_width, fast_reads_left, fast_reads_right,
-		      read_words_l, read_words_r, 
-		      read_index_l, read_index_r, read_count);
+	check_and_add_cheat(score_format, max_diffs, score_line, sequence, 
+			    read_width, fast_reads_left, fast_reads_right,
+			    read_words_l, read_words_r, 
+			    read_index_l, read_index_r, read_count);
       }
       ++line_count;
     }
@@ -975,14 +975,14 @@ load_reads_from_fastq_file_cheat(const string &filename, const size_t max_diffs,
 
 static void
 check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
-	      const string &score_line, size_t &read_width, 
-	      vector<FastReadWC> &fast_reads_left, 
-	      vector<FastReadWC> &fast_reads_right, 
-	      vector<size_t> &read_words_l, 
-	      vector<size_t> &read_words_r, 
-	      vector<size_t> &read_index_l, 
-	      vector<size_t> &read_index_r, 
-	      size_t &read_count) {
+		    const string &score_line, size_t &read_width, 
+		    vector<FastReadWC> &fast_reads_left, 
+		    vector<FastReadWC> &fast_reads_right, 
+		    vector<size_t> &read_words_l, 
+		    vector<size_t> &read_words_r, 
+		    vector<size_t> &read_index_l, 
+		    vector<size_t> &read_index_r, 
+		    size_t &read_count) {
   
   // parse the score line
   vector<string> parts;
@@ -1028,28 +1028,28 @@ check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
 					  error_probs.begin() + half_width + read_width));
     const string right_read(read.begin() + half_width,
 			    read.begin() + half_width + read_width);
-    read_words_r.push_back(get_read_word(right_read));
+    read_words_r.push_back(get_read_word_cheat(right_read));
     read_index_r.push_back(read_count);
     
     fast_reads_left.push_back(FastReadWC(error_probs.begin(), error_probs.begin() + read_width));
     const string left_read(read.begin(), read.begin() + read_width);
-    read_words_l.push_back(get_read_word(left_read));
+    read_words_l.push_back(get_read_word_cheat(left_read));
     read_index_l.push_back(read_count);
     
-//     fast_reads_left.push_back(FastReadWC(error_probs.begin(), error_probs.begin() + read_width));
-//     matrix_revcomp(error_probs.begin() + half_width,
-// 		   error_probs.begin() + half_width + read_width);
-//     fast_reads_right.push_back(FastReadWC(error_probs.begin() + half_width,
-// 					  error_probs.begin() + half_width + read_width));
-//     string read;
-//     for (size_t i = 0; i < error_probs.size(); ++i)
-//       read += int2base(min_element(error_probs[i].begin(), 
-// 				   error_probs[i].end()) - error_probs[i].begin());
-//     string right_read_already_rc(read.begin() + half_width,
-// 				 read.begin() + half_width + read_width);
-//     //  NO NEED TO REVCOMP AGAIN!! revcomp_inplace(right_read);
-//     read_words.push_back(get_read_word(right_read_already_rc));
-//     read_index.push_back(read_count);
+    //     fast_reads_left.push_back(FastReadWC(error_probs.begin(), error_probs.begin() + read_width));
+    //     matrix_revcomp(error_probs.begin() + half_width,
+    // 		   error_probs.begin() + half_width + read_width);
+    //     fast_reads_right.push_back(FastReadWC(error_probs.begin() + half_width,
+    // 					  error_probs.begin() + half_width + read_width));
+    //     string read;
+    //     for (size_t i = 0; i < error_probs.size(); ++i)
+    //       read += int2base(min_element(error_probs[i].begin(), 
+    // 				   error_probs[i].end()) - error_probs[i].begin());
+    //     string right_read_already_rc(read.begin() + half_width,
+    // 				 read.begin() + half_width + read_width);
+    //     //  NO NEED TO REVCOMP AGAIN!! revcomp_inplace(right_read);
+    //     read_words.push_back(get_read_word_cheat(right_read_already_rc));
+    //     read_index.push_back(read_count);
   }
   ++read_count;
 }
@@ -1057,13 +1057,13 @@ check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
 
 void
 load_reads_from_prb_file_cheat(const string &filename, const size_t max_diffs,
-			 size_t &read_width, 
-			 vector<FastReadWC> &fast_reads_left,
-			 vector<FastReadWC> &fast_reads_right,
-			 vector<size_t> &read_words_l, 
-			 vector<size_t> &read_words_r, 
-			 vector<size_t> &read_index_l,
-			 vector<size_t> &read_index_r) {
+			       size_t &read_width, 
+			       vector<FastReadWC> &fast_reads_left,
+			       vector<FastReadWC> &fast_reads_right,
+			       vector<size_t> &read_words_l, 
+			       vector<size_t> &read_words_r, 
+			       vector<size_t> &read_index_l,
+			       vector<size_t> &read_index_r) {
   
   FASTQScoreType score_format = FASTQ_Solexa;
 
@@ -1082,9 +1082,9 @@ load_reads_from_prb_file_cheat(const string &filename, const size_t max_diffs,
       const size_t last_pos = in.gcount() - 2;//strlen(buffer) - 1;
       if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
       const string score_line(buffer);
-      check_and_add(score_format, max_diffs, score_line, read_width, 
-		    fast_reads_left, fast_reads_right, 
-		    read_words_l, read_words_r, read_index_l, read_index_r, read_count);
+      check_and_add_cheat(score_format, max_diffs, score_line, read_width, 
+			  fast_reads_left, fast_reads_right, 
+			  read_words_l, read_words_r, read_index_l, read_index_r, read_count);
     }
     in.peek();
   }
@@ -1095,14 +1095,14 @@ load_reads_from_prb_file_cheat(const string &filename, const size_t max_diffs,
  
 static void
 check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
-	      const string &score_line, size_t &read_width, 
-	      vector<FastReadQuality> &fast_reads_left, 
-	      vector<FastReadQuality> &fast_reads_right, 
-	      vector<size_t> &read_words_l, 
-	      vector<size_t> &read_words_r, 
-	      vector<size_t> &read_index_l, 
-	      vector<size_t> &read_index_r, 
-	      size_t &read_count) {
+		    const string &score_line, size_t &read_width, 
+		    vector<FastReadQuality> &fast_reads_left, 
+		    vector<FastReadQuality> &fast_reads_right, 
+		    vector<size_t> &read_words_l, 
+		    vector<size_t> &read_words_r, 
+		    vector<size_t> &read_index_l, 
+		    vector<size_t> &read_index_r, 
+		    size_t &read_count) {
   
   // parse the score line
   vector<string> parts;
@@ -1151,8 +1151,8 @@ check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
 		      read.begin() + half_width + read_width);
     string right_left(read.begin(), read.begin() + read_width);
     //  NO NEED TO REVCOMP AGAIN!! revcomp_inplace(right_read);
-    read_words_r.push_back(get_read_word(right_read));
-    read_words_l.push_back(get_read_word(right_left));
+    read_words_r.push_back(get_read_word_cheat(right_read));
+    read_words_l.push_back(get_read_word_cheat(right_left));
     read_index_r.push_back(read_count);
     read_index_l.push_back(read_count);
   }
@@ -1162,13 +1162,13 @@ check_and_add_cheat(const FASTQScoreType score_format, const size_t max_diffs,
 
 void
 load_reads_from_prb_file_cheat(const string &filename, const size_t max_diffs,
-			 size_t &read_width, 
-			 vector<FastReadQuality> &fast_reads_left,
-			 vector<FastReadQuality> &fast_reads_right,
-			 vector<size_t> &read_words_l, 
-			 vector<size_t> &read_words_r, 
-			 vector<size_t> &read_index_l,
-			 vector<size_t> &read_index_r) {
+			       size_t &read_width, 
+			       vector<FastReadQuality> &fast_reads_left,
+			       vector<FastReadQuality> &fast_reads_right,
+			       vector<size_t> &read_words_l, 
+			       vector<size_t> &read_words_r, 
+			       vector<size_t> &read_index_l,
+			       vector<size_t> &read_index_r) {
   FASTQScoreType score_format = FASTQ_Solexa;
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in) throw RMAPException("cannot open input file " + filename);
@@ -1185,9 +1185,9 @@ load_reads_from_prb_file_cheat(const string &filename, const size_t max_diffs,
       const size_t last_pos = in.gcount() - 2;//strlen(buffer) - 1;
       if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
       const string score_line(buffer);
-      check_and_add(score_format, max_diffs, score_line, read_width, 
-		    fast_reads_left, fast_reads_right,
-		    read_words_l, read_words_r, read_index_l, read_index_r, read_count);
+      check_and_add_cheat(score_format, max_diffs, score_line, read_width, 
+			  fast_reads_left, fast_reads_right,
+			  read_words_l, read_words_r, read_index_l, read_index_r, read_count);
     }
     in.peek();
   }
