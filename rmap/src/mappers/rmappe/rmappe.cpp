@@ -34,7 +34,6 @@
 #include "MapResultPE.hpp"
 #include "OptionParser.hpp"
 #include "load_paired_end_reads.hpp"
-#include "load_paired_end_reads_cheat.hpp"
 
 using std::tr1::unordered_multimap;
 
@@ -808,30 +807,30 @@ load_reads_cheat(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_M
   vector<string> reads;
   if (INPUT_MODE == FASTQ_FILE) {
     if (RUN_MODE == RUN_MODE_WILDCARD)
-      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
-				 fast_reads_wc_left, fast_reads_wc_right, 
-				 read_words_l, read_words_r, read_index_l, read_index_r);
+      load_reads_from_fastq_file_cheat(reads_file, max_mismatches, read_width,
+				       fast_reads_wc_left, fast_reads_wc_right, 
+				       read_words_l, read_words_r, read_index_l, read_index_r);
     else if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
-      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
-				 fast_reads_q_left, fast_reads_q_right, 
-				 read_words_l, read_words_r, read_index_l, read_index_r);
+      load_reads_from_fastq_file_cheat(reads_file, max_mismatches, read_width,
+				       fast_reads_q_left, fast_reads_q_right, 
+				       read_words_l, read_words_r, read_index_l, read_index_r);
     else
-      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
-				 fast_reads_left, fast_reads_right, 
-				 read_words_l, read_words_r, read_index_l, read_index_r);
+      load_reads_from_fastq_file_cheat(reads_file, max_mismatches, read_width,
+				       fast_reads_left, fast_reads_right, 
+				       read_words_l, read_words_r, read_index_l, read_index_r);
   }
   else if (INPUT_MODE == FASTA_AND_PRB) {
     if (RUN_MODE == RUN_MODE_WILDCARD)
-      load_reads_from_prb_file(prb_file, max_mismatches, read_width,
-			       fast_reads_wc_left, fast_reads_wc_right,
-			       read_words_l, read_words_r, read_index_l, read_index_r);
-    else load_reads_from_prb_file(prb_file, max_mismatches, read_width,
-				  fast_reads_q_left, fast_reads_q_right, 
-				  read_words_l, read_words_r, read_index_l, read_index_r);
+      load_reads_from_prb_file_cheat(prb_file, max_mismatches, read_width,
+				     fast_reads_wc_left, fast_reads_wc_right,
+				     read_words_l, read_words_r, read_index_l, read_index_r);
+    else load_reads_from_prb_file_cheat(prb_file, max_mismatches, read_width,
+					fast_reads_q_left, fast_reads_q_right, 
+					read_words_l, read_words_r, read_index_l, read_index_r);
   }
-  else load_reads_from_fasta_file(reads_file, max_mismatches, read_width,
-				  fast_reads_left, fast_reads_right, 
-				  read_words_l, read_words_r, read_index_l, read_index_r);
+  else load_reads_from_fasta_file_cheat(reads_file, max_mismatches, read_width,
+					fast_reads_left, fast_reads_right, 
+					read_words_l, read_words_r, read_index_l, read_index_r);
   if (VERBOSE)
     cerr << "[DONE]" << endl
 	 << "TOTAL HQ READS: " << read_index_l.size() << endl;
