@@ -559,7 +559,7 @@ iterate_over_seeds_cheat(const bool VERBOSE, const vector<size_t> &the_seeds,
 ////
 ////
 static void
-sites_to_regions(const bool VERBOSE, const bool RUN_MODE, const string outfile, 
+sites_to_regions(const bool VERBOSE, const size_t RUN_MODE, const string outfile, 
 		 const size_t read_len, const size_t max_mappings,
 		 const vector<string> &chrom, const vector<size_t> &chrom_sizes, 
  		 const vector<size_t> &read_index, vector<string> &read_names, 
