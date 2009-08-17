@@ -64,7 +64,8 @@ public:
   }
   void add(size_t scr, size_t chr, size_t ste, bool str) {
     if (scr < score) {
-      std::vector<MapResult>(1, MapResult(ste, chr, str)).swap(mr);
+      mr.resize(0);
+      mr.push_back(MapResult(ste, chr, str));
       score = scr;
     }
     // The "<=" below is not because we want to keep one more than
