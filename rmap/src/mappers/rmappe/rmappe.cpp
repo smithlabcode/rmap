@@ -416,7 +416,7 @@ get_best_map(MultiMapResult &a, MultiMapResult &b,
       if (i == 0 || a.mr[i - 1] < a.mr[i]) {
 	const size_t chrom_a = a.mr[i].chrom;
 	const size_t left_start = 
-	  a.mr[i].strand ? a.mr[i].site : 
+ 	  a.mr[i].strand ? a.mr[i].site : 
 	  chrom_sizes[chrom_a] - a.mr[i].site - read_len;
 	for (size_t j = 0; j < b.mr.size(); ++j)
 	  if (j == 0 || b.mr[j - 1] < b.mr[j]) {
@@ -559,7 +559,8 @@ iterate_over_seeds_cheat(const bool VERBOSE, const vector<size_t> &the_seeds,
 ////
 ////
 static void
-sites_to_regions(const bool VERBOSE, const size_t RUN_MODE, const string outfile, 
+sites_to_regions(const bool VERBOSE, const size_t RUN_MODE, 
+		 const bool ACCURATE, const string outfile, 
 		 const size_t read_len, const size_t max_mappings,
 		 const vector<string> &chrom, const vector<size_t> &chrom_sizes, 
  		 const vector<size_t> &read_index, vector<string> &read_names, 
@@ -582,10 +583,12 @@ sites_to_regions(const bool VERBOSE, const size_t RUN_MODE, const string outfile
 	  if (j == 0 || bests[i].mr[j - 1] < bests[i].mr[j]) {
 	    const size_t chrom_id = bests[i].mr[j].chrom;
 	    const size_t left_start = 
-	      bests[i].mr[j].strand ? bests[i].mr[j].site : 
+  	      (!ACCURATE || bests[i].mr[j].strand) ? 
+	      bests[i].mr[j].site : 
 	      chrom_sizes[chrom_id] - bests[i].mr[j].site2 - read_len;
 	    const size_t right_start = 
-	      bests[i].mr[j].strand ? bests[i].mr[j].site2 :
+ 	      (!ACCURATE || bests[i].mr[j].strand) ? 
+	      bests[i].mr[j].site2 :
 	      chrom_sizes[chrom_id] - bests[i].mr[j].site - read_len;
 	    const double score = (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ?
 	      FastReadQuality::value_to_quality(bests[i].score) :
@@ -1085,7 +1088,7 @@ main(int argc, const char **argv) {
 	chrom_names[i].erase(chr_name_end);
     }
     
-    sites_to_regions(VERBOSE, RUN_MODE, outfile,
+    sites_to_regions(VERBOSE, RUN_MODE, ACCURATE, outfile,
 		     read_width, max_mappings, chrom_names, 
 		     chrom_sizes, read_index, read_names, best_maps);
   }
