@@ -122,7 +122,7 @@ build_seed_hash(const SeedHashSorter &sh_sorter, const vector<T> &fast_reads,
 		typename SeedHash<T>::type &seed_hash) {
   typename vector<T>::const_iterator frb(fast_reads.begin());
   size_t prev_key = 0, prev_idx = 0, curr_idx = 0;
-  typename SeedHash<T>::type().swap(seed_hash);
+  seed_hash.clear();
   for (SeedHashSorter::const_iterator shs(sh_sorter.begin()); 
        shs != sh_sorter.end(); ++shs) {
     curr_idx = shs->second;
