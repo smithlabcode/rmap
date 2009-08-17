@@ -78,6 +78,40 @@ check_and_add(string &read, const int max_diffs,
   ++read_count;
 }
 
+// void
+// load_reads_from_fasta_file(const string &filename, const size_t max_diffs,
+// 			   size_t &read_width, vector<FastRead> &fast_reads,
+// 			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
+//   std::ifstream in(filename.c_str(), std::ios::binary);
+//   if (!in) throw RMAPException("cannot open input file " + filename);
+  
+//   char buffer[INPUT_BUFFER_SIZE + 1];
+  
+//   size_t read_count = 0, line_count = 0;
+//   while (!in.eof()) {
+//     in.getline(buffer, INPUT_BUFFER_SIZE);
+//     if (in.gcount() > 1) {
+//       if (in.gcount() == INPUT_BUFFER_SIZE)
+// 	throw RMAPException("Line in " + filename + "\nexceeds max length: " +
+// 			    toa(INPUT_BUFFER_SIZE));
+//       // correct for dos carriage returns before newlines
+//       const size_t last_pos = in.gcount() - 2;//strlen(buffer) - 1;
+//       if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
+//       if (buffer[0] != '>') {
+// 	if ((line_count & 1ul) == 0)
+// 	  throw RMAPException("empty/multi-line reads or bad FASTA header");
+// 	string read(buffer);
+// 	check_and_add(read, max_diffs, read_width, fast_reads, 
+// 		      read_words, read_index, read_count);
+//       }
+//     }
+//     ++line_count;
+//     in.peek();
+//   }
+//   if (fast_reads.empty())
+//     throw RMAPException("no high-quality reads in file:\"" + filename + "\"");
+// }
+
 
 void
 load_reads_from_fasta_file(const string &filename, const size_t max_diffs,
@@ -86,28 +120,36 @@ load_reads_from_fasta_file(const string &filename, const size_t max_diffs,
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in) throw RMAPException("cannot open input file " + filename);
   
-  char buffer[INPUT_BUFFER_SIZE + 1];
-  
   size_t read_count = 0, line_count = 0;
+  
+  static const size_t buffer_size = 100000000;
+  vector<char> buffer(buffer_size + 1, '\0');
+  size_t in_size = buffer_size;
   while (!in.eof()) {
-    in.getline(buffer, INPUT_BUFFER_SIZE);
-    if (in.gcount() > 1) {
-      if (in.gcount() == INPUT_BUFFER_SIZE)
-	throw RMAPException("Line in " + filename + "\nexceeds max length: " +
-			    toa(INPUT_BUFFER_SIZE));
-      // correct for dos carriage returns before newlines
-      const size_t last_pos = in.gcount() - 2;//strlen(buffer) - 1;
-      if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
-      if (buffer[0] != '>') {
-	if ((line_count & 1ul) == 0)
-	  throw RMAPException("empty/multi-line reads or bad FASTA header");
-	string read(buffer);
-	check_and_add(read, max_diffs, read_width, fast_reads, 
-		      read_words, read_index, read_count);
+    in.read(&buffer[0] + (buffer_size - in_size), in_size);
+    buffer[(buffer_size - in_size) + in.gcount()] = '\0';
+    bool stop = false;
+    vector<char>::const_iterator start(buffer.begin());
+    while (!stop) {
+      vector<char>::const_iterator end(start);
+      while (*end != '\n' && *end != '\0') ++end;
+      if (*end == '\0') {
+	std::copy(start, end, buffer.begin());
+	in_size = buffer_size - distance(start, end);
+	stop = true;
+      }
+      else {
+	if (*start != '>') {
+	  if ((line_count & 1ul) == 0)
+	    throw RMAPException("empty/multi-line reads or bad FASTA header");
+	  string read(start, end);//&buffer[0]);
+	  check_and_add(read, max_diffs, read_width, fast_reads, 
+			read_words, read_index, read_count);
+	}
+	++line_count;
+	start = end + 1;
       }
     }
-    ++line_count;
-    in.peek();
   }
   if (fast_reads.empty())
     throw RMAPException("no high-quality reads in file:\"" + filename + "\"");
