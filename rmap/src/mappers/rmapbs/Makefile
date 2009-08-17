@@ -31,7 +31,7 @@ LIBDIR = $(RMAP)/lib
 INCLUDEDIR = $(RMAP)/include
 CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
-OPTFLAGS = -O2
+OPTFLAGS = -O3
 DEBUGFLAGS = -g
 COMMON_DIR = $(RMAP)/src/common/
 TEST_DIR = $(RMAP)/test
