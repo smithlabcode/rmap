@@ -83,7 +83,7 @@ load_reads_from_prb_file(const std::string &filename, const size_t max_diffs,
 ////////////////////////////////////////////////////////////////////////
 
 void
-load_reads_from_fasta_file(const std::string &filename, const size_t max_diffs,
+load_reads_from_fasta_file_cheat(const std::string &filename, const size_t max_diffs,
 			   size_t &read_width, 
 			   std::vector<FastRead> &fast_reads_left,
 			   std::vector<FastRead> &fast_reads_right,
@@ -91,7 +91,7 @@ load_reads_from_fasta_file(const std::string &filename, const size_t max_diffs,
 			   std::vector<size_t> &read_index_left, std::vector<size_t> &read_index_right);
 
 void
-load_reads_from_fastq_file(const std::string &filename, const size_t max_diffs,
+load_reads_from_fastq_file_cheat(const std::string &filename, const size_t max_diffs,
 			   size_t &read_width, 
 			   std::vector<FastRead> &fast_reads_left,
 			   std::vector<FastRead> &fast_reads_right,
@@ -99,7 +99,7 @@ load_reads_from_fastq_file(const std::string &filename, const size_t max_diffs,
 			   std::vector<size_t> &read_index_left, std::vector<size_t> &read_index_right);
 
 void
-load_reads_from_fastq_file(const std::string &filename, const size_t max_diffs,
+load_reads_from_fastq_file_cheat(const std::string &filename, const size_t max_diffs,
 			   size_t &read_width, 
 			   std::vector<FastReadWC> &fast_reads_left,
 			   std::vector<FastReadWC> &fast_reads_right,
@@ -107,7 +107,7 @@ load_reads_from_fastq_file(const std::string &filename, const size_t max_diffs,
 			   std::vector<size_t> &read_index_left, std::vector<size_t> &read_index_right);
 
 void
-load_reads_from_fastq_file(const std::string &filename, const size_t max_diffs,
+load_reads_from_fastq_file_cheat(const std::string &filename, const size_t max_diffs,
 			   size_t &read_width, 
 			   std::vector<FastReadQuality> &fast_reads_left,
 			   std::vector<FastReadQuality> &fast_reads_right,
@@ -115,7 +115,7 @@ load_reads_from_fastq_file(const std::string &filename, const size_t max_diffs,
 			   std::vector<size_t> &read_index_left, std::vector<size_t> &read_index_right);
 
 void
-load_reads_from_prb_file(const std::string &filename, const size_t max_diffs,
+load_reads_from_prb_file_cheat(const std::string &filename, const size_t max_diffs,
 			 size_t &read_width, 
 			 std::vector<FastReadWC> &fast_reads_left,
 			 std::vector<FastReadWC> &fast_reads_right,
@@ -123,7 +123,7 @@ load_reads_from_prb_file(const std::string &filename, const size_t max_diffs,
 			 std::vector<size_t> &read_index_left, std::vector<size_t> &read_index_right);
 
 void
-load_reads_from_prb_file(const std::string &filename, const size_t max_diffs,
+load_reads_from_prb_file_cheat(const std::string &filename, const size_t max_diffs,
 			 size_t &read_width, 
 			 std::vector<FastReadQuality> &fast_reads_left,
 			 std::vector<FastReadQuality> &fast_reads_right,
