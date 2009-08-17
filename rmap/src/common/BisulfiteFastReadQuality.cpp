@@ -167,14 +167,15 @@ BisulfiteFastReadQuality::set_read_width(const size_t rw) {
   scaler = pow(2.0, n_val_bits) - 1;
 }
 
-BisulfiteFastReadQuality::BisulfiteFastReadQuality(const vector<vector<double> > &s) {
+BisulfiteFastReadQuality::BisulfiteFastReadQuality(const vector<vector<double> > &s,
+						   bool AG_WILDCARD) {
   for (size_t i = 0; i < segments - 1; ++i) {
     const vector<vector<double> > this_seg(s.begin() + i*segment_size,
 					   s.begin() + (i + 1)*segment_size);
-    words.push_back(Words(this_seg));
+    words.push_back(Words(this_seg, AG_WILDCARD));
   }
   const vector<vector<double> > this_seg(s.begin() + (segments - 1)*segment_size, s.end());
-  words.push_back(Words(this_seg));
+  words.push_back(Words(this_seg, AG_WILDCARD));
 }
 
 string
