@@ -75,57 +75,57 @@ template <typename T> struct SeedHash {
 		pair<typename vector<T>::const_iterator,
 		     typename vector<T>::const_iterator> > type;
 };
-typedef unordered_multimap<size_t, size_t> SeedHashSorter;
+typedef vector<pair<size_t, unsigned int> > SeedHashSorter;
 
 
-static void
-get_read_matches(const size_t the_seed, const vector<size_t> &read_words,
-		 SeedHashSorter &sh_sorter) {
-  for (size_t i = 0; i < read_words.size(); ++i)
-    sh_sorter.insert(SeedHashSorter::value_type(the_seed & read_words[i], i));
-}
+// static void
+// get_read_matches(const size_t the_seed, const vector<size_t> &read_words,
+// 		 SeedHashSorter &sh_sorter) {
+//   for (size_t i = 0; i < read_words.size(); ++i)
+//     sh_sorter.insert(SeedHashSorter::value_type(the_seed & read_words[i], i));
+// }
 
 
-template <class T> void
-sort_by_key(const SeedHashSorter &sh, vector<T> &in) {
-  vector<T> tmp(in.size(), in.front());
-  size_t j = 0;
-  for (SeedHashSorter::const_iterator i(sh.begin()); i != sh.end(); ++i, ++j)
-    tmp[j] = in[i->second];
-  in.swap(tmp);
-}
+// template <class T> void
+// sort_by_key(const SeedHashSorter &sh, vector<T> &in) {
+//   vector<T> tmp(in.size(), in.front());
+//   size_t j = 0;
+//   for (SeedHashSorter::const_iterator i(sh.begin()); i != sh.end(); ++i, ++j)
+//     tmp[j] = in[i->second];
+//   in.swap(tmp);
+// }
 
 
-template <class T> void
-sort_by_key(SeedHashSorter &seed_hash, vector<MultiMapResult> &best_maps,
-	    vector<size_t> &reads, vector<unsigned int> &read_index, 
-	    vector<T> &fast_reads) {
-  sort_by_key(seed_hash, best_maps);
-  sort_by_key(seed_hash, reads);
-  sort_by_key(seed_hash, read_index);
-  sort_by_key(seed_hash, fast_reads);
-  size_t j = 0;
-  for (SeedHashSorter::iterator i(seed_hash.begin()); i != seed_hash.end(); ++i, ++j)
-    i->second = j;
-}
+// template <class T> void
+// sort_by_key(SeedHashSorter &seed_hash, vector<MultiMapResult> &best_maps,
+// 	    vector<size_t> &reads, vector<unsigned int> &read_index, 
+// 	    vector<T> &fast_reads) {
+//   sort_by_key(seed_hash, best_maps);
+//   sort_by_key(seed_hash, reads);
+//   sort_by_key(seed_hash, read_index);
+//   sort_by_key(seed_hash, fast_reads);
+//   size_t j = 0;
+//   for (SeedHashSorter::iterator i(seed_hash.begin()); i != seed_hash.end(); ++i, ++j)
+//     i->second = j;
+// }
 
 
-template <class T> void
-build_seed_hash(const SeedHashSorter &sh_sorter, const vector<T> &fast_reads,
-		typename SeedHash<T>::type &seed_hash) {
-  typename vector<T>::const_iterator frb(fast_reads.begin());
-  size_t prev_key = 0, prev_idx = 0, curr_idx = 0;
-  for (SeedHashSorter::const_iterator shs(sh_sorter.begin()); 
-       shs != sh_sorter.end(); ++shs) {
-    curr_idx = shs->second;
-    if (shs->first != prev_key) {
-      seed_hash[prev_key] = make_pair(frb + prev_idx, frb + curr_idx);
-      prev_key = shs->first;
-      prev_idx = curr_idx;
-    }
-  }
-  seed_hash[prev_key] = make_pair(frb + prev_idx, fast_reads.end());
-}
+// template <class T> void
+// build_seed_hash(const SeedHashSorter &sh_sorter, const vector<T> &fast_reads,
+// 		typename SeedHash<T>::type &seed_hash) {
+//   typename vector<T>::const_iterator frb(fast_reads.begin());
+//   size_t prev_key = 0, prev_idx = 0, curr_idx = 0;
+//   for (SeedHashSorter::const_iterator shs(sh_sorter.begin()); 
+//        shs != sh_sorter.end(); ++shs) {
+//     curr_idx = shs->second;
+//     if (shs->first != prev_key) {
+//       seed_hash[prev_key] = make_pair(frb + prev_idx, frb + curr_idx);
+//       prev_key = shs->first;
+//       prev_idx = curr_idx;
+//     }
+//   }
+//   seed_hash[prev_key] = make_pair(frb + prev_idx, fast_reads.end());
+// }
 
 
 static void
@@ -310,6 +310,74 @@ treat_cpgs(const bool AG_WILDCARD, string &chrom) {
 }
 
 
+static void
+get_read_matches(const size_t the_seed, const vector<size_t> &read_words,
+		 SeedHashSorter &sh_sorter) {
+  const size_t lim = read_words.size();
+  sh_sorter.resize(read_words.size());
+  for (size_t i = 0; i < lim; ++i)
+    sh_sorter[i] = make_pair(the_seed & read_words[i], i);
+  sort(sh_sorter.begin(), sh_sorter.end());
+}
+
+
+template <class T> void
+sort_by_key(const SeedHashSorter &sh, vector<T> &in) {
+  vector<T> tmp(in.size(), in.front());
+  size_t j = 0;
+  for (SeedHashSorter::const_iterator i(sh.begin()); i != sh.end(); ++i, ++j)
+    tmp[j] = in[i->second];
+  in.swap(tmp);
+}
+
+
+template <class T> void
+sort_by_key(SeedHashSorter &sh_sorter, vector<MultiMapResult> &best_maps,
+	    vector<size_t> &reads, vector<unsigned int> &read_index, 
+	    vector<T> &fast_reads) {
+  sort_by_key(sh_sorter, best_maps);
+  sort_by_key(sh_sorter, reads);
+  sort_by_key(sh_sorter, read_index);
+  sort_by_key(sh_sorter, fast_reads);
+  size_t j = 0;
+  for (SeedHashSorter::iterator i(sh_sorter.begin()); i != sh_sorter.end(); ++i, ++j)
+    i->second = j;
+}
+
+
+template <class T> void
+build_seed_hash(const SeedHashSorter &sh_sorter, const vector<T> &fast_reads,
+		typename SeedHash<T>::type &seed_hash) {
+  seed_hash.clear();
+  typename vector<T>::const_iterator frb(fast_reads.begin());
+  size_t prev_key = 0, prev_idx = 0, curr_idx = 0;
+  for (SeedHashSorter::const_iterator shs(sh_sorter.begin()); 
+       shs != sh_sorter.end(); ++shs) {
+    curr_idx = shs->second;
+    if (shs->first != prev_key) {
+      seed_hash[prev_key] = make_pair(frb + prev_idx, frb + curr_idx);
+      prev_key = shs->first;
+      prev_idx = curr_idx;
+    }
+  }
+  seed_hash[prev_key] = make_pair(frb + prev_idx, fast_reads.end());
+}
+
+
+template <class T> static void
+resort_reads(const size_t the_seed,
+	     vector<T> &fast_reads,  vector<size_t> &read_words, 
+	     vector<unsigned int> &read_index,
+	     vector<MultiMapResult> &best_maps,
+	     typename SeedHash<T>::type &seed_hash) {
+  seed_hash.clear();
+  SeedHashSorter sh_sorter;
+  get_read_matches(the_seed, read_words, sh_sorter);
+  sort_by_key(sh_sorter, best_maps, read_words, read_index, fast_reads);
+  build_seed_hash(sh_sorter, fast_reads, seed_hash);
+}
+
+
 unsigned char
 b2i(char c) {
   switch(c) {
@@ -339,7 +407,7 @@ iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD,
 		   const bool ALLOW_METH_BIAS,
 		   const vector<size_t> &the_seeds, 
 		   const vector<string> &chrom_files,
-		   vector<size_t> &ambigs, vector<string> &chrom_names, 
+		   vector<unsigned int> &ambigs, vector<string> &chrom_names, 
 		   vector<size_t> &chrom_sizes,
 		   vector<T> &fast_reads,  vector<size_t> &read_words, 
 		   vector<unsigned int> &read_index,
@@ -354,12 +422,9 @@ iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD,
       cerr << "[SEED:" << j + 1 << "/" << the_seeds.size() << "] "
 	   << "[FORMATTING READS]" << endl;
     
-    SeedHashSorter sh_sorter;
-    get_read_matches(the_seeds[j], read_words, sh_sorter);
-    sort_by_key(sh_sorter, best_maps, read_words, read_index, fast_reads);
     typename SeedHash<T>::type seed_hash;
-    build_seed_hash(sh_sorter, fast_reads, seed_hash);
-    sh_sorter.clear();
+    resort_reads(the_seeds[j], fast_reads, read_words, 
+		 read_index, best_maps, seed_hash);
     
     size_t prev_chrom_count = 0;
     for (size_t i = 0; i < chrom_files.size() && !fast_reads.empty(); ++i) {
@@ -409,6 +474,14 @@ iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD,
       if (VERBOSE)
 	cerr << "[" << static_cast<float>(end - start)/
 	  CLOCKS_PER_SEC << " SEC]" << endl;
+      if (j == 0 && (i + 1) < chrom_files.size()) {
+	if (VERBOSE)
+	  cerr << "[CLEANING] ";
+	eliminate_ambigs(0, the_seeds[j], best_maps, read_index, 
+			 read_words, ambigs, fast_reads, seed_hash);
+	if (VERBOSE)
+	  cerr << "[AMBIG=" << ambigs.size() << "] " << endl;
+      }
       prev_chrom_count += chroms.size();
     }
     if (j == 0) {
@@ -477,7 +550,7 @@ sites_to_regions(const bool VERBOSE, const bool RUN_MODE, const size_t read_len,
 
 
 static void
-write_non_uniques(string filename, const vector<size_t> &ambigs,
+write_non_uniques(string filename, const vector<unsigned int> &ambigs,
 		  const vector<string> &read_names) {
   std::ofstream out(filename.c_str());
   for (size_t i = 0; i < ambigs.size(); ++i)
@@ -486,10 +559,50 @@ write_non_uniques(string filename, const vector<size_t> &ambigs,
 }
 
 
+
+template <class T> void
+eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
+		 vector<MultiMapResult> &best_maps, 
+		 vector<unsigned int> &read_index, vector<size_t> &read_words, 
+		 vector<unsigned int> &ambigs, vector<T> &fast_reads,
+		 typename SeedHash<T>::type &seed_hash) {
+  size_t prev_idx = 0, j = 0;
+  size_t prev_key = 0;
+  typename vector<T>::const_iterator frb(fast_reads.begin());
+  for (size_t i = 0; i < best_maps.size(); ++i) {
+    best_maps[i].collapse();
+    if (best_maps[i].ambiguous() && best_maps[i].score <= max_mismatches)
+      ambigs.push_back(read_index[i]);
+    else {
+      best_maps[j] = best_maps[i];
+      read_index[j] = read_index[i];
+      fast_reads[j] = fast_reads[i];
+      read_words[j] = read_words[i];
+      const size_t key = (read_words[j] & the_seed);
+      if (j > 0 && key != prev_key) {
+	seed_hash[prev_key] = make_pair(frb + prev_idx, frb + j);
+	prev_idx = j;
+      }
+      ++j;
+      prev_key = key;
+    }
+  }
+  seed_hash[prev_key] = make_pair(frb + prev_idx, frb + j);
+  best_maps.erase(best_maps.begin() + j, best_maps.end());
+  // This below should work but doesn't... Is there a bug elsewhere?
+  // vector<MultiMapResult>(best_maps).swap(best_maps);
+  read_index.erase(read_index.begin() + j, read_index.end());
+  vector<unsigned int>(read_index).swap(read_index);
+  read_words.erase(read_words.begin() + j, read_words.end());
+  vector<size_t>(read_words).swap(read_words);
+  fast_reads.erase(fast_reads.begin() + j, fast_reads.end());
+}
+
+
 template <class T> void
 eliminate_ambigs(const size_t max_mismatches, vector<MultiMapResult> &best_maps, 
 		 vector<unsigned int> &read_index, vector<size_t> &reads, 
-		 vector<size_t> &ambigs, vector<T> &fast_reads) {
+		 vector<unsigned int> &ambigs, vector<T> &fast_reads) {
   size_t j = 0;
   for (size_t i = 0; i < best_maps.size(); ++i) {
     best_maps[i].collapse();
@@ -504,9 +617,13 @@ eliminate_ambigs(const size_t max_mismatches, vector<MultiMapResult> &best_maps,
     }
   }
   best_maps.erase(best_maps.begin() + j, best_maps.end());
+  vector<MultiMapResult>(best_maps).swap(best_maps);
   read_index.erase(read_index.begin() + j, read_index.end());
+  vector<unsigned int>(read_index).swap(read_index);
   reads.erase(reads.begin() + j, reads.end());
+  vector<size_t>(reads).swap(reads);
   fast_reads.erase(fast_reads.begin() + j, fast_reads.end());
+  vector<T>(fast_reads).swap(fast_reads);
 }
 
 
@@ -659,10 +776,10 @@ main(int argc, const char **argv) {
     size_t read_width = 0;
     size_t max_mismatches = 10;
     size_t max_mappings = 1;
+    double wildcard_cutoff = numeric_limits<double>::max();
     
     bool VERBOSE = false;
     bool FASTER_MODE = false;
-    bool WILDCARD = false;
     bool QUALITY = false;
     bool AG_WILDCARD = false;
     bool ALLOW_METH_BIAS = false;
@@ -690,15 +807,15 @@ main(int argc, const char **argv) {
 		      "mapped reads", false , ambiguous_file);
     opt_parse.add_opt("max-map", 'M', "maximum allowed mappings for a read", 
 		      false, max_mappings);
-    opt_parse.add_opt("wc", 'W', "wildcard matching based on quality scores", 
-		      false, WILDCARD);
+    opt_parse.add_opt("wc", 'W', "wildcard cutoff probability", 
+		      false, wildcard_cutoff);
     opt_parse.add_opt("qual", 'Q', "use quality scores (input must be FASTQ)", 
 		      false, QUALITY);
     opt_parse.add_opt("ag-wild", 'A', "map using A/G bisulfite wildcards", 
 		      false, AG_WILDCARD);
     opt_parse.add_opt("bias", 'B', "allow CpG non-conversion to assist", 
 		      false, ALLOW_METH_BIAS);
-    opt_parse.add_opt("faster", 'f', "faster mapping (sensitive to 2 mismatches)", 
+    opt_parse.add_opt("faster", 'f', "faster seeds (sensitive to 2 mismatches)", 
 		      false, FASTER_MODE);
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
     vector<string> leftover_args;
@@ -729,6 +846,12 @@ main(int argc, const char **argv) {
     }
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
+    
+    bool WILDCARD = (wildcard_cutoff != numeric_limits<double>::max());
+    if (wildcard_cutoff != numeric_limits<double>::max() &&
+	(wildcard_cutoff > 1.0 || wildcard_cutoff < 0)) 
+      throw RMAPException("wildcard cutoff must be in [0, 1]");
+    else FastReadWC::set_cutoff(wildcard_cutoff);
     
     //////////////////////////////////////////////////////////////
     //  CHECK HOW QUALITY SCORES ARE USED
@@ -777,7 +900,7 @@ main(int argc, const char **argv) {
     //
     vector<size_t> chrom_sizes;
     vector<string> chrom_names;
-    vector<size_t> ambigs;
+    vector<unsigned int> ambigs;
     if (RUN_MODE == RUN_MODE_MISMATCH)
       iterate_over_seeds(VERBOSE, AG_WILDCARD, ALLOW_METH_BIAS,
 			 the_seeds, chrom_files, ambigs, 
