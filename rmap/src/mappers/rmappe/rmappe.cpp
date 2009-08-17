@@ -587,9 +587,9 @@ sites_to_regions(const bool VERBOSE, const bool RUN_MODE, const string outfile,
 	    const size_t right_start = 
 	      bests[i].mr[j].strand ? bests[i].mr[j].site2 :
 	      chrom_sizes[chrom_id] - bests[i].mr[j].site - read_len;
-	    const size_t score = 
-	      (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ? 
-	      FastReadQuality::value_to_quality(bests[i].score) : bests[i].score;
+	    const double score = (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ?
+	      FastReadQuality::value_to_quality(bests[i].score) :
+	      bests[i].score;
 	    const char strand = ((bests[i].mr[j].strand) ? '+' : '-');
 	    const vector<string>::iterator 
 	      rn(read_names.begin() + read_index[i]);

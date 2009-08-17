@@ -350,7 +350,7 @@ iterate_over_seeds(const bool VERBOSE,
 ////
 ////
 static void
-sites_to_regions(const bool VERBOSE, const bool RUN_MODE, const size_t read_len,
+sites_to_regions(const bool VERBOSE, const size_t RUN_MODE, const size_t read_len,
 		 const vector<string> &chrom, const vector<size_t> &chrom_sizes, 
 		 const vector<unsigned int> &read_index, 
 		 vector<string> &read_names, vector<MultiMapResult> &bests, 
@@ -370,7 +370,7 @@ sites_to_regions(const bool VERBOSE, const bool RUN_MODE, const size_t read_len,
 	    bests[i].mr[j].site : 
 	    chrom_sizes[chrom_id] - bests[i].mr[j].site - read_len;
 	  const size_t end = start + read_len;
-	  const size_t score = (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ?
+	  const double score = (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ?
 	    FastReadQuality::value_to_quality(bests[i].score) :
 	    bests[i].score;
 	  const char strand = ((bests[i].mr[j].strand) ? '+' : '-');
