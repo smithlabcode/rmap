@@ -201,6 +201,8 @@ simreads_pe(const bool FASTQ_OUTPUT,
       write_read_fasta(*out, called_seq, read_name);
     }
   }
+  if (out != &std::cout) delete out;
+  if (prb) delete prb;
 }
 
 
