@@ -42,4 +42,4 @@ if [ "`diff --brief test_reads_pe.bed $1/output`" = "" ] && \
 else
     echo "FAIL"
 fi
-# rm test_reads_pe.bed test_reads_pe.amb test_reads_pe_fq.bed test_reads_pe_fq.amb test_reads_pe_prb.bed test_reads_pe_prb.amb
+rm test_reads_pe.bed test_reads_pe.amb test_reads_pe_fq.bed test_reads_pe_fq.amb test_reads_pe_prb.bed test_reads_pe_prb.amb
