@@ -24,6 +24,10 @@
 #define MAP_RESULT_HPP
 
 #include <numeric>
+#include <string>
+#include <limits>
+#include <vector>
+
 
 struct MapResult {
   MapResult(size_t ste = std::numeric_limits<size_t>::max(),
@@ -40,7 +44,7 @@ struct MapResult {
     return site == rhs.site && chrom == rhs.chrom;
   }
   std::string tostring() const {
-    return rmap::toa(site) + "\t" + rmap::toa(chrom) + "\t" \
+    return rmap::toa(site) + "\t" + rmap::toa(chrom) + "\t" 
       + rmap::toa(strand);
   }
 };
