@@ -148,8 +148,11 @@ map_reads(const string &chrom, const size_t chrom_id,
 	pair<typename vector<T>::const_iterator, 
 	  typename vector<T>::const_iterator> tmp(bucket->second);
 	const typename vector<T>::const_iterator limit(tmp.second);
+	assert(limit <= fast_reads.end());
 	for (typename vector<T>::const_iterator to_test(tmp.first); 
 	     to_test != limit; ++to_test) {
+	  assert(to_test <= fast_reads.end());
+	  assert(best_maps.begin() + (to_test - fast_reads.begin()) < best_maps.end());
 	  const size_t score = to_test->score(fast_read);
 	  if (score <= max_diffs) {
 	    const vector<MultiMapResult>::iterator 
@@ -165,7 +168,6 @@ map_reads(const string &chrom, const size_t chrom_id,
 }
 
 
-
 static void
 get_read_matches(const size_t the_seed, const vector<size_t> &read_words,
 		 SeedHashSorter &sh_sorter) {
@@ -179,11 +181,10 @@ get_read_matches(const size_t the_seed, const vector<size_t> &read_words,
 
 template <class T> void
 sort_by_key(const SeedHashSorter &sh, vector<T> &in) {
-  vector<T> tmp(in.size(), in.front());
+  vector<T> tmp(in);
   size_t j = 0;
   for (SeedHashSorter::const_iterator i(sh.begin()); i != sh.end(); ++i, ++j)
-    tmp[j] = in[i->second];
-  in.swap(tmp);
+    in[j] = tmp[i->second];
 }
 
 
@@ -407,6 +408,7 @@ eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
 		 typename SeedHash<T>::type &seed_hash) {
   size_t prev_idx = 0, j = 0;
   size_t prev_key = 0;
+  seed_hash.clear();
   typename vector<T>::const_iterator frb(fast_reads.begin());
   for (size_t i = 0; i < best_maps.size(); ++i) {
     best_maps[i].collapse();
@@ -428,8 +430,7 @@ eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
   }
   seed_hash[prev_key] = make_pair(frb + prev_idx, frb + j);
   best_maps.erase(best_maps.begin() + j, best_maps.end());
-  // This below should work but doesn't... Is there a bug elsewhere?
-  // vector<MultiMapResult>(best_maps).swap(best_maps);
+  vector<MultiMapResult>(best_maps).swap(best_maps);
   read_index.erase(read_index.begin() + j, read_index.end());
   vector<unsigned int>(read_index).swap(read_index);
   read_words.erase(read_words.begin() + j, read_words.end());
@@ -437,7 +438,6 @@ eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
   fast_reads.erase(fast_reads.begin() + j, fast_reads.end());
 
 }
-
 
 
 template <class T> void
@@ -615,6 +615,7 @@ main(int argc, const char **argv) {
     bool VERBOSE = false;
     bool QUALITY = false;
     bool FASTER_MODE = false;
+    bool WILDCARD = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("rmap", "The rmap tool for mapping short reads",
@@ -638,7 +639,9 @@ main(int argc, const char **argv) {
 		      "mapped reads", false , ambiguous_file);
     opt_parse.add_opt("max-map", 'M', "maximum allowed mappings for a read", 
 		      false, max_mappings);
-    opt_parse.add_opt("wc", 'W', "wildcard cutoff probability", 
+    opt_parse.add_opt("wc", 'W', "run in wildcard matching mode", 
+		      false, WILDCARD);
+    opt_parse.add_opt("prob", 'P', "wildcard cutoff probability", 
 		      false, wildcard_cutoff);
     opt_parse.add_opt("qual", 'Q', "use quality scores (input must be FASTQ)", 
 		      false, QUALITY);
@@ -670,11 +673,10 @@ main(int argc, const char **argv) {
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
     
-    bool WILDCARD = (wildcard_cutoff != numeric_limits<double>::max());
-    if (wildcard_cutoff != numeric_limits<double>::max() &&
+    FastReadWC::set_cutoff(wildcard_cutoff);
+    if (WILDCARD && wildcard_cutoff != numeric_limits<double>::max() &&
 	(wildcard_cutoff > 1.0 || wildcard_cutoff < 0)) 
       throw RMAPException("wildcard cutoff must be in [0, 1]");
-    else FastReadWC::set_cutoff(wildcard_cutoff);
     
     //////////////////////////////////////////////////////////////
     //  CHECK HOW QUALITY SCORES ARE USED
@@ -687,7 +689,6 @@ main(int argc, const char **argv) {
     //
     vector<string> chrom_files;
     identify_chromosomes(VERBOSE, filenames_file, fasta_suffix, chrom_file, chrom_files);
-    
     
     //////////////////////////////////////////////////////////////
     // OBTAIN THE READS
@@ -747,7 +748,6 @@ main(int argc, const char **argv) {
 			 fast_reads_q, // USE FAST READS FOR QUALITY MATCHING
 			 read_words, read_index,
 			 best_maps, max_match_score, read_width);
-    
     
     //////////////////////////////////////////////////////////////
     // LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)

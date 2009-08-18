@@ -78,56 +78,6 @@ template <typename T> struct SeedHash {
 typedef vector<pair<size_t, unsigned int> > SeedHashSorter;
 
 
-// static void
-// get_read_matches(const size_t the_seed, const vector<size_t> &read_words,
-// 		 SeedHashSorter &sh_sorter) {
-//   for (size_t i = 0; i < read_words.size(); ++i)
-//     sh_sorter.insert(SeedHashSorter::value_type(the_seed & read_words[i], i));
-// }
-
-
-// template <class T> void
-// sort_by_key(const SeedHashSorter &sh, vector<T> &in) {
-//   vector<T> tmp(in.size(), in.front());
-//   size_t j = 0;
-//   for (SeedHashSorter::const_iterator i(sh.begin()); i != sh.end(); ++i, ++j)
-//     tmp[j] = in[i->second];
-//   in.swap(tmp);
-// }
-
-
-// template <class T> void
-// sort_by_key(SeedHashSorter &seed_hash, vector<MultiMapResult> &best_maps,
-// 	    vector<size_t> &reads, vector<unsigned int> &read_index, 
-// 	    vector<T> &fast_reads) {
-//   sort_by_key(seed_hash, best_maps);
-//   sort_by_key(seed_hash, reads);
-//   sort_by_key(seed_hash, read_index);
-//   sort_by_key(seed_hash, fast_reads);
-//   size_t j = 0;
-//   for (SeedHashSorter::iterator i(seed_hash.begin()); i != seed_hash.end(); ++i, ++j)
-//     i->second = j;
-// }
-
-
-// template <class T> void
-// build_seed_hash(const SeedHashSorter &sh_sorter, const vector<T> &fast_reads,
-// 		typename SeedHash<T>::type &seed_hash) {
-//   typename vector<T>::const_iterator frb(fast_reads.begin());
-//   size_t prev_key = 0, prev_idx = 0, curr_idx = 0;
-//   for (SeedHashSorter::const_iterator shs(sh_sorter.begin()); 
-//        shs != sh_sorter.end(); ++shs) {
-//     curr_idx = shs->second;
-//     if (shs->first != prev_key) {
-//       seed_hash[prev_key] = make_pair(frb + prev_idx, frb + curr_idx);
-//       prev_key = shs->first;
-//       prev_idx = curr_idx;
-//     }
-//   }
-//   seed_hash[prev_key] = make_pair(frb + prev_idx, fast_reads.end());
-// }
-
-
 static void
 load_seeds(const bool VERBOSE, const bool FASTER_MODE,
 	   const size_t read_width, const size_t n_seeds, 
@@ -323,11 +273,10 @@ get_read_matches(const size_t the_seed, const vector<size_t> &read_words,
 
 template <class T> void
 sort_by_key(const SeedHashSorter &sh, vector<T> &in) {
-  vector<T> tmp(in.size(), in.front());
+  vector<T> tmp(in);
   size_t j = 0;
   for (SeedHashSorter::const_iterator i(sh.begin()); i != sh.end(); ++i, ++j)
-    tmp[j] = in[i->second];
-  in.swap(tmp);
+    in[j] = tmp[i->second];
 }
 
 
@@ -568,6 +517,7 @@ eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
 		 typename SeedHash<T>::type &seed_hash) {
   size_t prev_idx = 0, j = 0;
   size_t prev_key = 0;
+  seed_hash.clear();
   typename vector<T>::const_iterator frb(fast_reads.begin());
   for (size_t i = 0; i < best_maps.size(); ++i) {
     best_maps[i].collapse();
@@ -783,6 +733,7 @@ main(int argc, const char **argv) {
     bool QUALITY = false;
     bool AG_WILDCARD = false;
     bool ALLOW_METH_BIAS = false;
+    bool WILDCARD = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("rmapbs", "The rmapbs mapping tool for Solexa reads"
@@ -807,7 +758,9 @@ main(int argc, const char **argv) {
 		      "mapped reads", false , ambiguous_file);
     opt_parse.add_opt("max-map", 'M', "maximum allowed mappings for a read", 
 		      false, max_mappings);
-    opt_parse.add_opt("wc", 'W', "wildcard cutoff probability", 
+    opt_parse.add_opt("wc", 'W', "run in wildcard matching mode", 
+		      false, WILDCARD);
+    opt_parse.add_opt("prob", 'P', "wildcard cutoff probability", 
 		      false, wildcard_cutoff);
     opt_parse.add_opt("qual", 'Q', "use quality scores (input must be FASTQ)", 
 		      false, QUALITY);
@@ -847,11 +800,10 @@ main(int argc, const char **argv) {
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
     
-    bool WILDCARD = (wildcard_cutoff != numeric_limits<double>::max());
-    if (wildcard_cutoff != numeric_limits<double>::max() &&
+    FastReadWC::set_cutoff(wildcard_cutoff);
+    if (WILDCARD && wildcard_cutoff != numeric_limits<double>::max() &&
 	(wildcard_cutoff > 1.0 || wildcard_cutoff < 0)) 
       throw RMAPException("wildcard cutoff must be in [0, 1]");
-    else FastReadWC::set_cutoff(wildcard_cutoff);
     
     //////////////////////////////////////////////////////////////
     //  CHECK HOW QUALITY SCORES ARE USED

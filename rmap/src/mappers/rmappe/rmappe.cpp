@@ -856,9 +856,10 @@ main(int argc, const char **argv) {
     size_t read_width = 0;
     size_t max_mismatches = 10;
     size_t max_mappings = 1;
+    double wildcard_cutoff = numeric_limits<double>::max();
     
-    size_t max_sep = 200;
-    size_t min_sep = 0;
+    size_t max_sep = 400;
+    size_t min_sep = 100;
     
     bool VERBOSE = false;
     bool WILDCARD = false;
@@ -897,6 +898,8 @@ main(int argc, const char **argv) {
 		      false, ACCURATE);
     opt_parse.add_opt("wc", 'W', "wildcard matching based on quality scores", 
 		      false, WILDCARD);
+    opt_parse.add_opt("prob", 'P', "wildcard cutoff probability", 
+		      false, wildcard_cutoff);
     opt_parse.add_opt("qual", 'Q', "use quality scores (input must be FASTQ)", 
 		      false, QUALITY);
     opt_parse.add_opt("faster", 'f', "faster seeds (sensitive to 2 mismatches)", 
@@ -926,6 +929,11 @@ main(int argc, const char **argv) {
     }
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
+
+    FastReadWC::set_cutoff(wildcard_cutoff);
+    if (WILDCARD && wildcard_cutoff != numeric_limits<double>::max() &&
+	(wildcard_cutoff > 1.0 || wildcard_cutoff < 0)) 
+      throw RMAPException("wildcard cutoff must be in [0, 1]");
 
     
     //////////////////////////////////////////////////////////////
