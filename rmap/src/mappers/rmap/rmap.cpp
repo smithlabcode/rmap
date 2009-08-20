@@ -590,7 +590,8 @@ load_reads(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_MODE,
 				  fast_reads, read_words, read_index);
   if (VERBOSE)
     cerr << "[DONE]" << endl
-	 << "TOTAL HQ READS: " << read_index.size() << endl;
+	 << "TOTAL HQ READS: " << read_index.size() << endl
+	 << "READ WIDTH: " << read_width << endl;
 }
 
 

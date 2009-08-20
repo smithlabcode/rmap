@@ -706,7 +706,8 @@ load_reads(const bool VERBOSE, const size_t INPUT_MODE,
     bisulfite_treatment(AG_WILDCARD, read_words[i]);
   if (VERBOSE)
     cerr << "[DONE]" << endl
-	 << "TOTAL HQ READS: " << read_index.size() << endl;
+	 << "TOTAL HQ READS: " << read_index.size() << endl
+	 << "READ WIDTH: " << read_width << endl;
 }
 
 
