@@ -837,7 +837,7 @@ load_reads_cheat(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_M
 					read_words_l, read_words_r, read_index_l, read_index_r);
   if (VERBOSE)
     cerr << "[DONE]" << endl
-	 << "TOTAL HQ READS: " << read_index.size() << endl
+	 << "TOTAL HQ READS: " << read_index_l.size() << endl
 	 << "READ WIDTH: " << read_width << endl;
 }
 
