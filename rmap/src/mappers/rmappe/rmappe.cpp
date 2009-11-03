@@ -579,6 +579,8 @@ sites_to_regions(const bool VERBOSE, const size_t RUN_MODE,
     if (!bests[i].mr.empty()) {
       bests[i].sort();
       if (bests[i].mr.size() <= max_mappings) {
+	const vector<string>::iterator 
+	  rn(read_names.begin() + read_index[i]);
 	for (size_t j = 0; j < bests[i].mr.size(); ++j)
 	  if (j == 0 || bests[i].mr[j - 1] < bests[i].mr[j]) {
 	    const size_t chrom_id = bests[i].mr[j].chrom;
@@ -594,8 +596,6 @@ sites_to_regions(const bool VERBOSE, const size_t RUN_MODE,
 	      FastReadQuality::value_to_quality(bests[i].score) :
 	      bests[i].score;
 	    const char strand = ((bests[i].mr[j].strand) ? '+' : '-');
-	    const vector<string>::iterator 
-	      rn(read_names.begin() + read_index[i]);
 	    *out << GenomicRegion(chrom[chrom_id], left_start, 
 				  left_start + read_len, *rn + LEFT_TAG, 
 				  score, strand) << '\n'
