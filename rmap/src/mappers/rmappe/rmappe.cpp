@@ -602,9 +602,9 @@ sites_to_regions(const bool VERBOSE, const size_t RUN_MODE,
 		 << GenomicRegion(chrom[chrom_id], right_start,
 				  right_start + read_len, *rn + RIGHT_TAG, 
 				  score, strand) << '\n';
-	    string().swap(*rn);
 	    n_reads_mapped++;
 	  }
+	string().swap(*rn);
       }
     }
   if (out != &cout) delete out;

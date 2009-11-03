@@ -378,9 +378,9 @@ sites_to_regions(const bool VERBOSE, const size_t RUN_MODE, const size_t read_le
 	  *out << GenomicRegion(chrom[chrom_id], start, end,
 				read_names[read_index[i]], 
 				score, strand) << '\n';
-	  string().swap(read_names[read_index[i]]);
 	  n_reads_mapped++;
 	}
+      string().swap(read_names[read_index[i]]);
       bests[i].clear();
     }
   if (out != &cout) delete out;
