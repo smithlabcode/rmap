@@ -603,7 +603,7 @@ identify_chromosomes(const bool VERBOSE,
 
 
 static void
-load_read_names(const bool INPUT_MODE, 
+load_read_names(const size_t INPUT_MODE, 
 		string filename, vector<string> &names) {
   static const size_t INPUT_BUFFER_SIZE = 10000;
   std::ifstream in(filename.c_str(), std::ios::binary);
