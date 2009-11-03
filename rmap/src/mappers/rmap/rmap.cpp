@@ -493,24 +493,28 @@ identify_chromosomes(const bool VERBOSE,
 
 
 static void
-load_read_names(string filename, vector<string> &names) {
+load_read_names(const bool INPUT_MODE, 
+		string filename, vector<string> &names) {
   static const size_t INPUT_BUFFER_SIZE = 10000;
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in)
     throw RMAPException("cannot open input file " + string(filename));
+  size_t line_count = 0;
   while (!in.eof()) {
     char buffer[INPUT_BUFFER_SIZE + 1];
     in.getline(buffer, INPUT_BUFFER_SIZE);
     if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
       throw RMAPException("Line in " + filename + "\nexceeds max length: " +
                           toa(INPUT_BUFFER_SIZE));
-    if (buffer[0] == '>' || buffer[0] == '@') {
+    if ((INPUT_MODE == FASTQ_FILE && line_count % 4 == 0) ||
+	(INPUT_MODE != FASTQ_FILE && line_count % 2 == 0)) {
       names.push_back(buffer + 1);
       const size_t name_end = names.back().find_first_of(" \t");
       if (name_end != string::npos)
         names.back().erase(names.back().begin() + name_end,
                            names.back().end());
     }
+    ++line_count;
   }
   in.close();
 }
@@ -754,7 +758,7 @@ main(int argc, const char **argv) {
     // LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
     //
     vector<string> read_names;
-    load_read_names(reads_file, read_names);
+    load_read_names(INPUT_MODE, reads_file, read_names);
     
     //////////////////////////////////////////////////////////////
     // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
