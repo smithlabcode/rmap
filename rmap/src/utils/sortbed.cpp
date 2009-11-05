@@ -43,18 +43,17 @@ struct region_pointer_less {
 };
 
 void
-sort_regions(vector<GenomicRegion> &regions) {
+sort_regions(vector<GenomicRegion> &regions, string outfile) {
   vector<GenomicRegionPointer> sorter;
   for (vector<GenomicRegion>::iterator i = regions.begin(); 
        i != regions.end(); ++i) sorter.push_back(&(*i));
   sort(sorter.begin(), sorter.end(), region_pointer_less());
-  
-  vector<GenomicRegion> r;
-  r.reserve(regions.size());
+  ostream* out = (outfile.empty()) ? 
+    &std::cout : new std::ofstream(outfile.c_str());
   for (vector<GenomicRegionPointer>::const_iterator i(sorter.begin());
        i != sorter.end(); ++i)
-    r.push_back(*(*i));
-  r.swap(regions);
+    *out << *(*i) << '\n';
+  if (out != &std::cout) delete out;
 }
 
 void
@@ -88,17 +87,20 @@ sort_regions_collapse_chrom(vector<GenomicRegion> &regions) {
 }
 
 void
-sort_regions_collapse(vector<GenomicRegion> &regions) {
+sort_regions_collapse(vector<GenomicRegion> &regions, string outfile) {
   vector<vector<GenomicRegion> > separated_by_chrom;
   separate_chromosomes(regions, separated_by_chrom);
   regions.clear();
+  ostream* out = (outfile.empty()) ? 
+    &std::cout : new std::ofstream(outfile.c_str());
   for (size_t i = 0; i < separated_by_chrom.size(); ++i) {
     sort_regions_collapse_chrom(separated_by_chrom[i]);
-    regions.insert(regions.end(),
-		   separated_by_chrom[i].begin(), 
-		   separated_by_chrom[i].end());
+    copy(separated_by_chrom[i].begin(), 
+	 separated_by_chrom[i].end(), 
+	 std::ostream_iterator<GenomicRegion>(*out, "\n"));
     separated_by_chrom[i].clear();
   }
+  if (out != &std::cout) delete out;
 }
 
 int main(int argc, const char **argv) {
@@ -140,15 +142,16 @@ int main(int argc, const char **argv) {
     ReadBEDFile(input_file_name, regions);
 
     if (collapse_regions)
-      sort_regions_collapse(regions);
+      sort_regions_collapse(regions, outfile);
     else if (!check_sorted(regions))
-      sort_regions(regions);
-    
-    ostream* out = (outfile.empty()) ? 
-      &std::cout : new std::ofstream(outfile.c_str());
-    copy(regions.begin(), regions.end(), 
-	 std::ostream_iterator<GenomicRegion>(*out, "\n"));
-    if (out != &std::cout) delete out;
+      sort_regions(regions, outfile);
+    else {
+      ostream* out = (outfile.empty()) ? 
+	&std::cout : new std::ofstream(outfile.c_str());
+      copy(regions.begin(), regions.end(), 
+	   std::ostream_iterator<GenomicRegion>(*out, "\n"));
+      if (out != &std::cout) delete out;
+    }
   }
   catch (RMAPException &e) {
     cerr << "ERROR:\t" << e.what() << endl;
