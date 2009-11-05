@@ -193,7 +193,7 @@ map_reads(const string &chrom, const size_t chrom_id, const size_t profile,
   
   size_t chrom_offset = 0;
   while (chrom_offset < min(chrom_size, read_width - 1)) {
-    const size_t key_base = base2int(chrom[chrom_offset++]);
+    const size_t key_base = chrom[chrom_offset++];
     fast_read.shift(key_base);
     SeedMaker::update_bad_bases(key_base, bad_bases);
     SeedMaker::update_read_word(key_base, read_word);
