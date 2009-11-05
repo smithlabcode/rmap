@@ -147,11 +147,10 @@ simreads_bs(const bool FASTQ_OUTPUT,
     // Do the bisulfite treatment
     bisulfite_treatment(rng, seq, bs_rate, meth_rate);
     
-    const bool ag = (rng.runif(0.0,1.0) > 0.5);
-    if (AG_WILDCARD && ag)
+    if (AG_WILDCARD) {
       seq = revcomp(seq);
-    
-    if (ag) rc = (!rc);
+      rc = (!rc);
+    }
     
     vector<vector<double> > matrix;
     sequence_to_consensus_matrix(seq, matrix);
