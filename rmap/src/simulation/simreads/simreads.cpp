@@ -128,17 +128,16 @@ simreads(const bool FASTQ_OUTPUT,
     
     // extract the sequence (and decide one revcomp)
     string seq(sequence.substr(start, read_width));
-    transform(seq.begin(), seq.end(), seq.begin(), std::ptr_fun(&toupper));
     const bool rc = (rng.runif(0.0,1.0) > 0.5);
     if (rc) seq = revcomp(seq);
 
     vector<vector<double> > matrix;
     sequence_to_consensus_matrix(seq, matrix);
     add_sequencing_errors(rng, max_errors, matrix);
-
+    
     string called_seq;
     call_bases_solexa(matrix, called_seq);
-
+    
     // Sample errors
     string error_log;
     get_error_log(seq, called_seq, error_log);
@@ -241,32 +240,49 @@ main(int argc, const char **argv) {
       filesizes.push_back(get_filesize(filenames[i]));
       total += filesizes.back();
     }
-    
+
+    if (VERBOSE)
+      cerr << "[OBTAINING READ SAMPLE DISTRIBUTION]";
     vector<size_t> samples;
     for (size_t i = 0; i < filesizes.size(); ++i)
       samples.push_back(n_reads*filesizes[i]/total);
+    if (VERBOSE) cerr << "[DONE]" << endl;
     
     if (!outfile.empty())
       ofstream out(outfile.c_str());
-
+    
     if (!prb_file.empty())
       ofstream prb(prb_file.c_str());
-
+    
     for (size_t i = 0; i < filenames.size(); ++i) {
       if (isdir(filenames[i].c_str()))
 	throw RMAPException("\"" + filenames[i] + 
 			    "\" not a FASTA format sequence file?");
       if (VERBOSE)
-	cerr << filenames[i] << endl;
-      
+	cerr << "[LOADING=" << filenames[i] << "]";
       vector<string> names, sequences;
       read_fasta_file(filenames[i].c_str(), names, sequences);
+      if (VERBOSE) cerr << "[DONE]" << endl;
+
+      double sub_total = 0;
+      for (size_t k = 0; k < sequences.size(); ++k)
+	sub_total += sequences[i].length();
+      
+      vector<size_t> sub_samples;
+      for (size_t k = 0; k < sequences.size(); ++k)
+	sub_samples.push_back(samples[i]*sequences[i].length()/sub_total);
       
       for (size_t j = 0; j < names.size(); ++j) {
+	if (VERBOSE)
+	  cerr << "[PROCESSING CHROM=" << names[j] << "]" << endl;
 	const size_t offset = names[j].find(':');
 	const string name(names[j].substr(0, offset));
+	
+	transform(sequences[j].begin(), sequences[j].end(), 
+		  sequences[j].begin(), std::ptr_fun(&toupper));
+	
 	simreads(FASTQ_OUTPUT, outfile, prb_file,
-		 rng, samples[i], read_width, max_errors, 
+		 rng, sub_samples[i], read_width, max_errors, 
 		 name, sequences[j], read_names, reads, probs);
       }
     }
