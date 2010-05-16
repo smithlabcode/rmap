@@ -123,7 +123,7 @@ static void
 write_dead(std::ofstream &out, const string &chrom_name, 
 	   const char strand, vector<size_t>::const_iterator curr,
 	   const vector<size_t>::const_iterator lim) {
-  assert(curr < lim);
+  assert(curr <= lim);
   size_t prev_ambig = *curr;
   ++curr;
   for (; curr < lim; ++curr)
@@ -260,6 +260,25 @@ append_revcomp(string &long_seq) {
   revcomp_inplace(long_seq.begin() + seqlen, long_seq.end());
 }
 
+static void
+identify_chromosomes(const bool VERBOSE,
+		     const string fasta_suffix,
+  		     const string chrom_file, 
+		     vector<string> &chrom_files) {
+  if (VERBOSE)
+    cerr << "[IDENTIFYING CHROMS] ";
+  if (isdir(chrom_file.c_str())) 
+    read_dir(chrom_file, fasta_suffix, chrom_files);
+  else chrom_files.push_back(chrom_file);
+  if (VERBOSE) {
+    cerr << "[DONE]" << endl 
+	 << "chromosome files found (approx size):" << endl;
+    for (vector<string>::const_iterator i = chrom_files.begin();
+	 i != chrom_files.end(); ++i)
+      cerr << *i << " (" << roundf(get_filesize(*i)/1e06) << "Mbp)" << endl;
+    cerr << endl;
+  }
+}
 
 int
 main(int argc, const char **argv) {
@@ -270,6 +289,7 @@ main(int argc, const char **argv) {
     size_t kmer = 0;
     size_t prefix_len = 0;
     string outfile;
+    string fasta_suffix = "fa";
   
     bool VERBOSE = false;
     bool BISULFITE = false;
@@ -283,6 +303,8 @@ main(int argc, const char **argv) {
     opt_parse.add_opt("prefix", 'p', "prefix length", true, prefix_len);
     opt_parse.add_opt("bisulfite", 'B', "get bisulfite deadzones", 
 		      false, BISULFITE);
+    opt_parse.add_opt("suffix", 's', "suffix of FASTA files "
+		      "(assumes -c indicates dir)", false , fasta_suffix);
     opt_parse.add_opt("verbose", 'v', "print more run information", 
 		      false, VERBOSE);
     vector<string> leftover_args;
@@ -303,8 +325,11 @@ main(int argc, const char **argv) {
       cerr << opt_parse.help_message() << endl;
       return EXIT_SUCCESS;
     }
-    vector<string> seqfiles = leftover_args;
+    const string chrom_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
+
+    vector<string> seqfiles;
+    identify_chromosomes(VERBOSE, fasta_suffix, chrom_file, seqfiles);
     
     string long_seq;
     vector<size_t> seqoffsets;
