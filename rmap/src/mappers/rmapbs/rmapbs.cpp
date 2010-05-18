@@ -36,7 +36,7 @@
 #include "OptionParser.hpp"
 #include "load_reads.hpp"
 
-using std::tr1::unordered_multimap;
+using std::tr1::unordered_map;
 
 using std::string;
 using std::vector;
