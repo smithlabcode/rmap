@@ -24,7 +24,7 @@ ifndef RMAP
 $(error RMAP variable undefined)
 endif
 
-PROGS = sortbed bedoverlap mapsifter extractseq deadzones
+PROGS = sortbed bedoverlap mapsifter extractseq deadzones binreads
 
 LIBS =
 LIBDIR = $(RMAP)/lib
@@ -53,7 +53,7 @@ all:	$(PROGS)
 %.o: %.cpp %.hpp
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-sortbed bedoverlap mapsifter extractseq deadzones: \
+$(PROGS): \
 	$(addprefix $(COMMON_DIR), GenomicRegion.o rmap_os.o \
 	rmap_utils.o OptionParser.o)
 
