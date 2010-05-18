@@ -35,6 +35,7 @@ using std::endl;
 using std::cerr;
 using std::numeric_limits;
 
+using std::tr1::unordered_map;
 
 void
 filter_scores(const float lower_bound, const float upper_bound,
