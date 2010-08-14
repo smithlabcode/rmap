@@ -769,15 +769,15 @@ invert_bests_list(vector<unsigned int> &read_index,
 
 
 static void
-iterate_over_reads_fastq(const bool VERBOSE,
-			 const size_t RUN_MODE, 
-			 const string &filename,
-			 const string &outfile,
-			 const size_t read_len,
-			 const vector<unsigned int> &reads_index, 
-			 vector<MultiMapResult> &bests, 
-			 const vector<size_t> &chrom_sizes,
-			 const vector<string> &chrom) {
+iterate_over_reads(const bool VERBOSE,
+		   const size_t RUN_MODE, 
+		   const string &filename,
+		   const string &outfile,
+		   const size_t read_len,
+		   const vector<unsigned int> &reads_index, 
+		   vector<MultiMapResult> &bests, 
+		   const vector<size_t> &chrom_sizes,
+		   const vector<string> &chrom) {
   
   static const size_t INPUT_BUFFER_SIZE = 10000;
   std::ifstream in(filename.c_str(), std::ios::binary);
