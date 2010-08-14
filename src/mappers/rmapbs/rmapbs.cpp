@@ -116,14 +116,36 @@ bisulfite_treatment_tc(char c) {
   }
 }
 
+struct regular_score {
+  regular_score() {}
+  template <class T, class U> size_t score_tc(T a, U b) const {
+    return a->score_tc(b);
+  }
+  template <class T, class U> size_t score_ag(T a, U b) const {
+    return a->score_ag(b);
+  }
+};
+
+struct wildcard_score {
+  wildcard_score() {}
+  template <class T, class U> size_t score_tc(T a, U b) const {
+    return a->score_tc_wild_n(b);
+  }
+  template <class T, class U> size_t score_ag(T a, U b) const {
+    return a->score_ag_wild_n(b);
+  }
+};
+
+
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 ////
 ////  WHERE THE ACTUAL MAPPING HAPPENS
 ////
 ////
-template <class T> void
-map_reads_tc(const string &chrom, const size_t chrom_id,
+template <class T, class U> void
+map_reads_tc(const U &specialized_score,
+	     const string &chrom, const size_t chrom_id,
 	     const size_t profile, const size_t read_width, 
 	     const size_t max_diffs, const vector<T> &fast_reads, 
 	     //const
@@ -165,12 +187,13 @@ map_reads_tc(const string &chrom, const size_t chrom_id,
 	const typename vector<T>::const_iterator limit(tmp.second);
 	for (typename vector<T>::const_iterator to_test(tmp.first); 
 	     to_test != limit; ++to_test) {
-	  const size_t score = to_test->score_tc(fast_read);
+	  // const size_t score = to_test->score_tc(fast_read);
+	  const size_t score = specialized_score.score_tc(to_test, fast_read);
 	  if (score <= max_diffs) {
 	    const vector<MultiMapResult>::iterator 
 	      current(best_maps.begin() + (to_test - fast_reads.begin()));
 	    if (score <= current->score)
-	      current->add(score, chrom_id, distance(chrom.begin(), chrom_pos) 
+	      current->add(score, chrom_id, distance(chrom.begin(), chrom_pos)
 			   - read_width + 1, strand);
 	  }
 	}
@@ -189,8 +212,9 @@ bisulfite_treatment_ag(char c) {
 }
 
 
-template <class T> void
-map_reads_ag(const string &chrom, const size_t chrom_id,
+template <class T, class U> void
+map_reads_ag(const U &specialized_score,
+	     const string &chrom, const size_t chrom_id,
 	     const size_t profile, const size_t read_width, 
 	     const size_t max_diffs, const vector<T> &fast_reads, 
 	     //const
@@ -232,7 +256,8 @@ map_reads_ag(const string &chrom, const size_t chrom_id,
 	const typename vector<T>::const_iterator limit(tmp.second);
 	for (typename vector<T>::const_iterator to_test(tmp.first); 
 	     to_test != limit; ++to_test) {
-	  const size_t score = to_test->score_ag(fast_read);
+	  // const size_t score = to_test->score_ag(fast_read);
+	  const size_t score = specialized_score.score_ag(to_test, fast_read);
 	  if (score <= max_diffs) {
 	    const vector<MultiMapResult>::iterator 
 	      current(best_maps.begin() + distance(fast_reads.begin(), to_test));
@@ -350,12 +375,14 @@ b2i_rc(char c) {
 }
 
 
-template <class T> void
+template <class T, class U> void
 iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD, 
 		   const bool ALLOW_METH_BIAS,
+		   const U &specialized_score,
 		   const vector<size_t> &the_seeds, 
 		   const vector<string> &chrom_files,
-		   vector<unsigned int> &ambigs, vector<string> &chrom_names, 
+		   vector<pair<unsigned int, unsigned int> > &ambigs, 
+		   vector<string> &chrom_names, 
 		   vector<size_t> &chrom_sizes,
 		   vector<T> &fast_reads,  vector<size_t> &read_words, 
 		   vector<unsigned int> &read_index,
@@ -400,9 +427,11 @@ iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD,
 	if (!ALLOW_METH_BIAS)
 	  treat_cpgs(AG_WILDCARD, tmp_chrom);
 	if (AG_WILDCARD)
-	  map_reads_ag(tmp_chrom, prev_chrom_count + k, the_seeds[j], read_width, 
+	  map_reads_ag(specialized_score, 
+		       tmp_chrom, prev_chrom_count + k, the_seeds[j], read_width, 
 		       max_mismatches, fast_reads, seed_hash, true, best_maps);
-	else map_reads_tc(tmp_chrom, prev_chrom_count + k, the_seeds[j], read_width, 
+	else map_reads_tc(specialized_score, 
+			  tmp_chrom, prev_chrom_count + k, the_seeds[j], read_width, 
 			  max_mismatches, fast_reads, seed_hash, true, best_maps);
 	string().swap(tmp_chrom);
 	
@@ -412,9 +441,11 @@ iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD,
 	if (!ALLOW_METH_BIAS)
 	  treat_cpgs(AG_WILDCARD, chroms[k]);
 	if (AG_WILDCARD)
-	  map_reads_ag(chroms[k], prev_chrom_count + k, the_seeds[j], read_width, 
+	  map_reads_ag(specialized_score, 
+		       chroms[k], prev_chrom_count + k, the_seeds[j], read_width, 
 		       max_mismatches, fast_reads, seed_hash, false, best_maps);
-	else map_reads_tc(chroms[k], prev_chrom_count + k, the_seeds[j], read_width,
+	else map_reads_tc(specialized_score, 
+			  chroms[k], prev_chrom_count + k, the_seeds[j], read_width,
 			  max_mismatches, fast_reads, seed_hash, false, best_maps);
 	string().swap(chroms[k]);
       }
@@ -498,21 +529,21 @@ sites_to_regions(const bool VERBOSE, const size_t RUN_MODE, const size_t read_le
 
 
 static void
-write_non_uniques(string filename, const vector<unsigned int> &ambigs,
+write_non_uniques(string filename, 
+		  const vector<pair<unsigned int, unsigned int> > &ambigs,
 		  const vector<string> &read_names) {
   std::ofstream out(filename.c_str());
   for (size_t i = 0; i < ambigs.size(); ++i)
-    out << read_names[ambigs[i]] << endl;
+    out << read_names[ambigs[i].first] << "\t" << ambigs[i].second << endl;
   out.close();
 }
-
 
 
 template <class T> void
 eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
 		 vector<MultiMapResult> &best_maps, 
 		 vector<unsigned int> &read_index, vector<size_t> &read_words, 
-		 vector<unsigned int> &ambigs, vector<T> &fast_reads,
+		 vector<pair<unsigned int, unsigned int> > &ambigs, vector<T> &fast_reads,
 		 typename SeedHash<T>::type &seed_hash) {
   size_t prev_idx = 0, j = 0;
   size_t prev_key = 0;
@@ -521,7 +552,7 @@ eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
   for (size_t i = 0; i < best_maps.size(); ++i) {
     best_maps[i].collapse();
     if (best_maps[i].ambiguous() && best_maps[i].score <= max_mismatches)
-      ambigs.push_back(read_index[i]);
+      ambigs.push_back(make_pair(read_index[i], best_maps[i].score));
     else {
       best_maps[j] = best_maps[i];
       read_index[j] = read_index[i];
@@ -551,12 +582,12 @@ eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
 template <class T> void
 eliminate_ambigs(const size_t max_mismatches, vector<MultiMapResult> &best_maps, 
 		 vector<unsigned int> &read_index, vector<size_t> &reads, 
-		 vector<unsigned int> &ambigs, vector<T> &fast_reads) {
+		 vector<pair<unsigned int, unsigned int> > &ambigs, vector<T> &fast_reads) {
   size_t j = 0;
   for (size_t i = 0; i < best_maps.size(); ++i) {
     best_maps[i].collapse();
     if (best_maps[i].ambiguous() && best_maps[i].score <= max_mismatches)
-      ambigs.push_back(read_index[i]);
+      ambigs.push_back(make_pair(read_index[i], best_maps[i].score));
     else {
       best_maps[j] = best_maps[i];
       read_index[j] = read_index[i];
@@ -716,6 +747,105 @@ load_reads(const bool VERBOSE, const size_t INPUT_MODE,
 }
 
 
+struct indexed_best_less {
+  bool operator()(const pair<unsigned int, MultiMapResult> &a,
+		  const pair<unsigned int, MultiMapResult> &b) const {
+    return a.first < b.first;
+  }
+};
+
+static void
+invert_bests_list(vector<unsigned int> &read_index, 
+		  vector<MultiMapResult> &bests) {
+  vector<pair<unsigned int, MultiMapResult> > sorter;
+  for (size_t i = 0; i < bests.size(); ++i)
+    sorter.push_back(make_pair(read_index[i], bests[i]));
+  sort(sorter.begin(), sorter.end(), indexed_best_less());
+  for (size_t i = 0; i < sorter.size(); ++i) {
+    read_index[i] = sorter[i].first;
+    bests[i] = sorter[i].second;
+  }
+}
+
+
+static void
+iterate_over_reads_fastq(const bool VERBOSE,
+			 const size_t RUN_MODE, 
+			 const string &filename,
+			 const string &outfile,
+			 const size_t read_len,
+			 const vector<unsigned int> &reads_index, 
+			 vector<MultiMapResult> &bests, 
+			 const vector<size_t> &chrom_sizes,
+			 const vector<string> &chrom) {
+  
+  static const size_t INPUT_BUFFER_SIZE = 10000;
+  std::ifstream in(filename.c_str(), std::ios::binary);
+  if (!in)
+    throw RMAPException("cannot open input file " + string(filename));
+  std::ostream* out = (!outfile.empty()) ? 
+    new std::ofstream(outfile.c_str()) : &cout;
+
+  if (!outfile.empty() && !(*out))
+    throw RMAPException("cannot open output file " + string(outfile));
+  
+  size_t read_idx = 0, line_count = 0, 
+    curr_idx = 0, n_reads_mapped = 0;
+  string name, sequence;
+  
+  while (!in.eof()) {
+
+    char buffer[INPUT_BUFFER_SIZE + 1];
+    in.getline(buffer, INPUT_BUFFER_SIZE);
+    if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
+      throw RMAPException("Line in " + filename + "\nexceeds max length: " +
+                          toa(INPUT_BUFFER_SIZE));
+    
+    if (line_count % 4 == 0 && read_idx == reads_index[curr_idx]) {
+      name = string(buffer + 1);
+      const size_t name_end = name.find_first_of(" \t");
+      if (name_end != string::npos)
+        name.erase(name.begin() + name_end, name.end());
+    }
+    else if (line_count % 4 == 1 && read_idx == reads_index[curr_idx]) {
+      sequence = string(buffer);
+    }
+    else if (line_count % 4 == 3 && read_idx == reads_index[curr_idx]) {
+      if (!bests[curr_idx].empty()) {
+	bests[curr_idx].sort();
+	for (size_t j = 0; j < bests[curr_idx].mr.size(); ++j)
+	  if (j == 0 || bests[curr_idx].mr[j - 1] < bests[curr_idx].mr[j]) {
+	    const size_t chrom_id = bests[curr_idx].mr[j].chrom;
+	    const size_t start = bests[curr_idx].mr[j].strand ? 
+	      bests[curr_idx].mr[j].site : 
+	      chrom_sizes[chrom_id] - bests[curr_idx].mr[j].site - read_len;
+	    const size_t end = start + read_len;
+	    const double score = 
+	      (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ?
+	      FastReadQuality::value_to_quality(bests[curr_idx].score) :
+	      bests[curr_idx].score;
+	    const char strand = ((bests[curr_idx].mr[j].strand) ? '+' : '-');
+	    *out << GenomicRegion(chrom[chrom_id], start, end,
+				  name, score, strand) << '\t'
+		 << sequence << "\t" << string(buffer) << endl;
+	    n_reads_mapped++;
+	  }
+	bests[curr_idx].clear();
+      }
+      ++curr_idx;
+    }
+    if (line_count % 4 == 3) 
+      ++read_idx;
+    ++line_count;
+  }
+  in.close();
+  if (out != &cout) delete out;
+  if (VERBOSE)
+    cerr << "[DONE] " << endl
+	 << "TOTAL READS MAPPED: " << n_reads_mapped << endl;
+}
+
+
 int 
 main(int argc, const char **argv) {
   try {
@@ -740,6 +870,9 @@ main(int argc, const char **argv) {
     bool AG_WILDCARD = false;
     bool ALLOW_METH_BIAS = false;
     bool WILDCARD = false;
+
+    bool WILD_N_MODE = false;
+    bool ORIGINAL_OUTPUT = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("rmapbs", "The rmapbs mapping tool for Solexa reads"
@@ -777,6 +910,10 @@ main(int argc, const char **argv) {
     opt_parse.add_opt("faster", 'f', "faster seeds (sensitive to 2 mismatches)", 
 		      false, FASTER_MODE);
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
+    opt_parse.add_opt("original-output", 'G', "use original output format", 
+		      false, ORIGINAL_OUTPUT);
+    opt_parse.add_opt("wild-n-mode", 'y', "allow N in read to match anything", 
+		      false, WILD_N_MODE);
     vector<string> leftover_args;
     opt_parse.parse(argc, argv, leftover_args);
     if (argc == 1 || opt_parse.help_requested()) {
@@ -799,10 +936,6 @@ main(int argc, const char **argv) {
       cerr << "must specify chroms file/dir or filenames file" << endl;
       return EXIT_FAILURE;
     }
-    if (chrom_file.empty() && filenames_file.empty()) {
-      cerr << "must specify chroms file/dir or filenames file" << endl;
-      return EXIT_FAILURE;
-    }
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
     
@@ -815,6 +948,10 @@ main(int argc, const char **argv) {
     //  CHECK HOW QUALITY SCORES ARE USED
     //
     const size_t INPUT_MODE = get_input_mode(VERBOSE, reads_file, prb_file);
+    if (INPUT_MODE == FASTA_FILE && !ORIGINAL_OUTPUT)
+      throw RMAPException("when reads are given as FASTA, "
+			  "original output format is required");
+    
     const size_t RUN_MODE = get_run_mode(VERBOSE, INPUT_MODE, WILDCARD, QUALITY);
     
     //////////////////////////////////////////////////////////////
@@ -858,51 +995,51 @@ main(int argc, const char **argv) {
     //
     vector<size_t> chrom_sizes;
     vector<string> chrom_names;
-    vector<unsigned int> ambigs;
-    if (RUN_MODE == RUN_MODE_MISMATCH)
+    vector<pair<unsigned int, unsigned int> > ambigs;
+    
+    if (RUN_MODE == RUN_MODE_MISMATCH) {
+      if (WILD_N_MODE) {
+	const wildcard_score specialized_score;
+	iterate_over_seeds(VERBOSE, AG_WILDCARD, ALLOW_METH_BIAS,
+			   specialized_score,
+			   the_seeds, chrom_files, ambigs, 
+			   chrom_names, chrom_sizes,
+			   fast_reads, // USE REGULAR FAST READS
+			   read_words, read_index,
+			   best_maps, max_mismatches, read_width);
+      }
+      else {
+	const regular_score specialized_score;
+	iterate_over_seeds(VERBOSE, AG_WILDCARD, ALLOW_METH_BIAS,
+			   specialized_score,
+			   the_seeds, chrom_files, ambigs, 
+			   chrom_names, chrom_sizes,
+			   fast_reads, // USE REGULAR FAST READS
+			   read_words, read_index,
+			   best_maps, max_mismatches, read_width);
+      }
+    }
+    if (RUN_MODE == RUN_MODE_WILDCARD) {
+      const regular_score specialized_score;
       iterate_over_seeds(VERBOSE, AG_WILDCARD, ALLOW_METH_BIAS,
-			 the_seeds, chrom_files, ambigs, 
-			 chrom_names, chrom_sizes,
-			 fast_reads, // USE REGULAR FAST READS
-			 read_words, read_index,
-			 best_maps, max_mismatches, read_width);
-    if (RUN_MODE == RUN_MODE_WILDCARD)
-      iterate_over_seeds(VERBOSE, AG_WILDCARD, ALLOW_METH_BIAS,
+			 specialized_score,
 			 the_seeds, chrom_files, ambigs, 
 			 chrom_names, chrom_sizes,
 			 fast_reads_wc, // USE FAST READS FOR WILDCARD MATCHING
 			 read_words, read_index,
 			 best_maps, max_mismatches, read_width);
-    if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
+    }
+    if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) {
+      const regular_score specialized_score;
       iterate_over_seeds(VERBOSE, AG_WILDCARD, ALLOW_METH_BIAS,
+			 specialized_score,
 			 the_seeds, chrom_files, ambigs, 
 			 chrom_names, chrom_sizes,
 			 fast_reads_q, // USE FAST READS FOR QUALITY MATCHING
 			 read_words, read_index,
 			 best_maps, max_match_score, read_width);
-    
-    //////////////////////////////////////////////////////////////
-    // LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
-    //
-    vector<string> read_names;
-    load_read_names(INPUT_MODE, reads_file, read_names);
-    
-    //////////////////////////////////////////////////////////////
-    // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
-    //
-    if (!ambiguous_file.empty()) {
-      if (VERBOSE)
-	cerr << "[WRITING AMBIGS] ";
-      write_non_uniques(ambiguous_file, ambigs, read_names);
-      if (VERBOSE)
-	cerr << "[DONE]" << endl
-	     << "TOTAL AMBIGS: " << ambigs.size() << endl;
-      ambigs.clear();
-    }    
-    
-    //////////////////////////////////////////////////////////////
-    // TRANSFORM THE RESULT STRUCTURES INTO BED FORMAT FOR OUTPUT
-    //
+    }
+
     // First make sure the chrom names don't have spaces (cause
     // problems for later processing)
     for (size_t i = 0; i < chrom_names.size(); ++i) {
@@ -910,8 +1047,51 @@ main(int argc, const char **argv) {
       if (chr_name_end != string::npos)
 	chrom_names[i].erase(chr_name_end);
     }
-    sites_to_regions(VERBOSE, RUN_MODE, read_width, chrom_names, chrom_sizes, 
-		     read_index, read_names, best_maps, outfile);
+    
+    if (!ORIGINAL_OUTPUT) {
+      invert_bests_list(read_index, best_maps);
+      iterate_over_reads(VERBOSE, RUN_MODE, reads_file, outfile,
+			 read_width, read_index, best_maps, 
+			 chrom_sizes, chrom_names);
+      //////////////////////////////////////////////////////////////
+      // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
+      if (!ambiguous_file.empty()) {
+	//////////////////////////////////////////////////////////////
+	// LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
+	vector<string> read_names;
+	load_read_names(INPUT_MODE, reads_file, read_names);
+	if (VERBOSE)
+	  cerr << "[WRITING AMBIGS] ";
+	write_non_uniques(ambiguous_file, ambigs, read_names);
+	if (VERBOSE)
+	  cerr << "[DONE]" << endl
+	       << "TOTAL AMBIGS: " << ambigs.size() << endl;
+	ambigs.clear();
+      }    
+    }
+    else {
+      //////////////////////////////////////////////////////////////
+      // LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
+      //
+      vector<string> read_names;
+      load_read_names(INPUT_MODE, reads_file, read_names);
+      
+      //////////////////////////////////////////////////////////////
+      // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
+      if (!ambiguous_file.empty()) {
+	if (VERBOSE)
+	  cerr << "[WRITING AMBIGS] ";
+	write_non_uniques(ambiguous_file, ambigs, read_names);
+	if (VERBOSE)
+	  cerr << "[DONE]" << endl
+	       << "TOTAL AMBIGS: " << ambigs.size() << endl;
+	ambigs.clear();
+      }    
+      //////////////////////////////////////////////////////////////
+      // TRANSFORM THE RESULT STRUCTURES INTO BED FORMAT FOR OUTPUT
+      sites_to_regions(VERBOSE, RUN_MODE, read_width, chrom_names, chrom_sizes, 
+		       read_index, read_names, best_maps, outfile);
+    }
   }
   catch (const RMAPException &e) {
     cerr << e.what() << endl;
