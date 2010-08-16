@@ -35,6 +35,7 @@
 #include "MapResult.hpp"
 #include "OptionParser.hpp"
 #include "load_reads.hpp"
+#include "clip_adaptor_from_reads.hpp"
 
 using std::tr1::unordered_map;
 
@@ -260,7 +261,7 @@ comp(char c) {
 template <class T> void
 iterate_over_seeds(const bool VERBOSE, 
 		   const vector<size_t> &the_seeds, const vector<string> &chrom_files,
-		   vector<unsigned int> &ambigs, 
+		   vector<pair<unsigned int, unsigned int> > &ambigs, 
 		   vector<string> &chrom_names, vector<size_t> &chrom_sizes,
 		   vector<T> &fast_reads,  vector<size_t> &read_words, 
 		   vector<unsigned int> &read_index,
@@ -391,11 +392,13 @@ sites_to_regions(const bool VERBOSE, const size_t RUN_MODE, const size_t read_le
 
 
 static void
-write_non_uniques(string filename, const vector<unsigned int> &ambigs,
+write_non_uniques(string filename, 
+		  const vector<pair<unsigned int, unsigned int> > &ambigs, 
 		  const vector<string> &read_names) {
   std::ofstream out(filename.c_str());
   for (size_t i = 0; i < ambigs.size(); ++i)
-    out << read_names[ambigs[i]] << endl;
+    out << read_names[ambigs[i].first] << "\t"
+	<< ambigs[i].second << endl;
   out.close();
 }
 
@@ -404,7 +407,8 @@ template <class T> void
 eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
 		 vector<MultiMapResult> &best_maps, 
 		 vector<unsigned int> &read_index, vector<size_t> &read_words, 
-		 vector<unsigned int> &ambigs, vector<T> &fast_reads,
+		 vector<pair<unsigned int, unsigned int> > &ambigs, 
+		 vector<T> &fast_reads,
 		 typename SeedHash<T>::type &seed_hash) {
   size_t prev_idx = 0, j = 0;
   size_t prev_key = 0;
@@ -413,7 +417,7 @@ eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
   for (size_t i = 0; i < best_maps.size(); ++i) {
     best_maps[i].collapse();
     if (best_maps[i].ambiguous() && best_maps[i].score <= max_mismatches)
-      ambigs.push_back(read_index[i]);
+      ambigs.push_back(make_pair(read_index[i], best_maps[i].score));
     else {
       best_maps[j] = best_maps[i];
       read_index[j] = read_index[i];
@@ -443,12 +447,13 @@ eliminate_ambigs(const size_t max_mismatches, const size_t the_seed,
 template <class T> void
 eliminate_ambigs(const size_t max_mismatches, vector<MultiMapResult> &best_maps, 
 		 vector<unsigned int> &read_index, vector<size_t> &read_words, 
-		 vector<unsigned int> &ambigs, vector<T> &fast_reads) {
+		 vector<pair<unsigned int, unsigned int> > &ambigs, 
+		 vector<T> &fast_reads) {
   size_t j = 0;
   for (size_t i = 0; i < best_maps.size(); ++i) {
     best_maps[i].collapse();
     if (best_maps[i].ambiguous() && best_maps[i].score <= max_mismatches)
-      ambigs.push_back(read_index[i]);
+      ambigs.push_back(make_pair(read_index[i], best_maps[i].score));
     else {
       best_maps[j] = best_maps[i];
       read_index[j] = read_index[i];
@@ -562,7 +567,7 @@ get_run_mode(const bool VERBOSE, const size_t INPUT_MODE,
 
 static void
 load_reads(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_MODE,
-	   const size_t max_mismatches,
+	   const size_t max_mismatches, const string &adaptor,
 	   const string &reads_file, const string &prb_file,
 	   vector<FastRead> &fast_reads, vector<FastReadWC> &fast_reads_wc,
 	   vector<FastReadQuality> &fast_reads_q,
@@ -575,27 +580,132 @@ load_reads(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_MODE,
   vector<string> reads;
   if (INPUT_MODE == FASTQ_FILE) {
     if (RUN_MODE == RUN_MODE_WILDCARD)
-      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+      load_reads_from_fastq_file(reads_file, adaptor, max_mismatches, read_width,
 				 fast_reads_wc, read_words, read_index);
     else if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
-      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+      load_reads_from_fastq_file(reads_file, adaptor, max_mismatches, read_width,
 				 fast_reads_q, read_words, read_index);
-    else load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+    else load_reads_from_fastq_file(reads_file, adaptor, max_mismatches, read_width,
 				    fast_reads, read_words, read_index);
   }
   else if (INPUT_MODE == FASTA_AND_PRB) {
     if (RUN_MODE == RUN_MODE_WILDCARD)
-      load_reads_from_prb_file(prb_file, max_mismatches, read_width,
+      load_reads_from_prb_file(prb_file, adaptor, max_mismatches, read_width,
 			       fast_reads_wc, read_words, read_index);
-    else load_reads_from_prb_file(prb_file, max_mismatches, read_width,
+    else load_reads_from_prb_file(prb_file, adaptor, max_mismatches, read_width,
 				  fast_reads_q, read_words, read_index);
   }
-  else load_reads_from_fasta_file(reads_file, max_mismatches, read_width,
+  else load_reads_from_fasta_file(reads_file, adaptor, max_mismatches, read_width,
 				  fast_reads, read_words, read_index);
   if (VERBOSE)
     cerr << "[DONE]" << endl
 	 << "TOTAL HQ READS: " << read_index.size() << endl
 	 << "READ WIDTH: " << read_width << endl;
+}
+
+
+struct indexed_best_less {
+  bool operator()(const pair<unsigned int, MultiMapResult> &a,
+		  const pair<unsigned int, MultiMapResult> &b) const {
+    return a.first < b.first;
+  }
+};
+
+static void
+invert_bests_list(vector<unsigned int> &read_index, 
+		  vector<MultiMapResult> &bests) {
+  vector<pair<unsigned int, MultiMapResult> > sorter;
+  for (size_t i = 0; i < bests.size(); ++i)
+    sorter.push_back(make_pair(read_index[i], bests[i]));
+  sort(sorter.begin(), sorter.end(), indexed_best_less());
+  for (size_t i = 0; i < sorter.size(); ++i) {
+    read_index[i] = sorter[i].first;
+    bests[i] = sorter[i].second;
+  }
+}
+
+
+static void
+iterate_over_reads(const bool VERBOSE,
+		   const size_t RUN_MODE, 
+		   const string &adaptor,
+		   const string &filename,
+		   const string &outfile,
+		   const size_t read_len,
+		   const vector<unsigned int> &reads_index, 
+		   vector<MultiMapResult> &bests, 
+		   const vector<size_t> &chrom_sizes,
+		   const vector<string> &chrom) {
+  
+  static const size_t INPUT_BUFFER_SIZE = 10000;
+  std::ifstream in(filename.c_str(), std::ios::binary);
+  if (!in)
+    throw RMAPException("cannot open input file " + string(filename));
+  std::ostream* out = (!outfile.empty()) ? 
+    new std::ofstream(outfile.c_str()) : &cout;
+
+  if (!outfile.empty() && !(*out))
+    throw RMAPException("cannot open output file " + string(outfile));
+  
+  size_t read_idx = 0, line_count = 0, 
+    curr_idx = 0, n_reads_mapped = 0;
+  string name, sequence;
+  
+  while (!in.eof()) {
+
+    char buffer[INPUT_BUFFER_SIZE + 1];
+    in.getline(buffer, INPUT_BUFFER_SIZE);
+    if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
+      throw RMAPException("Line in " + filename + "\nexceeds max length: " +
+                          toa(INPUT_BUFFER_SIZE));
+    
+    if (line_count % 4 == 0 && read_idx == reads_index[curr_idx]) {
+      name = string(buffer + 1);
+      const size_t name_end = name.find_first_of(" \t");
+      if (name_end != string::npos)
+        name.erase(name.begin() + name_end, name.end());
+    }
+    else if (line_count % 4 == 1 && read_idx == reads_index[curr_idx]) {
+      sequence = string(buffer);
+    }
+    else if (line_count % 4 == 3 && read_idx == reads_index[curr_idx]) {
+      if (!bests[curr_idx].empty()) {
+	if (!adaptor.empty()) {
+	  cerr << sequence << endl;
+	  clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, sequence);
+	  cerr << sequence << endl << endl;
+	}
+	bests[curr_idx].sort();
+	for (size_t j = 0; j < bests[curr_idx].mr.size(); ++j)
+	  if (j == 0 || bests[curr_idx].mr[j - 1] < bests[curr_idx].mr[j]) {
+	    const size_t chrom_id = bests[curr_idx].mr[j].chrom;
+	    const size_t start = bests[curr_idx].mr[j].strand ? 
+	      bests[curr_idx].mr[j].site : 
+	      chrom_sizes[chrom_id] - bests[curr_idx].mr[j].site - read_len;
+	    const size_t end = start + read_len;
+	    const double score = 
+	      (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) ?
+	      FastReadQuality::value_to_quality(bests[curr_idx].score) :
+	      bests[curr_idx].score;
+	    const char strand = ((bests[curr_idx].mr[j].strand) ? '+' : '-');
+	    *out << GenomicRegion(chrom[chrom_id], start, end,
+				  name, score, strand) << '\t'
+		 << sequence << "\t" << string(buffer) << endl;
+	    n_reads_mapped++;
+	  }
+	bests[curr_idx].clear();
+      }
+      ++curr_idx;
+    }
+    if (line_count % 4 == 3) 
+      ++read_idx;
+    ++line_count;
+  }
+  in.close();
+  if (out != &cout) delete out;
+  if (VERBOSE)
+    cerr << "[DONE] " << endl
+	 << "TOTAL READS MAPPED: " << n_reads_mapped << endl;
 }
 
 
@@ -609,6 +719,7 @@ main(int argc, const char **argv) {
     string prb_file;
     string ambiguous_file;
     string fasta_suffix = "fa";
+    string adaptor_sequence;
     
     size_t n_seeds = 3;
     size_t seed_weight = 11;
@@ -621,6 +732,7 @@ main(int argc, const char **argv) {
     bool QUALITY = false;
     bool FASTER_MODE = false;
     bool WILDCARD = false;
+    bool ORIGINAL_OUTPUT = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse("rmap", "The rmap tool for mapping short reads",
@@ -653,6 +765,10 @@ main(int argc, const char **argv) {
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
     opt_parse.add_opt("faster", 'f', "faster seeds (sensitive to 2 mismatches)", 
 		      false, FASTER_MODE);
+    opt_parse.add_opt("original-output", 'G', "use original output format", 
+		      false, ORIGINAL_OUTPUT);
+    opt_parse.add_opt("clip", 'C', "clip the specified adaptor", 
+		      false, adaptor_sequence);
     vector<string> leftover_args;
     opt_parse.parse(argc, argv, leftover_args);
     if (argc == 1 || opt_parse.help_requested()) {
@@ -704,7 +820,7 @@ main(int argc, const char **argv) {
     vector<unsigned int> read_index;
     vector<size_t> read_words;
     load_reads(VERBOSE, INPUT_MODE, RUN_MODE,
-	       max_mismatches, 
+	       max_mismatches, adaptor_sequence,
 	       reads_file, prb_file, fast_reads, fast_reads_wc,
 	       fast_reads_q, read_index, read_words, 
 	       read_width);
@@ -734,7 +850,7 @@ main(int argc, const char **argv) {
     //
     vector<size_t> chrom_sizes;
     vector<string> chrom_names;
-    vector<unsigned int> ambigs;
+    vector<pair<unsigned int, unsigned int> > ambigs;
     if (RUN_MODE == RUN_MODE_MISMATCH)
       iterate_over_seeds(VERBOSE, the_seeds, chrom_files, ambigs, 
 			 chrom_names, chrom_sizes,
@@ -754,33 +870,58 @@ main(int argc, const char **argv) {
 			 read_words, read_index,
 			 best_maps, max_match_score, read_width);
     
-    //////////////////////////////////////////////////////////////
-    // LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
-    //
-    vector<string> read_names;
-    load_read_names(INPUT_MODE, reads_file, read_names);
-    
-    //////////////////////////////////////////////////////////////
-    // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
-    //
-    if (!ambiguous_file.empty()) {
-      if (VERBOSE)
-	cerr << "[WRITING AMBIGS] ";
-      write_non_uniques(ambiguous_file, ambigs, read_names);
-      if (VERBOSE)
-	cerr << "[DONE]" << endl;
-    } 
-    vector<unsigned int>().swap(ambigs);
-    
-    //////////////////////////////////////////////////////////////
-    // TRANSFORM THE RESULT STRUCTURES INTO BED FORMAT FOR OUTPUT
+    // First make sure the chrom names don't have spaces (cause
+    // problems for later processing)
     for (size_t i = 0; i < chrom_names.size(); ++i) {
       const size_t chr_name_end = chrom_names[i].find_first_of(" \t");
       if (chr_name_end != string::npos)
 	chrom_names[i].erase(chr_name_end);
     }
-    sites_to_regions(VERBOSE, RUN_MODE, read_width, chrom_names, chrom_sizes, 
-		     read_index, read_names, best_maps, outfile);
+    
+    if (!ORIGINAL_OUTPUT) {
+      invert_bests_list(read_index, best_maps);
+      iterate_over_reads(VERBOSE, RUN_MODE, adaptor_sequence, reads_file, 
+			 outfile, read_width, read_index, best_maps, 
+			 chrom_sizes, chrom_names);
+      //////////////////////////////////////////////////////////////
+      // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
+      if (!ambiguous_file.empty()) {
+	//////////////////////////////////////////////////////////////
+	// LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
+	vector<string> read_names;
+	load_read_names(INPUT_MODE, reads_file, read_names);
+	if (VERBOSE)
+	  cerr << "[WRITING AMBIGS] ";
+	write_non_uniques(ambiguous_file, ambigs, read_names);
+	if (VERBOSE)
+	  cerr << "[DONE]" << endl
+	       << "TOTAL AMBIGS: " << ambigs.size() << endl;
+	ambigs.clear();
+      }    
+    }
+    else {
+      //////////////////////////////////////////////////////////////
+      // LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
+      //
+      vector<string> read_names;
+      load_read_names(INPUT_MODE, reads_file, read_names);
+      
+      //////////////////////////////////////////////////////////////
+      // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
+      if (!ambiguous_file.empty()) {
+	if (VERBOSE)
+	  cerr << "[WRITING AMBIGS] ";
+	write_non_uniques(ambiguous_file, ambigs, read_names);
+	if (VERBOSE)
+	  cerr << "[DONE]" << endl
+	       << "TOTAL AMBIGS: " << ambigs.size() << endl;
+	ambigs.clear();
+      }    
+      //////////////////////////////////////////////////////////////
+      // TRANSFORM THE RESULT STRUCTURES INTO BED FORMAT FOR OUTPUT
+      sites_to_regions(VERBOSE, RUN_MODE, read_width, chrom_names, chrom_sizes, 
+		       read_index, read_names, best_maps, outfile);
+    }
   }
   catch (const RMAPException &e) {
     cerr << "ERROR:\t" << e.what() << endl;
