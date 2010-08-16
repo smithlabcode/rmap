@@ -814,11 +814,8 @@ iterate_over_reads(const bool VERBOSE,
     }
     else if (line_count % 4 == 3 && read_idx == reads_index[curr_idx]) {
       if (!bests[curr_idx].empty()) {
-	if (!adaptor.empty()) {
-	  cerr << sequence << endl;
+	if (!adaptor.empty())
 	  clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, sequence);
-	  cerr << sequence << endl << endl;
-	}
 	bests[curr_idx].sort();
 	for (size_t j = 0; j < bests[curr_idx].mr.size(); ++j)
 	  if (j == 0 || bests[curr_idx].mr[j - 1] < bests[curr_idx].mr[j]) {
