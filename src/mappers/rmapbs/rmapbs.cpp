@@ -35,6 +35,7 @@
 #include "MapResult.hpp"
 #include "OptionParser.hpp"
 #include "load_reads.hpp"
+#include "clip_adaptor_from_reads.hpp"
 
 using std::tr1::unordered_map;
 
@@ -703,7 +704,7 @@ get_run_mode(const bool VERBOSE, const size_t INPUT_MODE,
 static void
 load_reads(const bool VERBOSE, const size_t INPUT_MODE, 
 	   const size_t RUN_MODE, const bool AG_WILDCARD,
-	   const size_t max_mismatches,
+	   const size_t max_mismatches, const string &adaptor,
 	   const string &reads_file, const string &prb_file,
 	   vector<FastRead> &fast_reads, vector<FastReadWC> &fast_reads_wc,
 	   vector<FastReadQuality> &fast_reads_q,
@@ -716,23 +717,23 @@ load_reads(const bool VERBOSE, const size_t INPUT_MODE,
   vector<string> reads;
   if (INPUT_MODE == FASTQ_FILE) {
     if (RUN_MODE == RUN_MODE_WILDCARD)
-      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+      load_reads_from_fastq_file(reads_file, adaptor, max_mismatches, read_width,
 				 fast_reads_wc, read_words, read_index);
     else if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
-      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+      load_reads_from_fastq_file(reads_file, adaptor, max_mismatches, read_width,
 				 fast_reads_q, read_words, read_index);
     else
-      load_reads_from_fastq_file(reads_file, max_mismatches, read_width,
+      load_reads_from_fastq_file(reads_file, adaptor, max_mismatches, read_width,
 				 fast_reads, read_words, read_index);
   }
   else if (INPUT_MODE == FASTA_AND_PRB) {
     if (RUN_MODE == RUN_MODE_WILDCARD)
-      load_reads_from_prb_file(prb_file, max_mismatches, read_width,
+      load_reads_from_prb_file(prb_file, adaptor, max_mismatches, read_width,
 			       fast_reads_wc, read_words, read_index);
-    else load_reads_from_prb_file(prb_file, max_mismatches, read_width,
+    else load_reads_from_prb_file(prb_file, adaptor, max_mismatches, read_width,
 				  fast_reads_q, read_words, read_index);
   }
-  else load_reads_from_fasta_file(reads_file, max_mismatches, read_width,
+  else load_reads_from_fasta_file(reads_file, adaptor, max_mismatches, read_width,
 				  fast_reads, read_words, read_index);
   for (size_t i = 0; i < fast_reads_wc.size(); ++i)
     fast_reads_wc[i].bisulfite_treatment(AG_WILDCARD);
@@ -771,6 +772,7 @@ invert_bests_list(vector<unsigned int> &read_index,
 static void
 iterate_over_reads(const bool VERBOSE,
 		   const size_t RUN_MODE, 
+		   const string &adaptor,
 		   const string &filename,
 		   const string &outfile,
 		   const size_t read_len,
@@ -812,6 +814,11 @@ iterate_over_reads(const bool VERBOSE,
     }
     else if (line_count % 4 == 3 && read_idx == reads_index[curr_idx]) {
       if (!bests[curr_idx].empty()) {
+	if (!adaptor.empty()) {
+	  cerr << sequence << endl;
+	  clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, sequence);
+	  cerr << sequence << endl << endl;
+	}
 	bests[curr_idx].sort();
 	for (size_t j = 0; j < bests[curr_idx].mr.size(); ++j)
 	  if (j == 0 || bests[curr_idx].mr[j - 1] < bests[curr_idx].mr[j]) {
@@ -856,6 +863,7 @@ main(int argc, const char **argv) {
     string prb_file;
     string ambiguous_file;
     string fasta_suffix = "fa";
+    string adaptor_sequence;
     
     size_t n_seeds = 3;
     size_t seed_weight = 11;
@@ -909,6 +917,8 @@ main(int argc, const char **argv) {
 		      false, ALLOW_METH_BIAS);
     opt_parse.add_opt("faster", 'f', "faster seeds (sensitive to 2 mismatches)", 
 		      false, FASTER_MODE);
+    opt_parse.add_opt("clip", 'C', "clip the specified adaptor", 
+		      false, adaptor_sequence);
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
     opt_parse.add_opt("original-output", 'G', "use original output format", 
 		      false, ORIGINAL_OUTPUT);
@@ -969,7 +979,7 @@ main(int argc, const char **argv) {
     vector<unsigned int> read_index;
     vector<size_t> read_words;
     load_reads(VERBOSE, INPUT_MODE, RUN_MODE, AG_WILDCARD,
-	       max_mismatches, reads_file, prb_file, 
+	       max_mismatches, adaptor_sequence, reads_file, prb_file, 
 	       fast_reads, fast_reads_wc, fast_reads_q, 
 	       read_index, read_words, read_width);
     
@@ -1050,8 +1060,8 @@ main(int argc, const char **argv) {
     
     if (!ORIGINAL_OUTPUT) {
       invert_bests_list(read_index, best_maps);
-      iterate_over_reads(VERBOSE, RUN_MODE, reads_file, outfile,
-			 read_width, read_index, best_maps, 
+      iterate_over_reads(VERBOSE, RUN_MODE, adaptor_sequence, reads_file, 
+			 outfile, read_width, read_index, best_maps, 
 			 chrom_sizes, chrom_names);
       //////////////////////////////////////////////////////////////
       // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
