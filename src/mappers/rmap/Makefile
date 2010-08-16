@@ -55,7 +55,7 @@ all:	$(PROGS)
 
 rmap: $(addprefix $(COMMON_DIR), SeedMaker.o GenomicRegion.o rmap_os.o FastReadWC.o \
 	rmap_utils.o OptionParser.o FastRead.o FastReadQuality.o QualityScore.o \
-	load_reads.o)
+	load_reads.o clip_adaptor_from_reads.o)
 
 install: all
 	@mkdir -p $(RMAP)/bin
