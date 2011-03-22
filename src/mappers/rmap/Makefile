@@ -26,14 +26,12 @@ endif
 
 PROGS = rmap
 
-LIBS =
-LIBDIR = $(RMAP)/lib
-INCLUDEDIR = $(RMAP)/include
 CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O3
 DEBUGFLAGS = -g
 COMMON_DIR = $(RMAP)/src/common/
+INCLUDEDIR = $(COMMON_DIR)
 TEST_DIR = $(RMAP)/test
 
 ifeq "$(shell uname)" "Darwin"
@@ -62,7 +60,7 @@ install: all
 	@install -m 755 $(PROGS) $(RMAP)/bin
 
 %: %.cpp
-	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR) -L$(LIBDIR) $(LIBS)
+	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR)
 
 test_%:	%
 	@$(TEST_DIR)/$@ $(TEST_DIR)

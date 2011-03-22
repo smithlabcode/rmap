@@ -26,14 +26,12 @@ endif
 
 PROGS = simreads
 
-LIBS =
-LIBDIR = $(RMAP)/lib
-INCLUDEDIR = $(RMAP)/include
 CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O2
 DEBUGFLAGS = -g
 COMMON_DIR = $(RMAP)/src/common/
+INCLUDEDIR = $(COMMON_DIR)
 TEST_DIR = $(RMAP)/test
 
 ifeq "$(shell uname)" "Darwin"
@@ -61,7 +59,7 @@ $(PROGS): $(addprefix $(COMMON_DIR), sim_utils.o GenomicRegion.o \
 	RNG.o rmap_os.o rmap_utils.o OptionParser.o QualityScore.o)
 
 %: %.cpp
-	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR) -L$(LIBDIR) $(LIBS)
+	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR)
 
 test_%:	%
 	@$(TEST_DIR)/$@ $(TEST_DIR)

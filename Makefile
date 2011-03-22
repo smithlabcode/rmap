@@ -40,6 +40,5 @@ clean:
 
 distclean: clean
 	@rm -rf $(RMAP)/bin
-	@rm -rf $(RMAP)/lib
 	@rm -rf $(RMAP)/include
 .PHONY: distclean
