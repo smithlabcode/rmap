@@ -29,7 +29,7 @@ CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O3
 DEBUGFLAGS = -g
-COMMON_DIR = $(RMAP)/src/common/
+COMMON_DIR = $(RMAP)/src/smithlab_cpp/
 INCLUDEDIR = $(COMMON_DIR)
 TEST_DIR = $(RMAP)/test
 

@@ -23,13 +23,11 @@
 app_subdirs=mappers simulation utils
 
 all:
-	# @make -C common RMAP=$(RMAP) OPT=1
 	@for i in $(app_subdirs); do \
 		make -C $${i} RMAP=$(RMAP) OPT=1; \
 	done;
 
 install:
-	@make -C common RMAP=$(RMAP) OPT=1
 	@for i in $(app_subdirs); do \
 		make -C $${i} RMAP=$(RMAP) OPT=1 install; \
 	done;
@@ -40,7 +38,7 @@ test:
 	done;
 
 clean:
-	@make -C common RMAP=$(RMAP) OPT=1 clean
+	@make -C smithlab_cpp RMAP=$(RMAP) OPT=1 clean
 	@for i in $(app_subdirs); do \
 		make -C $${i} RMAP=$(RMAP) OPT=1 clean; \
 	done;
