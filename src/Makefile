@@ -28,21 +28,21 @@ app_subdirs=mappers simulation utils
 
 all:
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) SMITHLAB_CPP=$(SMITHLAB_CPP) SRC_ROOT=$(RMAP) OPT=1; \
+		make -C $${i} SMITHLAB_CPP=$(SMITHLAB_CPP) SRC_ROOT=$(RMAP) OPT=1; \
 	done;
 
 install:
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) SMITHLAB_CPP=$(SMITHLAB_CPP) SRC_ROOT=$(RMAP) OPT=1 install; \
+		make -C $${i} SMITHLAB_CPP=$(SMITHLAB_CPP) SRC_ROOT=$(RMAP) OPT=1 install; \
 	done;
 
 test:
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) SMITHLAB_CPP=$(SMITHLAB_CPP) SRC_ROOT=$(RMAP) test; \
+		make -C $${i} SMITHLAB_CPP=$(SMITHLAB_CPP) SRC_ROOT=$(RMAP) test; \
 	done;
 
 clean:
-	@make -C smithlab_cpp RMAP=$(RMAP) OPT=1 clean
+	@make -C smithlab_cpp OPT=1 clean
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) SMITHLAB_CPP=$(SMITHLAB_CPP) SRC_ROOT=$(RMAP) clean; \
+		make -C $${i} SMITHLAB_CPP=$(SMITHLAB_CPP) SRC_ROOT=$(RMAP) clean; \
 	done;

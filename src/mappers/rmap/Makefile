@@ -20,8 +20,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-ifndef RMAP
-$(error RMAP variable undefined)
+ifndef SRC_ROOT
+$(error SRC_ROOT variable undefined)
 endif
 
 ifndef SMITHLAB_CPP
@@ -35,7 +35,7 @@ CFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O3
 DEBUGFLAGS = -g
 COMMON_DIR = $(SMITHLAB_CPP)/
-TEST_DIR = $(RMAP)/test
+TEST_DIR = $(SRC_ROOT)/test
 
 ifeq "$(shell uname)" "Darwin"
 CFLAGS += -arch x86_64
@@ -59,8 +59,8 @@ rmap: $(addprefix $(COMMON_DIR), SeedMaker.o GenomicRegion.o rmap_os.o FastReadW
 	load_reads.o clip_adaptor_from_reads.o)
 
 install: all
-	@mkdir -p $(RMAP)/bin
-	@install -m 755 $(PROGS) $(RMAP)/bin
+	@mkdir -p $(SRC_ROOT)/bin
+	@install -m 755 $(PROGS) $(SRC_ROOT)/bin
 
 %: %.cpp
 	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR)

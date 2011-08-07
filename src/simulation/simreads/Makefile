@@ -20,8 +20,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-ifndef RMAP
-$(error RMAP variable undefined)
+ifndef SRC_ROOT
+$(error SRC_ROOT variable undefined)
 endif
 
 PROGS = simreads
@@ -31,7 +31,7 @@ CFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O2
 DEBUGFLAGS = -g
 COMMON_DIR = $(SMITHLAB_CPP)/
-TEST_DIR = $(RMAP)/test
+TEST_DIR = $(SRC_ROOT)/test
 
 ifeq "$(shell uname)" "Darwin"
 CFLAGS += -arch x86_64
@@ -48,8 +48,8 @@ endif
 all:	$(PROGS)
 
 install: all
-	@mkdir -p $(RMAP)/bin
-	@install -m 755 $(PROGS) $(RMAP)/bin
+	@mkdir -p $(SRC_ROOT)/bin
+	@install -m 755 $(PROGS) $(SRC_ROOT)/bin
 
 %.o: %.cpp %.hpp
 	$(CXX) $(CFLAGS) -c -o $@ $< -I$(COMMON_DIR)

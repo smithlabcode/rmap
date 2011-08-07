@@ -28,20 +28,20 @@ app_subdirs=rmap rmapbs rmappe
 
 all:
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) SMITHLAB_CPP=$(SMITHLAB_CPP) OPT=1; \
+		make -C $${i} SRC_ROOT=$(SRC_ROOT) SMITHLAB_CPP=$(SMITHLAB_CPP) OPT=1; \
 	done;
 
 install:
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) SMITHLAB_CPP=$(SMITHLAB_CPP) OPT=1 install; \
+		make -C $${i} SRC_ROOT=$(SRC_ROOT) SMITHLAB_CPP=$(SMITHLAB_CPP) OPT=1 install; \
 	done;
 
 test:
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) test; \
+		make -C $${i} SRC_ROOT=$(SRC_ROOT) test; \
 	done;
 
 clean:
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) clean; \
+		make -C $${i} SRC_ROOT=$(SRC_ROOT) clean; \
 	done;
