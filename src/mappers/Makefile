@@ -20,16 +20,20 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+ifndef SMITHLAB_CPP
+SMITHLAB_CPP=$(RMAP)/src/smithlab_cpp/
+endif
+
 app_subdirs=rmap rmapbs rmappe
 
 all:
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) OPT=1; \
+		make -C $${i} RMAP=$(RMAP) SMITHLAB_CPP=$(SMITHLAB_CPP) OPT=1; \
 	done;
 
 install:
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) OPT=1 install; \
+		make -C $${i} RMAP=$(RMAP) SMITHLAB_CPP=$(SMITHLAB_CPP) OPT=1 install; \
 	done;
 
 test:
@@ -39,5 +43,5 @@ test:
 
 clean:
 	@for i in $(app_subdirs); do \
-		make -C $${i} RMAP=$(RMAP) OPT=1 clean; \
+		make -C $${i} RMAP=$(RMAP) clean; \
 	done;

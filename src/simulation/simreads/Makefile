@@ -30,8 +30,7 @@ CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O2
 DEBUGFLAGS = -g
-COMMON_DIR = $(RMAP)/src/smithlab_cpp/
-INCLUDEDIR = $(COMMON_DIR)
+COMMON_DIR = $(SMITHLAB_CPP)/
 TEST_DIR = $(RMAP)/test
 
 ifeq "$(shell uname)" "Darwin"
@@ -53,7 +52,7 @@ install: all
 	@install -m 755 $(PROGS) $(RMAP)/bin
 
 %.o: %.cpp %.hpp
-	$(CXX) $(CFLAGS) -c -o $@ $< -I$(INCLUDEDIR)
+	$(CXX) $(CFLAGS) -c -o $@ $< -I$(COMMON_DIR)
 
 $(PROGS): $(addprefix $(COMMON_DIR), sim_utils.o GenomicRegion.o \
 	RNG.o rmap_os.o rmap_utils.o OptionParser.o QualityScore.o)

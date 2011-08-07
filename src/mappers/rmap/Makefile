@@ -24,14 +24,17 @@ ifndef RMAP
 $(error RMAP variable undefined)
 endif
 
+ifndef SMITHLAB_CPP
+$(error SMITHLAB_CPP variable undefined)
+endif
+
 PROGS = rmap
 
 CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O3
 DEBUGFLAGS = -g
-COMMON_DIR = $(RMAP)/src/smithlab_cpp/
-INCLUDEDIR = $(COMMON_DIR)
+COMMON_DIR = $(SMITHLAB_CPP)/
 TEST_DIR = $(RMAP)/test
 
 ifeq "$(shell uname)" "Darwin"
