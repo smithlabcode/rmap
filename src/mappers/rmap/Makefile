@@ -54,6 +54,9 @@ all:	$(PROGS)
 %.o: %.cpp %.hpp
 	$(CXX) $(CFLAGS) -c -o $@ $< -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
 
+%: %.cpp
+	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
+
 rmap: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastReadWC.o FastRead.o \
 	FastReadQuality.o load_reads.o) \
 	$(addprefix $(SMITHLAB_CPP)/, GenomicRegion.o smithlab_os.o smithlab_utils.o \
@@ -62,9 +65,6 @@ rmap: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastReadWC.o FastRead.o \
 install: all
 	@mkdir -p $(SRC_ROOT)/bin
 	@install -m 755 $(PROGS) $(SRC_ROOT)/bin
-
-%: %.cpp
-	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
 
 test_%:	%
 	@$(TEST_DIR)/$@ $(TEST_DIR)
