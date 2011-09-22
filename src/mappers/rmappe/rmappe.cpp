@@ -29,7 +29,7 @@
 #include "FastRead.hpp"
 #include "FastReadWC.hpp"
 #include "FastReadQuality.hpp"
-#include "rmap_os.hpp"
+#include "smithlab_os.hpp"
 #include "SeedMaker.hpp"
 #include "MapResultPE.hpp"
 #include "OptionParser.hpp"
@@ -681,13 +681,13 @@ load_read_names(const size_t INPUT_MODE,
   static const size_t INPUT_BUFFER_SIZE = 10000;
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in)
-    throw RMAPException("cannot open input file " + string(filename));
+    throw SMITHLABException("cannot open input file " + string(filename));
   size_t line_count = 0;
   while (!in.eof()) {
     char buffer[INPUT_BUFFER_SIZE + 1];
     in.getline(buffer, INPUT_BUFFER_SIZE);
     if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
-      throw RMAPException("Line in " + filename + "\nexceeds max length: " +
+      throw SMITHLABException("Line in " + filename + "\nexceeds max length: " +
                           toa(INPUT_BUFFER_SIZE));
     if ((INPUT_MODE == FASTQ_FILE && line_count % 4 == 0) ||
 	(INPUT_MODE != FASTQ_FILE && line_count % 2 == 0)) {
@@ -723,10 +723,10 @@ get_run_mode(const bool VERBOSE, const size_t INPUT_MODE,
 	     const bool WILDCARD, const bool QUALITY) {
   size_t RUN_MODE = RUN_MODE_MISMATCH;
   if (WILDCARD and QUALITY)
-    throw RMAPException("wildcard and quality matching: mutually exclusive");
+    throw SMITHLABException("wildcard and quality matching: mutually exclusive");
   if (WILDCARD) {
     if (INPUT_MODE == FASTA_FILE)
-      throw RMAPException("quality score information "
+      throw SMITHLABException("quality score information "
 			  "required to use wildcards");
     RUN_MODE = RUN_MODE_WILDCARD;
   }
@@ -939,7 +939,7 @@ main(int argc, const char **argv) {
     FastReadWC::set_cutoff(wildcard_cutoff);
     if (WILDCARD && wildcard_cutoff != numeric_limits<double>::max() &&
 	(wildcard_cutoff > 1.0 || wildcard_cutoff < 0)) 
-      throw RMAPException("wildcard cutoff must be in [0, 1]");
+      throw SMITHLABException("wildcard cutoff must be in [0, 1]");
 
     
     //////////////////////////////////////////////////////////////
@@ -1106,7 +1106,7 @@ main(int argc, const char **argv) {
 		     read_width, max_mappings, chrom_names, 
 		     chrom_sizes, read_index, read_names, best_maps);
   }
-  catch (const RMAPException &e) {
+  catch (const SMITHLABException &e) {
     cerr << e.what() << endl;
     return EXIT_FAILURE;
   }

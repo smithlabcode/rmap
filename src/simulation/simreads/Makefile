@@ -1,7 +1,6 @@
 #    Makefile from rmap software
 #
-#    Copyright (C) 2008 Cold Spring Harbor Laboratory, 
-#                       University of Southern California and
+#    Copyright (C) 2011 University of Southern California and
 #                       Andrew D. Smith
 #
 #    Authors: Andrew D. Smith
@@ -21,7 +20,11 @@
 #
 
 ifndef SRC_ROOT
-$(error SRC_ROOT variable undefined)
+SRC_ROOT=../../..
+endif
+
+ifndef SMITHLAB_CPP
+SMITHLAB_CPP=../../smithlab_cpp
 endif
 
 PROGS = simreads
@@ -30,7 +33,7 @@ CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O2
 DEBUGFLAGS = -g
-COMMON_DIR = $(SMITHLAB_CPP)/
+COMMON_DIR = ../../common/
 TEST_DIR = $(SRC_ROOT)/test
 
 ifeq "$(shell uname)" "Darwin"
@@ -54,11 +57,11 @@ install: all
 %.o: %.cpp %.hpp
 	$(CXX) $(CFLAGS) -c -o $@ $< -I$(COMMON_DIR)
 
-$(PROGS): $(addprefix $(COMMON_DIR), sim_utils.o GenomicRegion.o \
-	RNG.o rmap_os.o rmap_utils.o OptionParser.o QualityScore.o)
+$(PROGS): $(addprefix $(SMITHLAB_CPP)/, sim_utils.o GenomicRegion.o \
+	RNG.o smithlab_os.o smithlab_utils.o OptionParser.o QualityScore.o) \
 
 %: %.cpp
-	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR)
+	$(CXX) $(CFLAGS) -o $@ $^ -I$(SMITHLAB_CPP) -I$(COMMON_DIR)
 
 test_%:	%
 	@$(TEST_DIR)/$@ $(TEST_DIR)

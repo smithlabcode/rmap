@@ -20,7 +20,7 @@
 #
 
 ifndef SMITHLAB_CPP
-SMITHLAB_CPP=$(RMAP)/src/smithlab_cpp/
+SMITHLAB_CPP=../smithlab_cpp/
 endif
 
 app_subdirs=simreads simreadsbs simreadspe

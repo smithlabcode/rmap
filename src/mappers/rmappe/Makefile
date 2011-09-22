@@ -1,6 +1,7 @@
 #    Makefile from rmap software
 #
-#    Copyright (C) 2009 University of Southern California and
+#    Copyright (C) 2008 Cold Spring Harbor Laboratory, 
+#                       University of Southern California and
 #                       Andrew D. Smith
 #
 #    Authors: Andrew D. Smith
@@ -20,11 +21,11 @@
 #
 
 ifndef SRC_ROOT
-$(error SRC_ROOT variable undefined)
+SRC_ROOT=../..
 endif
 
 ifndef SMITHLAB_CPP
-$(error SMITHLAB_CPP variable undefined)
+SMITHLAB_CPP=../../smithlab_cpp
 endif
 
 PROGS = rmappe
@@ -33,7 +34,7 @@ CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O3
 DEBUGFLAGS = -g
-COMMON_DIR = $(SMITHLAB_CPP)/
+COMMON_DIR = ../../common
 TEST_DIR = $(SRC_ROOT)/test
 
 ifeq "$(shell uname)" "Darwin"
@@ -51,18 +52,19 @@ endif
 all:	$(PROGS)
 
 %.o: %.cpp %.hpp
-	$(CXX) $(CFLAGS) -c -o $@ $<
+	$(CXX) $(CFLAGS) -c -o $@ $< -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
 
-rmappe: $(addprefix $(COMMON_DIR), SeedMaker.o GenomicRegion.o rmap_os.o \
-	rmap_utils.o OptionParser.o FastRead.o FastReadQuality.o FastReadWC.o\
-	QualityScore.o load_paired_end_reads.o)
+rmappe: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastReadWC.o FastRead.o \
+	FastReadQuality.o load_paired_end_reads.o) \
+	$(addprefix $(SMITHLAB_CPP)/, GenomicRegion.o smithlab_os.o smithlab_utils.o \
+	OptionParser.o QualityScore.o clip_adaptor_from_reads.o)
 
 install: all
 	@mkdir -p $(SRC_ROOT)/bin
 	@install -m 755 $(PROGS) $(SRC_ROOT)/bin
 
 %: %.cpp
-	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR)
+	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
 
 test_%:	%
 	@$(TEST_DIR)/$@ $(TEST_DIR)

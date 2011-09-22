@@ -22,6 +22,7 @@
  */
 
 #include "FastReadWC.hpp"
+#include "smithlab_utils.hpp"
 
 #include <cmath>
 #include <iomanip>

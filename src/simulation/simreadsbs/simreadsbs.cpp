@@ -19,8 +19,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "rmap_utils.hpp"
-#include "rmap_os.hpp"
+#include "smithlab_utils.hpp"
+#include "smithlab_os.hpp"
 #include "sim_utils.hpp"
 #include "bisulfite_utils.hpp"
 #include "RNG.hpp"
@@ -257,7 +257,7 @@ main(int argc, const char **argv) {
     /****************** END COMMAND LINE OPTIONS *****************/
     
     if (FASTQ_OUTPUT && !prb_file.empty())
-      throw RMAPException("fastq output is incompatible "
+      throw SMITHLABException("fastq output is incompatible "
 			  "with specifying a prb file");
     
     const Runif rng(random_number_seed);
@@ -305,7 +305,7 @@ main(int argc, const char **argv) {
     cerr << "ERROR: could not allocate memory" << endl;
     return EXIT_FAILURE;
   }
-  catch (RMAPException &e) {
+  catch (SMITHLABException &e) {
     cerr << e.what() << endl;
     return EXIT_FAILURE;
   }

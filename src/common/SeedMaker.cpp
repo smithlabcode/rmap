@@ -23,6 +23,7 @@
 
 #include "SeedMaker.hpp"
 #include "rmap_utils.hpp"
+#include "smithlab_utils.hpp"
 
 #include <cmath>
 
@@ -193,7 +194,7 @@ SeedMaker::make_read_word(const string &s) {
   do { 
     --n;
     index += base2int(s[n])*multiplier;
-    multiplier *= rmap::alphabet_size; 
+    multiplier *= smithlab::alphabet_size; 
   } while (n > 0);
   return index;
 }
