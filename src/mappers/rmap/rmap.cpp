@@ -100,6 +100,19 @@ load_seeds(const bool VERBOSE, const bool FASTER_MODE,
   }
 }
 
+struct regular_score {
+  regular_score() {}
+  template <class T, class U> size_t score(T a, U b) const {
+    return a->score(b);
+  }
+};
+
+struct wildcard_score {
+  wildcard_score() {}
+  template <class T, class U> size_t score(T a, U b) const {
+    return a->score_wild_n(b);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
@@ -107,8 +120,9 @@ load_seeds(const bool VERBOSE, const bool FASTER_MODE,
 ////  WHERE THE ACTUAL MAPPING HAPPENS
 ////
 ////
-template <class T> void
-map_reads(const string &chrom, const size_t chrom_id,
+template <class T, class U> void
+map_reads(const U &specialized_score,
+	  const string &chrom, const size_t chrom_id,
 	  const size_t profile, const size_t read_width, 
 	  const size_t max_diffs, const vector<T> &fast_reads, 
 	  /*const*/ // Need to comment out this "const" because of the
@@ -154,7 +168,8 @@ map_reads(const string &chrom, const size_t chrom_id,
 	     to_test != limit; ++to_test) {
 	  assert(to_test <= fast_reads.end());
 	  assert(best_maps.begin() + (to_test - fast_reads.begin()) < best_maps.end());
-	  const size_t score = to_test->score(fast_read);
+	  // const size_t score = to_test->score(fast_read);
+	  const size_t score = specialized_score.score(to_test, fast_read);
 	  if (score <= max_diffs) {
 	    const vector<MultiMapResult>::iterator 
 	      current(best_maps.begin() + (to_test - fast_reads.begin()));
@@ -258,8 +273,9 @@ comp(char c) {
 
 
 
-template <class T> void
+template <class T, class U> void
 iterate_over_seeds(const bool VERBOSE, 
+		   const U &specialized_score,
 		   const vector<size_t> &the_seeds, const vector<string> &chrom_files,
 		   vector<pair<unsigned int, unsigned int> > &ambigs, 
 		   vector<string> &chrom_names, vector<size_t> &chrom_sizes,
@@ -303,13 +319,15 @@ iterate_over_seeds(const bool VERBOSE,
 	  cerr << "[SCANNING=" << tmp_chrom_names[k] << "] ";
 	
 	const clock_t start(clock());
-	map_reads(chroms[k], prev_chrom_count + k, 
+	map_reads(specialized_score, 
+		  chroms[k], prev_chrom_count + k, 
 		  the_seeds[j], read_width, max_mismatches,
 		  fast_reads, seed_hash, true, best_maps);
 	transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(), 
 		  std::ptr_fun(&comp));
 	reverse(chroms[k].begin(), chroms[k].end());
-	map_reads(chroms[k], prev_chrom_count + k, 
+	map_reads(specialized_score, 
+		  chroms[k], prev_chrom_count + k, 
 		  the_seeds[j], read_width, max_mismatches,
 		  fast_reads, seed_hash, false, best_maps);
 	const clock_t end(clock());
@@ -852,24 +870,44 @@ main(int argc, const char **argv) {
     vector<string> chrom_names;
     vector<pair<unsigned int, unsigned int> > ambigs;
     if (RUN_MODE == RUN_MODE_MISMATCH)
-      iterate_over_seeds(VERBOSE, the_seeds, chrom_files, ambigs, 
-			 chrom_names, chrom_sizes,
-			 fast_reads, // USE REGULAR FAST READS
-			 read_words, read_index,
-			 best_maps, max_mismatches, read_width);
-    if (RUN_MODE == RUN_MODE_WILDCARD)
-      iterate_over_seeds(VERBOSE, the_seeds, chrom_files, ambigs, 
+      if (WILD_N_MODE) {
+	const wildcard_score specialized_score;
+	iterate_over_seeds(VERBOSE, specialized_score,
+			   the_seeds, chrom_files, ambigs, 
+			   chrom_names, chrom_sizes,
+			   fast_reads, // USE REGULAR FAST READS
+			   read_words, read_index,
+			   best_maps, max_mismatches, read_width);
+      }
+      else {
+	const regular_score specialized_score;
+	iterate_over_seeds(VERBOSE, specialized_score,
+			   the_seeds, chrom_files, ambigs, 
+			   chrom_names, chrom_sizes,
+			   fast_reads, // USE REGULAR FAST READS
+			   read_words, read_index,
+			   best_maps, max_mismatches, read_width);
+	
+      }
+    if (RUN_MODE == RUN_MODE_WILDCARD) {
+      const regular_score specialized_score;
+      iterate_over_seeds(VERBOSE, specialized_score,
+			 the_seeds, chrom_files, ambigs, 
 			 chrom_names, chrom_sizes,
 			 fast_reads_wc, // USE FAST READS FOR WILDCARD MATCHING
 			 read_words, read_index,
 			 best_maps, max_mismatches, read_width);
-    if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
-      iterate_over_seeds(VERBOSE, the_seeds, chrom_files, ambigs, 
+    }
+    if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX) {
+      const regular_score specialized_score;
+      iterate_over_seeds(VERBOSE, specialized_score,
+			 the_seeds, chrom_files, ambigs, 
 			 chrom_names, chrom_sizes,
 			 fast_reads_q, // USE FAST READS FOR QUALITY MATCHING
 			 read_words, read_index,
 			 best_maps, max_match_score, read_width);
-    
+    }
+
     // First make sure the chrom names don't have spaces (cause
     // problems for later processing)
     for (size_t i = 0; i < chrom_names.size(); ++i) {
