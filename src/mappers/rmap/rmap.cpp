@@ -750,6 +750,8 @@ main(int argc, const char **argv) {
     bool QUALITY = false;
     bool FASTER_MODE = false;
     bool WILDCARD = false;
+
+    bool WILD_N_MODE = false;
     bool ORIGINAL_OUTPUT = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
@@ -787,6 +789,8 @@ main(int argc, const char **argv) {
 		      false, ORIGINAL_OUTPUT);
     opt_parse.add_opt("clip", 'C', "clip the specified adaptor", 
 		      false, adaptor_sequence);
+    opt_parse.add_opt("wild-n-mode", 'y', "allow N in read to match anything", 
+		      false, WILD_N_MODE);
     vector<string> leftover_args;
     opt_parse.parse(argc, argv, leftover_args);
     if (argc == 1 || opt_parse.help_requested()) {
