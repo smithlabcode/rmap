@@ -1001,7 +1001,7 @@ main(int argc, const char **argv) {
     // INITIALIZE THE STRUCTURES THAT HOLD THE RESULTS
     //
     if (!ACCURATE)
-      MultiMapResult::init(max(2*max_mappings, 100ul));
+      MultiMapResult::init(max(2*max_mappings, size_t(100ul)));
     MultiMapResultPE::init(max_mappings);
     
     vector<MultiMapResultPE> best_maps;
