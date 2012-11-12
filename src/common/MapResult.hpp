@@ -47,7 +47,13 @@ struct MapResult {
     return smithlab::toa(site) + "\t" + smithlab::toa(chrom) + "\t" 
       + smithlab::toa(strand);
   }
+
+  static std::vector<size_t> chrom_sizes;
+  static std::vector<std::string> chrom_names;
 };
+
+std::vector<size_t> MapResult::chrom_sizes;
+std::vector<std::string> MapResult::chrom_names;
 
 inline void 
 MapResult::set(size_t ste, size_t chr, bool str) {
