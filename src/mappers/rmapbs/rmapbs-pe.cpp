@@ -25,6 +25,7 @@
 #include <iterator>
 #include <fstream>
 #include <cmath>
+#include <functional>
 #include <tr1/unordered_map>
 
 #include "FastRead.hpp"
@@ -798,7 +799,7 @@ map_reads(
     vector<size_t> the_seeds;
     load_seeds(VERBOSE, FASTER_MODE,
                read_width, n_seeds, seed_weight, the_seeds);
-    
+
     //////////////////////////////////////////////////////////////
     // THIS IS WHERE THE ACTUAL MAPPING HAPPENS
     //
@@ -830,7 +831,11 @@ map_reads(
         if (chr_name_end != string::npos)
             chrom_names[i].erase(chr_name_end);
     }
-
+    assert(chrom_names.size() == chrom_sizes.size());
+    assert(MapResult::chrom_names.empty()
+           || std::equal(MapResult::chrom_names.begin(),
+                         MapResult::chrom_names.end(), chrom_names.begin()));
+    
     MapResult::chrom_names = chrom_names;
     MapResult::chrom_sizes = chrom_sizes;
 }
@@ -880,13 +885,6 @@ name_smaller(const size_t suffix_len,
 				      sb.begin(), sb.end() - suffix_len);
 }
 
-inline static void 
-revcomp(MapResult &r, const vector<size_t> &chrom_sizes)
-{
-    r.strand = !r.strand;
-    r.site = MapResult::chrom_sizes[r.chrom] - r.site;
-}
-
 static void
 get_valid_mate_pairs(MultiMapResult &t_best,
                      MultiMapResult &a_best,
@@ -919,6 +917,7 @@ MapResult_to_MappedRead(const MapResult &r, const string &name,
                         const size_t mismatch, MappedRead &mr)
 {
     const size_t chrom_id = r.chrom;
+    assert(chrom_id < MapResult::chrom_sizes.size());
     const size_t read_len = seq.length();
     size_t start = r.strand ? r.site : 
         MapResult::chrom_sizes[chrom_id] - r.site - read_len;
@@ -1021,6 +1020,31 @@ merge_mates(const size_t suffix_len,
   }
 }
 
+class SwitchStrand : public std::unary_function<MapResult, void>
+{
+public:
+    SwitchStrand(const size_t len) : read_len(len) {}
+    void operator()(MapResult &r) const
+    {
+        r.strand = !r.strand;
+        r.site = MapResult::chrom_sizes[r.chrom] - r.site - read_len;
+    }
+private:
+    size_t read_len;
+};
+
+struct ReadOrderChecker : public std::binary_function<string, string, bool> 
+{
+    bool operator()(string &prev, string &curr) const
+    {
+        if (prev > curr) 
+            throw SMITHLABException("READS NOT SORTED:\n" + prev
+                                    + "\n" + curr + "\n");
+        prev = curr;
+        return true;
+    }
+};
+    
 static void
 clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
            vector<MultiMapResult> &t_best_maps,
@@ -1045,25 +1069,26 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
         throw SMITHLABException("cannot open output file " + outfile);
 
     size_t t_read_idx = 0, t_curr_idx = 0;
-    string t_name, t_seq, t_scr;
+    string t_name, t_seq, t_scr, prev_t_name;
     get_entry_fastq(t_in, t_name, t_seq, t_scr); 
     if (!adaptor.empty())
         clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, t_seq);
         
     size_t a_read_idx = 0, a_curr_idx = 0;
-    string a_name, a_seq, a_scr;
+    string a_name, a_seq, a_scr, prev_a_name;
     get_entry_fastq(a_in, a_name, a_seq, a_scr); 
     if (!adaptor.empty())
         clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, a_seq);
     revcomp_inplace(a_seq);
     std::reverse(a_scr.begin(), a_scr.end());
-
+    
 
     while (t_curr_idx < t_read_index.size() && a_curr_idx < a_read_index.size())
     {
         while (t_read_idx != t_read_index[t_curr_idx] && t_in.good())
         {
-            if (get_entry_fastq(t_in, t_name, t_seq, t_scr))
+            if (get_entry_fastq(t_in, t_name, t_seq, t_scr)
+                && ReadOrderChecker()(prev_t_name, t_name))
             {
                 if (!adaptor.empty())
                     clip_adaptor_from_read(adaptor,
@@ -1076,7 +1101,8 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
 
         while (a_read_idx != a_read_index[a_curr_idx] && a_in.good())
         {
-            if (get_entry_fastq(a_in, a_name, a_seq, a_scr))
+            if (get_entry_fastq(a_in, a_name, a_seq, a_scr)
+                && ReadOrderChecker()(prev_a_name, a_name))
             {
                 if (!adaptor.empty())
                     clip_adaptor_from_read(adaptor,
@@ -1091,6 +1117,9 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
 
         if (same_read(suffix_len, t_name, a_name))
         {
+            std::for_each(a_best_maps[a_curr_idx].mr.begin(),
+                          a_best_maps[a_curr_idx].mr.end(),
+                          SwitchStrand(a_seq.size())); 
             vector<pair<size_t, size_t> > valid_pairs;
             get_valid_mate_pairs(t_best_maps[t_curr_idx],
                                  a_best_maps[a_curr_idx],
@@ -1152,6 +1181,10 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
         }
         else // if (name_smaller(suffix_len, a_name, t_name))
         {
+            std::for_each(a_best_maps[a_curr_idx].mr.begin(),
+                          a_best_maps[a_curr_idx].mr.end(),
+                          SwitchStrand(a_seq.size())); 
+
             if (a_best_maps[a_curr_idx].mr.size() == 1)
             {
                 MappedRead two;
@@ -1166,48 +1199,59 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
 
     while (t_curr_idx < t_read_index.size())
     {
-        while (t_read_idx != t_read_index[t_curr_idx] && t_in.good())
+        if (t_best_maps[t_curr_idx].mr.size() == 1)
         {
-            if (get_entry_fastq(t_in, t_name, t_seq, t_scr))
+            while (t_read_idx != t_read_index[t_curr_idx] && t_in.good())
             {
-                if (!adaptor.empty())
-                    clip_adaptor_from_read(adaptor,
-                                           MIN_ADAPTOR_MATCH_SCORE, t_seq);
-                ++t_read_idx;
+                if (get_entry_fastq(t_in, t_name, t_seq, t_scr)
+                    && ReadOrderChecker()(prev_t_name, t_name))
+                {
+                    if (!adaptor.empty())
+                        clip_adaptor_from_read(adaptor,
+                                               MIN_ADAPTOR_MATCH_SCORE, t_seq);
+                    ++t_read_idx;
+                }
+                else
+                    throw SMITHLABException("Error reading " + T_reads_file);
             }
-            else
-                throw SMITHLABException("Error reading "
-                                        + string(T_reads_file));
+            MappedRead one;
+            MapResult_to_MappedRead(
+                t_best_maps[t_curr_idx].mr.front(), t_name, t_seq, t_scr,
+                t_best_maps[t_curr_idx].score, one);
+            out << one << endl;
         }
-        MappedRead one;
-        MapResult_to_MappedRead(
-            t_best_maps[t_curr_idx].mr.front(), t_name, t_seq, t_scr,
-            t_best_maps[t_curr_idx].score, one);
-        out << one << endl;
         ++t_curr_idx;
     }
-    
+
     while (a_curr_idx < a_read_index.size())
     {
-        while (a_read_idx != a_read_index[a_curr_idx] && a_in.good())
+        if (a_best_maps[a_curr_idx].mr.size() == 1)
         {
-            if (get_entry_fastq(a_in, a_name, a_seq, a_scr))
+            while (a_read_idx != a_read_index[a_curr_idx] && a_in.good())
             {
-                if (!adaptor.empty())
-                    clip_adaptor_from_read(adaptor,
-                                           MIN_ADAPTOR_MATCH_SCORE, a_seq);
-                ++a_read_idx;
+                if (get_entry_fastq(a_in, a_name, a_seq, a_scr)
+                    && ReadOrderChecker()(prev_a_name, a_name))
+                {
+                    if (!adaptor.empty())
+                        clip_adaptor_from_read(adaptor,
+                                               MIN_ADAPTOR_MATCH_SCORE, a_seq);
+                    ++a_read_idx;
+                }
+                else
+                    throw SMITHLABException("Error reading "
+                                            + string(A_reads_file));
             }
-            else
-                throw SMITHLABException("Error reading "
-                                        + string(A_reads_file));
-        }
 
-        MappedRead two;
-        MapResult_to_MappedRead(
-            a_best_maps[a_curr_idx].mr.front(), a_name, a_seq, a_scr,
-            a_best_maps[a_curr_idx].score, two);
-        out << two << endl;
+            std::for_each(a_best_maps[a_curr_idx].mr.begin(),
+                          a_best_maps[a_curr_idx].mr.end(),
+                          SwitchStrand(a_seq.size())); 
+
+            MappedRead two;
+            MapResult_to_MappedRead(
+                a_best_maps[a_curr_idx].mr.front(), a_name, a_seq, a_scr,
+                a_best_maps[a_curr_idx].score, two);
+            out << two << endl;
+        }
         ++a_curr_idx;
     }
     
@@ -1221,11 +1265,6 @@ main(int argc, const char **argv)
 {
     try 
     {
-        cerr << "################################" << endl
-             << "WARNING" << endl
-             << "you are using an experimental version of program" << endl
-             << "################################" << endl;
-        
         string chrom_file;
         string filenames_file;
         string outfile;
@@ -1241,7 +1280,7 @@ main(int argc, const char **argv)
         size_t max_mappings = 500;
         double wildcard_cutoff = numeric_limits<double>::max();
 
-        size_t MAX_SEGMENT_LENGTH = 1000;
+        size_t MAX_SEGMENT_LENGTH = 500;
         size_t suffix_len = 1;
         
         bool VERBOSE = false;
@@ -1257,7 +1296,7 @@ main(int argc, const char **argv)
         OptionParser opt_parse(strip_path(argv[0]),
                                "The rmapbs mapping tool for Solexa reads"
                                " following bisulfite treatment",
-                               "<fast[a/q]-reads-file>");
+                               "<T-rich-reads> <A-rich-reads>" );
         opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
                           false , outfile);
         opt_parse.add_opt("chrom", 'c', "FASTA file or dir containing chromosome(s)", 
@@ -1337,7 +1376,8 @@ main(int argc, const char **argv)
         //////////////////////////////////////////////////////////////
         //  DETERMINE WHICH CHROMOSOMES WILL USED IN MAPPING
         //
-        // map T rich mates
+        if (VERBOSE)
+            cerr << "[MAPPING T-RICH MATES] " << T_reads_file << endl;
         vector<unsigned int> t_read_index;
         MultiMapResult::init(max_mappings); //  max_mappings >= 500
         vector<MultiMapResult> t_best_maps;
@@ -1349,7 +1389,8 @@ main(int argc, const char **argv)
                   WILDCARD, WILD_N_MODE, ORIGINAL_OUTPUT, VERBOSE,
                   TC_WILDCARD, t_read_index, t_best_maps);
         
-        // map A rich mates
+        if (VERBOSE)
+            cerr << "[MAPPING A-RICH MATES] " << A_reads_file << endl;
         vector<unsigned int> a_read_index;
         MultiMapResult::init(max_mappings); //  max_mappings >= 500
         vector<MultiMapResult> a_best_maps;
@@ -1361,11 +1402,14 @@ main(int argc, const char **argv)
                   WILDCARD, WILD_N_MODE, ORIGINAL_OUTPUT, VERBOSE,
                   AG_WILDCARD, a_read_index, a_best_maps);
         
-        // clip T-rich and A-rich mates
+        if (VERBOSE)
+            cerr << "[JOINING MATES]" << endl;
         clip_mates(T_reads_file, t_read_index, t_best_maps,
                    A_reads_file, a_read_index, a_best_maps, 
                    suffix_len, MAX_SEGMENT_LENGTH, adaptor_sequence, 
                    outfile);
+        if (VERBOSE)
+            cerr << "[MAPPING DONE]" << endl;
     }
     catch (const SMITHLABException &e) 
     {
