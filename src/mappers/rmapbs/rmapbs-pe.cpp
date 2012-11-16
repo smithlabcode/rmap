@@ -715,10 +715,11 @@ load_reads(const bool VERBOSE, const size_t INPUT_MODE,
 }
 
 
+template<class T>
 struct indexed_best_less 
 {
-    bool operator()(const pair<unsigned int, MultiMapResult> &a,
-                    const pair<unsigned int, MultiMapResult> &b) const 
+    bool operator()(const pair<unsigned int, T> &a,
+                    const pair<unsigned int, T> &b) const 
     {
         return a.first < b.first;
     }
@@ -731,13 +732,32 @@ invert_bests_list(vector<unsigned int> &read_index,
     vector<pair<unsigned int, MultiMapResult> > sorter;
     for (size_t i = 0; i < bests.size(); ++i)
         sorter.push_back(make_pair(read_index[i], bests[i]));
-    sort(sorter.begin(), sorter.end(), indexed_best_less());
+    sort(sorter.begin(), sorter.end(), indexed_best_less<MultiMapResult>());
     for (size_t i = 0; i < sorter.size(); ++i) 
     {
         read_index[i] = sorter[i].first;
         bests[i] = sorter[i].second;
     }
 }
+
+// static void
+// invert_bests_list(const vector<MultiMapResult> &bests,
+//                   vector<unsigned int> &read_index,
+//                   vector<vector<MultiMapResult>::iterator > > &best_itrs)
+// {
+//     vector<pair<unsigned int, vector<MultiMapResult>::iterator> > sorter;
+//     for (size_t i = 0; i < bests.size(); ++i)
+//         sorter.push_back(make_pair(read_index[i], bests.begin() + i));
+//     sort(sorter.begin(), sorter.end(),
+//          indexed_best_less<vector<MultiMapResult>::iterator>());
+//     best_itrs.resize(bests.size());
+//     for (size_t i = 0; i < sorter.size(); ++i) 
+//     {
+//         read_index[i] = sorter[i].first;
+//         best_itrs[i] = sorter[i].second;
+//     }
+// }
+
 
 static void
 map_reads(
@@ -886,32 +906,6 @@ name_smaller(const size_t suffix_len,
 }
 
 static void
-get_valid_mate_pairs(MultiMapResult &t_best,
-                     MultiMapResult &a_best,
-                     vector<pair<size_t, size_t> > &valid_pairs,
-                     const size_t read_len,
-                     const size_t MAX_VALID_LEN)
-{
-    t_best.collapse();
-    a_best.collapse();
-
-    // stupid naive O(n^2) method. should be able to make it faster 
-    for (size_t i = 0; i < t_best.mr.size(); ++i)
-        for (size_t j = 0; j < a_best.mr.size(); ++j)
-        {
-            const size_t len = 
-                (t_best.mr[i].chrom != a_best.mr[i].chrom
-                 || t_best.mr[i].strand != a_best.mr[i].strand)
-                ? std::numeric_limits<size_t>::max()
-                : std::max(t_best.mr[i].site, a_best.mr[i].site)
-                - std::min(t_best.mr[i].site, a_best.mr[i].site)
-                + read_len;
-            
-            if (len <= MAX_VALID_LEN) valid_pairs.push_back(std::make_pair(i, j));
-        }
-}
-
-static void
 MapResult_to_MappedRead(const MapResult &r, const string &name,
                         const string &seq, const string &scr,
                         const size_t mismatch, MappedRead &mr)
@@ -928,6 +922,10 @@ MapResult_to_MappedRead(const MapResult &r, const string &name,
                          name, mismatch, strand);
     mr.seq = seq;
     mr.scr = scr;
+
+    if (start >= end)
+        throw SMITHLABException("invalid mapped reads\n"
+                                + mr.r.tostring() + "\t" + seq + "\t" + scr);
 }
 
 static void
@@ -1051,8 +1049,14 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
            const string &A_reads_file, vector<unsigned int> &a_read_index,
            vector<MultiMapResult> &a_best_maps, 
            const size_t suffix_len, const size_t MAX_SEGMENT_LENGTH,
-           const string &adaptor, const string &outfile)
+           const string &adaptor, const string &outfile, const bool VERBOSE)
 {
+    if (VERBOSE)
+    {
+        cerr << "[T-RICH CANDIDATES: ] " << t_read_index.size() << endl;
+        cerr << "[A-RICH CANDIDATES: ] " << a_read_index.size() << endl;
+    }
+    
     invert_bests_list(t_read_index, t_best_maps);
     invert_bests_list(a_read_index, a_best_maps);
 
@@ -1120,27 +1124,34 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
             std::for_each(a_best_maps[a_curr_idx].mr.begin(),
                           a_best_maps[a_curr_idx].mr.end(),
                           SwitchStrand(a_seq.size())); 
-            vector<pair<size_t, size_t> > valid_pairs;
-            get_valid_mate_pairs(t_best_maps[t_curr_idx],
-                                 a_best_maps[a_curr_idx],
-                                 valid_pairs, t_seq.size(), MAX_SEGMENT_LENGTH);
-            
-            if (valid_pairs.size() == 1)
+
+            vector<MappedRead> valid_frags;
+            for (size_t i = 0; i < t_best_maps[t_curr_idx].mr.size(); ++i)
             {
                 MappedRead one;
                 MapResult_to_MappedRead(
-                    t_best_maps[t_curr_idx].mr[valid_pairs.front().first],
+                    t_best_maps[t_curr_idx].mr[i],
                     t_name, t_seq, t_scr, t_best_maps[t_curr_idx].score, one);
 
-                MappedRead two;
-                MapResult_to_MappedRead(
-                    a_best_maps[a_curr_idx].mr[valid_pairs.front().second],
-                    a_name, a_seq, a_scr, a_best_maps[a_curr_idx].score, two);
+                for (size_t j = 0; j < a_best_maps[a_curr_idx].mr.size(); ++j)
+                {
+                    MappedRead two;
+                    MapResult_to_MappedRead(
+                        a_best_maps[a_curr_idx].mr[j],
+                        a_name, a_seq, a_scr, a_best_maps[a_curr_idx].score, two);
+                    
+                    MappedRead merged;
+                    int len = 0;
+                    merge_mates(suffix_len, MAX_SEGMENT_LENGTH, one, two,
+                                merged, len);
+                    if (len > 0 && len <= static_cast<int>(MAX_SEGMENT_LENGTH))
+                        valid_frags.push_back(merged);
+                }
+            }
 
-                MappedRead merged;
-                int len = 0;
-                merge_mates(suffix_len, MAX_SEGMENT_LENGTH, one, two, merged, len);
-                out << merged << endl;
+            if (valid_frags.size() == 1)
+            {
+                out << valid_frags.front() << endl;
             }
             else
             {
@@ -1267,7 +1278,7 @@ main(int argc, const char **argv)
     {
         string chrom_file;
         string filenames_file;
-        string outfile;
+        string outfile("/dev/stdout");
         string prb_file;
         string ambiguous_file;
         string fasta_suffix = "fa";
@@ -1305,21 +1316,21 @@ main(int argc, const char **argv)
                           "(assumes -c indicates dir)", false , fasta_suffix);
         opt_parse.add_opt("filenames", 'F', "file listing names of "
                           "chromosome files", false , filenames_file);
-        opt_parse.add_opt("prb", 'p', "file with quality scores (prb format)", 
-                          false, prb_file);
+        // opt_parse.add_opt("prb", 'p', "file with quality scores (prb format)", 
+        //                   false, prb_file);
         opt_parse.add_opt("seeds", 'S', "number of seeds", false , n_seeds);
         opt_parse.add_opt("hit", 'h', "weight of hit", false , seed_weight);
         opt_parse.add_opt("width", 'w', "width of reads", false, read_width);
         opt_parse.add_opt("mismatch", 'm', "maximum allowed mismatches", 
                           false , max_mismatches);
-        opt_parse.add_opt("ambiguous", 'a', "file to write names of ambiguously "
-                          "mapped reads", false , ambiguous_file);
+        // opt_parse.add_opt("ambiguous", 'a', "file to write names of ambiguously "
+        //                   "mapped reads", false , ambiguous_file);
         opt_parse.add_opt("max-map", 'M',
                           "maximum allowed mappings for SE read (default "
                           + smithlab::toa(max_mappings) + ")", 
                           false, max_mappings);
-        opt_parse.add_opt("wc", 'W', "run in wildcard matching mode", 
-                          false, WILDCARD);
+        // opt_parse.add_opt("wc", 'W', "run in wildcard matching mode", 
+        //                   false, WILDCARD);
         opt_parse.add_opt("qual", 'Q', "use quality scores (input must be FASTQ)", 
                           false, QUALITY);
         opt_parse.add_opt("bias", 'B', "allow CpG non-conversion to assist", 
@@ -1407,7 +1418,7 @@ main(int argc, const char **argv)
         clip_mates(T_reads_file, t_read_index, t_best_maps,
                    A_reads_file, a_read_index, a_best_maps, 
                    suffix_len, MAX_SEGMENT_LENGTH, adaptor_sequence, 
-                   outfile);
+                   outfile, VERBOSE);
         if (VERBOSE)
             cerr << "[MAPPING DONE]" << endl;
     }
