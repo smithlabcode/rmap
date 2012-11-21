@@ -741,13 +741,16 @@ invert_bests_list(vector<unsigned int> &read_index,
 }
 
 // static void
-// invert_bests_list(const vector<MultiMapResult> &bests,
+// invert_bests_list(vector<MultiMapResult> &bests,
 //                   vector<unsigned int> &read_index,
-//                   vector<vector<MultiMapResult>::iterator > > &best_itrs)
+//                   vector<vector<MultiMapResult>::iterator > &best_itrs)
 // {
-//     vector<pair<unsigned int, vector<MultiMapResult>::iterator> > sorter;
+//     vector<pair<unsigned int, vector<MultiMapResult>::iterator > > sorter;
 //     for (size_t i = 0; i < bests.size(); ++i)
-//         sorter.push_back(make_pair(read_index[i], bests.begin() + i));
+//     {
+//         vector<MultiMapResult>::iterator itr = bests.begin() + i;
+//         sorter.push_back(make_pair(read_index[i], itr));
+//     }
 //     sort(sorter.begin(), sorter.end(),
 //          indexed_best_less<vector<MultiMapResult>::iterator>());
 //     best_itrs.resize(bests.size());
@@ -758,12 +761,29 @@ invert_bests_list(vector<unsigned int> &read_index,
 //     }
 // }
 
+static void
+extract_adaptors(const string &adaptor, string & T_adaptor, string & A_adaptor)
+{
+    const vector<string> adaptors(smithlab::split(adaptor, ":"));
+    if (adaptors.size() == 0)
+        T_adaptor = A_adaptor = "";
+    else if (adaptors.size() == 1)
+        T_adaptor = A_adaptor = adaptors.front();
+    else if (adaptors.size() == 2)
+    {
+        T_adaptor = adaptors[0];
+        A_adaptor = adaptors[1];
+    }
+    else
+        throw SMITHLABException("Invalid adaptors: " + adaptor + "\n"
+                                + "Format: T_adaptor:A_adaptor");
+}
 
 static void
 map_reads(
     const string &chrom_file, const string &filenames_file,
     const string &fasta_suffix, const string &reads_file, const string &prb_file, 
-    const string &adaptor, 
+    const string &adaptor_sequence, 
     const size_t n_seeds, const size_t seed_weight, size_t read_width,
     size_t max_mismatches, const double wildcard_cutoff,
     const bool FASTER_MODE, const bool QUALITY, const bool ALLOW_METH_BIAS,
@@ -792,6 +812,11 @@ map_reads(
     identify_chromosomes(VERBOSE, filenames_file, fasta_suffix,
                          chrom_file, chrom_files);
 
+    // extract adatpers
+    string T_adaptor, A_adaptor;
+    extract_adaptors(adaptor_sequence, T_adaptor, A_adaptor);
+    const string adaptor = AG_WILDCARD ? A_adaptor : T_adaptor;
+    
     //////////////////////////////////////////////////////////////
     // OBTAIN THE READS
     // 
@@ -1049,7 +1074,7 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
            const string &A_reads_file, vector<unsigned int> &a_read_index,
            vector<MultiMapResult> &a_best_maps, 
            const size_t suffix_len, const size_t MAX_SEGMENT_LENGTH,
-           const string &adaptor, const string &outfile, const bool VERBOSE)
+           const string &adaptor_sequence, const string &outfile, const bool VERBOSE)
 {
     if (VERBOSE)
     {
@@ -1059,6 +1084,10 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
     
     invert_bests_list(t_read_index, t_best_maps);
     invert_bests_list(a_read_index, a_best_maps);
+
+    // extract adatpers
+    string T_adaptor, A_adaptor;
+    extract_adaptors(adaptor_sequence, T_adaptor, A_adaptor);
 
     std::ifstream t_in(T_reads_file.c_str(), std::ios::binary);
     if (!t_in)
@@ -1075,14 +1104,14 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
     size_t t_read_idx = 0, t_curr_idx = 0;
     string t_name, t_seq, t_scr, prev_t_name;
     get_entry_fastq(t_in, t_name, t_seq, t_scr); 
-    if (!adaptor.empty())
-        clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, t_seq);
+    if (!T_adaptor.empty())
+        clip_adaptor_from_read(T_adaptor, MIN_ADAPTOR_MATCH_SCORE, t_seq);
         
     size_t a_read_idx = 0, a_curr_idx = 0;
     string a_name, a_seq, a_scr, prev_a_name;
     get_entry_fastq(a_in, a_name, a_seq, a_scr); 
-    if (!adaptor.empty())
-        clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, a_seq);
+    if (!A_adaptor.empty())
+        clip_adaptor_from_read(A_adaptor, MIN_ADAPTOR_MATCH_SCORE, a_seq);
     revcomp_inplace(a_seq);
     std::reverse(a_scr.begin(), a_scr.end());
     
@@ -1094,8 +1123,8 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
             if (get_entry_fastq(t_in, t_name, t_seq, t_scr)
                 && ReadOrderChecker()(prev_t_name, t_name))
             {
-                if (!adaptor.empty())
-                    clip_adaptor_from_read(adaptor,
+                if (!T_adaptor.empty())
+                    clip_adaptor_from_read(T_adaptor,
                                            MIN_ADAPTOR_MATCH_SCORE, t_seq);
                 ++t_read_idx;
             }
@@ -1108,8 +1137,8 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
             if (get_entry_fastq(a_in, a_name, a_seq, a_scr)
                 && ReadOrderChecker()(prev_a_name, a_name))
             {
-                if (!adaptor.empty())
-                    clip_adaptor_from_read(adaptor,
+                if (!A_adaptor.empty())
+                    clip_adaptor_from_read(A_adaptor,
                                            MIN_ADAPTOR_MATCH_SCORE, a_seq);
                 revcomp_inplace(a_seq);
                 std::reverse(a_scr.begin(), a_scr.end());
@@ -1217,8 +1246,8 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
                 if (get_entry_fastq(t_in, t_name, t_seq, t_scr)
                     && ReadOrderChecker()(prev_t_name, t_name))
                 {
-                    if (!adaptor.empty())
-                        clip_adaptor_from_read(adaptor,
+                    if (!T_adaptor.empty())
+                        clip_adaptor_from_read(T_adaptor,
                                                MIN_ADAPTOR_MATCH_SCORE, t_seq);
                     ++t_read_idx;
                 }
@@ -1243,8 +1272,8 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
                 if (get_entry_fastq(a_in, a_name, a_seq, a_scr)
                     && ReadOrderChecker()(prev_a_name, a_name))
                 {
-                    if (!adaptor.empty())
-                        clip_adaptor_from_read(adaptor,
+                    if (!A_adaptor.empty())
+                        clip_adaptor_from_read(A_adaptor,
                                                MIN_ADAPTOR_MATCH_SCORE, a_seq);
                     ++a_read_idx;
                 }
