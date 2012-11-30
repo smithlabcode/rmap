@@ -34,7 +34,7 @@ CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O3
 DEBUGFLAGS = -g
-COMMON_DIR = $(SRC_ROOT)/src/common
+COMMON_DIR = $(SRC_ROOT)/common
 TEST_DIR = $(SRC_ROOT)/test
 
 ifeq "$(shell uname)" "Darwin"
