@@ -57,11 +57,13 @@ get_read_word(const string &read) {
 }
 
 static void
-check_and_add(string &read, const string &adaptor, const int max_diffs,
+check_and_add(const size_t read_count, string &read, 
+	      const string &adaptor, const int max_diffs,
 	      size_t &read_width, vector<FastRead> &fast_reads, 
-	      vector<size_t> &read_words, vector<unsigned int> &read_index, 
-	      size_t &read_count) {
-  if (read_width == 0) read_width = read.length();
+	      vector<size_t> &read_words, vector<unsigned int> &read_index) {
+  
+  if (read_width == 0) 
+    read_width = read.length();
   else if (read.length() < read_width)
     throw SMITHLABException("Incorrect read width:\n" + read + "\n");
   else read.erase(read_width);
@@ -84,47 +86,37 @@ check_and_add(string &read, const string &adaptor, const int max_diffs,
     read_words.push_back(get_read_word(read));
     read_index.push_back(read_count);
   }
-  ++read_count;
 }
 
 void
 load_reads_from_fasta_file(const string &filename, 
+			   const size_t read_start_idx, const size_t n_reads_to_process,
 			   const string &adaptor, const size_t max_diffs,
 			   size_t &read_width, vector<FastRead> &fast_reads,
 			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
-  std::ifstream in(filename.c_str(), std::ios::binary);
-  if (!in) throw SMITHLABException("cannot open input file " + filename);
   
-  size_t read_count = 0, line_count = 0;
+  std::ifstream in(filename.c_str());
+  if (!in) 
+    throw SMITHLABException("cannot open input file " + filename);
   
-  static const size_t buffer_size = 100000000;
-  vector<char> buffer(buffer_size + 1, '\0');
-  size_t in_size = buffer_size;
-  while (!in.eof()) {
-    in.read(&buffer[0] + (buffer_size - in_size), in_size);
-    buffer[(buffer_size - in_size) + in.gcount()] = '\0';
-    bool stop = false;
-    vector<char>::const_iterator start(buffer.begin());
-    while (!stop) {
-      vector<char>::const_iterator end(start);
-      while (*end != '\n' && *end != '\0') ++end;
-      if (*end == '\0') {
-	std::copy(start, end, buffer.begin());
-	in_size = buffer_size - distance(start, end);
-	stop = true;
-      }
-      else {
-	if (*start != '>') {
-	  if ((line_count & 1ul) == 0)
-	    throw SMITHLABException("empty/multi-line reads or bad FASTA header");
-	  string read(start, end);//&buffer[0]);
-	  check_and_add(read, adaptor, max_diffs, read_width, fast_reads, 
-			read_words, read_index, read_count);
-	}
-	++line_count;
-	start = end + 1;
-      }
+  size_t line_count = 0;
+  string line;
+  const size_t lim1 = read_start_idx*2;
+  while (getline(in, line) && line_count < lim1)
+    ++line_count;
+  
+  size_t read_count = 0; //read_start_idx;
+  
+  const size_t lim2 = (read_start_idx + n_reads_to_process)*2;
+  while (getline(in, line) && line_count < lim2) {
+    if (line[0] != '>') {
+      if ((line_count & 1ul) == 0)
+	throw SMITHLABException("empty/multi-line reads or bad FASTA header");
+      check_and_add(read_count, line, adaptor, max_diffs, read_width, fast_reads, 
+		    read_words, read_index);
+      ++read_count;
     }
+    ++line_count;
   }
   if (fast_reads.empty())
     throw SMITHLABException("no high-quality reads in file:\"" + filename + "\"");
@@ -157,33 +149,35 @@ is_fastq_score_line(size_t line_count) {
 
 void
 load_reads_from_fastq_file(const string &filename, 
+			   const size_t read_start_idx, const size_t n_reads_to_process,
 			   const string &adaptor, const size_t max_diffs,
 			   size_t &read_width, vector<FastRead> &fast_reads,
 			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
-  std::ifstream in(filename.c_str(), std::ios::binary);
-  if (!in) throw SMITHLABException("cannot open input file " + filename);
-  char buffer[INPUT_BUFFER_SIZE + 1];
+  std::ifstream in(filename.c_str());
+  if (!in) 
+    throw SMITHLABException("cannot open input file " + filename);
 
-  size_t read_count = 0, line_count = 0;
-  while (!in.eof()) {
-    in.getline(buffer, INPUT_BUFFER_SIZE);
-    if (in.gcount() > 1) {
-      if (in.gcount() == INPUT_BUFFER_SIZE)
-	throw SMITHLABException("Line in " + filename + "\nexceeds max length: " +
-			    toa(INPUT_BUFFER_SIZE));
-      // correct for dos carriage returns before newlines
-      const size_t last_pos = in.gcount() - 2;//strlen(buffer) - 1;
-      if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
-      
-      if (is_fastq_sequence_line(line_count)) {
-	string read(buffer);
-	check_and_add(read, adaptor, max_diffs, 
-		      read_width, fast_reads, read_words,
-		      read_index, read_count);
-      }
-      ++line_count;
+  size_t line_count = 0;
+  string line;
+  const size_t lim1 = read_start_idx*4;
+  while (line_count < lim1 && getline(in, line))
+    ++line_count;
+  
+  size_t read_count = 0; //read_start_idx;
+  
+  const size_t lim2 =
+    (n_reads_to_process != std::numeric_limits<size_t>::max()) ?
+    (read_start_idx + n_reads_to_process)*4 :
+    std::numeric_limits<size_t>::max();
+  
+  while (line_count < lim2 && getline(in, line)) {
+    if (is_fastq_sequence_line(line_count)) {
+      check_and_add(read_count, line, adaptor, max_diffs, 
+		    read_width, fast_reads, read_words,
+		    read_index);
+      ++read_count;
     }
-    in.peek();
+    ++line_count;
   }
   if (fast_reads.empty())
     throw SMITHLABException("no high-quality reads in file:\"" + filename + "\"");
@@ -191,11 +185,12 @@ load_reads_from_fastq_file(const string &filename,
 
 
 static void
-check_and_add(const FASTQScoreType score_format, const string &adaptor, 
+check_and_add(const size_t read_count, 
+	      const FASTQScoreType score_format, const string &adaptor, 
 	      const size_t max_diffs,
 	      string &score_line, string &read, size_t &read_width, 
 	      vector<FastReadWC> &fast_reads, vector<size_t> &read_words, 
-	      vector<unsigned int> &read_index, size_t &read_count) {
+	      vector<unsigned int> &read_index) {
   
   if (read_width == 0) read_width = read.length();
   else if (read.length() < read_width)
@@ -230,63 +225,57 @@ check_and_add(const FASTQScoreType score_format, const string &adaptor,
     read_words.push_back(get_read_word(read));
     read_index.push_back(read_count);
   }
-  ++read_count;
 }
 
 void
 load_reads_from_fastq_file(const string &filename, 
+			   const size_t read_start_idx, const size_t n_reads_to_process,
 			   const string &adaptor, const size_t max_diffs,
 			   size_t &read_width, vector<FastReadWC> &fast_reads,
 			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
 
   FASTQScoreType score_format = fastq_score_type(filename);
   
-  std::ifstream in(filename.c_str(), std::ios::binary);
-  if (!in) throw SMITHLABException("cannot open input file " + filename);
-  char buffer[INPUT_BUFFER_SIZE + 1];
+  std::ifstream in(filename.c_str());
+  if (!in) 
+    throw SMITHLABException("cannot open input file " + filename);
 
-  size_t read_count = 0, line_count = 0;
+  string line;
+  size_t line_count = 0;
+
+  const size_t lim1 = read_start_idx*4;
+  while (line_count < lim1 && getline(in, line))
+    ++line_count;
+
+  size_t read_count = 0;
   string sequence;
-  while (!in.eof()) {
-    in.getline(buffer, INPUT_BUFFER_SIZE);
-    if (in.gcount() > 1) {
-      if (in.gcount() == INPUT_BUFFER_SIZE)
-	throw SMITHLABException("Line in " + filename + "\nexceeds max length: " +
-			    toa(INPUT_BUFFER_SIZE));
-      // correct for dos carriage returns before newlines
-      const size_t last_pos = in.gcount() - 2;//strlen(buffer) - 1;
-      if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
-      
-      //       if (is_fastq_name_line(line_count))
-      // 	if (buffer[0] != '@')
-      // 	  throw SMITHLABException("invalid FASTQ name line: " + string(buffer));
-      if (is_fastq_sequence_line(line_count)) {
-	sequence = string(buffer);
-      }
-      //       if (is_fastq_score_name_line(line_count))
-      // 	if (buffer[0] != '+')
-      // 	  throw SMITHLABException("invalid FASTQ score name line: " + string(buffer));
-      if (is_fastq_score_line(line_count)) {
-	string score_line(buffer);
-	check_and_add(score_format, adaptor, max_diffs, score_line, sequence, read_width, 
-		      fast_reads, read_words, read_index, read_count);
-      }
-      ++line_count;
+
+  const size_t lim2 = (read_start_idx + n_reads_to_process)*4;
+  while (line_count < lim2 && getline(in, line)) {
+    if (is_fastq_sequence_line(line_count))
+      sequence.swap(line);
+    else if (is_fastq_score_line(line_count)) {
+      check_and_add(read_count, score_format, adaptor, max_diffs, 
+		    line, sequence, read_width, fast_reads, 
+		    read_words, read_index);
+      ++read_count;
     }
-    in.peek();
+    ++line_count;
   }
   if (fast_reads.empty())
-    throw SMITHLABException("no high-quality reads in file:\"" + filename + "\"");
+    throw SMITHLABException("no high-quality reads in file:\"" + 
+			    filename + "\"");
 }
 
 
 static void
-check_and_add(const FASTQScoreType score_format, const string &adaptor, 
+check_and_add(const size_t read_count, 
+	      const FASTQScoreType score_format, const string &adaptor, 
 	      const size_t max_diffs,
 	      string &score_line, string &read, size_t &read_width, 
 	      vector<FastReadQuality> &fast_reads, vector<size_t> &read_words, 
-	      vector<unsigned int> &read_index, size_t &read_count) {
-
+	      vector<unsigned int> &read_index) {
+  
   if (read_width == 0) read_width = read.length();
   else if (read.length() < read_width)
     throw SMITHLABException("Incorrect read width");
@@ -323,221 +312,42 @@ check_and_add(const FASTQScoreType score_format, const string &adaptor,
     read_words.push_back(get_read_word(read));
     read_index.push_back(read_count);
   }
-  ++read_count;
 }
 
 
 void
 load_reads_from_fastq_file(const string &filename, 
+			   const size_t read_start_idx, const size_t n_reads_to_process,
 			   const string &adaptor, const size_t max_diffs,
 			   size_t &read_width, vector<FastReadQuality> &fast_reads,
 			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
   FASTQScoreType score_format = fastq_score_type(filename);
-
-  std::ifstream in(filename.c_str(), std::ios::binary);
-  if (!in) throw SMITHLABException("cannot open input file " + filename);
-  char buffer[INPUT_BUFFER_SIZE + 1];
   
-  size_t read_count = 0, line_count = 0;
+  std::ifstream in(filename.c_str());
+  if (!in) 
+    throw SMITHLABException("cannot open input file " + filename);
+  
+  string line;
+  size_t line_count = 0;
+  
+  const size_t lim1 = read_start_idx*4;
+  while (line_count < lim1 && getline(in, line))
+    ++line_count;
+  
+  size_t read_count = 0;
   string sequence;
 
-  
-  while (!in.eof()) {
-    in.getline(buffer, INPUT_BUFFER_SIZE);
-    if (in.gcount() > 1) {
-      if (in.gcount() == INPUT_BUFFER_SIZE)
-	throw SMITHLABException("Line in " + filename + "\nexceeds max length: " +
-			    toa(INPUT_BUFFER_SIZE));
-      // correct for dos/mac carriage returns before newlines
-      const size_t last_pos = in.gcount() - 2; //strlen(buffer) - 1;
-      if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
-      
-      //       if (is_fastq_name_line(line_count))
-      // 	;
-      if (is_fastq_sequence_line(line_count))
-	sequence = string(buffer);
-      //       if (is_fastq_score_name_line(line_count))
-      // 	;
-      if (is_fastq_score_line(line_count)) {
-	string score_line(buffer);
-	check_and_add(score_format, adaptor, max_diffs, score_line, sequence, 
-		      read_width, fast_reads, read_words, read_index, read_count);
-      }
-      ++line_count;
+  const size_t lim2 = (read_start_idx + n_reads_to_process)*4;
+  while (line_count < lim2 && getline(in, line)) {
+    if (is_fastq_sequence_line(line_count))
+      sequence.swap(line);
+    else if (is_fastq_score_line(line_count)) {
+      check_and_add(read_count, score_format, adaptor, max_diffs, 
+		    line, sequence, read_width, fast_reads, 
+		    read_words, read_index);
+      ++read_count;
     }
-    in.peek();
-  }
-  if (fast_reads.empty())
-    throw SMITHLABException("no high-quality reads in file:\"" + filename + "\"");
-}
-
-////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////
-
-static void
-check_and_add(const FASTQScoreType score_format, const string &adaptor, 
-	      const size_t max_diffs,
-	      const string &score_line, size_t &read_width, 
-	      vector<FastReadWC> &fast_reads, vector<size_t> &read_words, 
-	      vector<unsigned int> &read_index, size_t &read_count) {
-  
-  // parse the score line
-  vector<string> parts;
-  smithlab::split_whitespace(score_line, parts);
-  if (parts.size() % smithlab::alphabet_size != 0)
-    throw SMITHLABException("bad format:\n" + score_line);
-  
-  // check the read width
-  if (read_width == 0) read_width = parts.size()/smithlab::alphabet_size;
-  else if (parts.size()/smithlab::alphabet_size < read_width)
-    throw SMITHLABException("Incorrect read width");
-  else parts.resize(read_width*smithlab::alphabet_size);
-  
-  if (read_count == 0)
-    FastReadWC::set_read_width(read_width);
-  
-  // convert to numerical values
-  vector<vector<double> > error_probs(read_width, vector<double>(smithlab::alphabet_size));
-  for (size_t i = 0; i < read_width; ++i)
-    for (size_t j = 0; j < smithlab::alphabet_size; ++j)
-      error_probs[i][j] = atof(parts[i*smithlab::alphabet_size + j].c_str());
-  
-  // convert to probability
-  size_t bad_count = 0;
-  for (size_t i = 0; i < read_width; ++i) {
-    for (size_t j = 0; j < smithlab::alphabet_size; ++j)
-      error_probs[i][j] = 
-	quality_score_to_error_probability(score_format, error_probs[i][j]);
-    bad_count += (*min_element(error_probs[i].begin(), error_probs[i].end()) > 
-		  FastReadWC::get_cutoff());
-  }
-  
-  const bool good_read = (read_width - (bad_count + max_diffs) >= MIN_NON_N_IN_READS);
-  if (good_read) {
-    fast_reads.push_back(FastReadWC(error_probs));
-    string read;
-    for (size_t i = 0; i < read_width; ++i)
-      read += int2base(min_element(error_probs[i].begin(), 
-				   error_probs[i].end()) - error_probs[i].begin());
-    read_words.push_back(get_read_word(read));
-    read_index.push_back(read_count);
-  }
-  ++read_count;
-}
-
-
-void
-load_reads_from_prb_file(const string &filename, 
-			 const string &adaptor, const size_t max_diffs,
-			 size_t &read_width, vector<FastReadWC> &fast_reads,
-			 vector<size_t> &read_words, vector<unsigned int> &read_index) {
-
-  FASTQScoreType score_format = FASTQ_Solexa;
-
-  std::ifstream in(filename.c_str(), std::ios::binary);
-  if (!in) throw SMITHLABException("cannot open input file " + filename);
-  char buffer[INPUT_BUFFER_SIZE + 1];
-
-  size_t read_count = 0;
-  while (!in.eof()) {
-    in.getline(buffer, INPUT_BUFFER_SIZE);
-    if (in.gcount() > 1) {
-      if (in.gcount() == INPUT_BUFFER_SIZE)
-	throw SMITHLABException("Line in " + filename + "\nexceeds max length: " +
-			    toa(INPUT_BUFFER_SIZE));
-      // correct for dos carriage returns before newlines
-      const size_t last_pos = in.gcount() - 2;//strlen(buffer) - 1;
-      if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
-      const string score_line(buffer);
-      check_and_add(score_format, adaptor, max_diffs, score_line, read_width, 
-		    fast_reads, read_words, read_index, read_count);
-    }
-    in.peek();
-  }
-  if (fast_reads.empty())
-    throw SMITHLABException("no high-quality reads in file:\"" + filename + "\"");
-}
- 
- 
-static void
-check_and_add(const FASTQScoreType score_format, const string &adaptor, 
-	      const size_t max_diffs,
-	      const string &score_line, size_t &read_width, 
-	      vector<FastReadQuality> &fast_reads, vector<size_t> &read_words, 
-	      vector<unsigned int> &read_index, size_t &read_count) {
-  
-  // parse the score line
-  vector<string> parts;
-  smithlab::split_whitespace(score_line, parts);
-  if (parts.size() % smithlab::alphabet_size != 0)
-    throw SMITHLABException("bad format:\n" + score_line);
-
-  // check the read width
-  if (read_width == 0) read_width = parts.size()/smithlab::alphabet_size;
-  else if (parts.size()/smithlab::alphabet_size < read_width)
-    throw SMITHLABException("Incorrect read width");
-  else parts.resize(read_width*smithlab::alphabet_size);
-
-  if (read_count == 0)
-    FastReadQuality::set_read_width(read_width);
-  
-  // convert to numerical values
-  vector<vector<double> > error_probs(read_width, vector<double>(smithlab::alphabet_size));
-  for (size_t i = 0; i < read_width; ++i)
-    for (size_t j = 0; j < smithlab::alphabet_size; ++j)
-      error_probs[i][j] = atof(parts[i*smithlab::alphabet_size + j].c_str());
-  
-  // convert to probability
-  size_t bad_count = 0;
-  for (size_t i = 0; i < read_width; ++i) {
-    for (size_t j = 0; j < smithlab::alphabet_size; ++j)
-      error_probs[i][j] = 
-	quality_score_to_error_probability(score_format, error_probs[i][j]);
-    bad_count += (*min_element(error_probs[i].begin(), error_probs[i].end()) > 
-		  FastReadQuality::get_cutoff());
-  }
-  
-  const bool good_read = (read_width - (bad_count + max_diffs) >= MIN_NON_N_IN_READS);
-  if (good_read) {
-    fast_reads.push_back(FastReadQuality(error_probs));
-
-    string read;
-    for (size_t i = 0; i < read_width; ++i)
-      read += int2base(min_element(error_probs[i].begin(), 
-				   error_probs[i].end()) - error_probs[i].begin());
-    read_words.push_back(get_read_word(read));
-    read_index.push_back(read_count);
-  }
-  ++read_count;
-}
-
-
-void
-load_reads_from_prb_file(const string &filename, 
-			 const string &adaptor, const size_t max_diffs,
-			 size_t &read_width, vector<FastReadQuality> &fast_reads,
-			 vector<size_t> &read_words, vector<unsigned int> &read_index) {
-  FASTQScoreType score_format = FASTQ_Solexa;
-  std::ifstream in(filename.c_str(), std::ios::binary);
-  if (!in) throw SMITHLABException("cannot open input file " + filename);
-  char buffer[INPUT_BUFFER_SIZE + 1];
-
-  size_t read_count = 0;
-  while (!in.eof()) {
-    in.getline(buffer, INPUT_BUFFER_SIZE);
-    if (in.gcount() > 1) {
-      if (in.gcount() == INPUT_BUFFER_SIZE)
-	throw SMITHLABException("Line in " + filename + "\nexceeds max length: " +
-			    toa(INPUT_BUFFER_SIZE));
-      // correct for dos carriage returns before newlines
-      const size_t last_pos = in.gcount() - 2;//strlen(buffer) - 1;
-      if (buffer[last_pos] == '\r') buffer[last_pos] = '\0';
-      const string score_line(buffer);
-      check_and_add(score_format, adaptor, max_diffs, score_line, read_width, 
-		    fast_reads, read_words, read_index, read_count);
-    }
-    in.peek();
+    ++line_count;
   }
   if (fast_reads.empty())
     throw SMITHLABException("no high-quality reads in file:\"" + filename + "\"");
