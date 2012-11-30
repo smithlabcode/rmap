@@ -51,7 +51,7 @@ using std::numeric_limits;
 using std::pair;
 using std::make_pair;
 
-enum { FASTA_FILE, FASTQ_FILE, FASTA_AND_PRB };
+enum { FASTA_FILE, FASTQ_FILE };
 enum { RUN_MODE_MISMATCH, RUN_MODE_WILDCARD, RUN_MODE_WEIGHT_MATRIX };
 
 ////////////////////////////////////////////////////////////////////////
@@ -544,16 +544,13 @@ load_read_names(const size_t INPUT_MODE,
 
 
 static size_t
-get_input_mode(const bool VERBOSE, 
-	       const string &reads_file, const string &prb_file) {
+get_input_mode(const bool VERBOSE, const string &reads_file) {
   size_t INPUT_MODE = FASTA_FILE;
   if (is_fastq(reads_file)) INPUT_MODE = FASTQ_FILE;
-  if (!prb_file.empty()) INPUT_MODE = FASTA_AND_PRB;
   if (VERBOSE)
     cerr << "INPUT MODE: "
 	 << ((INPUT_MODE == FASTA_FILE) ? 
-	     "FASTA" : ((INPUT_MODE == FASTQ_FILE) ? 
-			"FASTQ" : "FASTA+PRB")) << endl;
+	     "FASTA" : "FASTQ") << endl;
   return INPUT_MODE;
 }  
 
@@ -570,8 +567,7 @@ get_run_mode(const bool VERBOSE, const size_t INPUT_MODE,
 			  "required to use wildcards");
     RUN_MODE = RUN_MODE_WILDCARD;
   }
-  else if (INPUT_MODE == FASTA_AND_PRB || 
-	   (INPUT_MODE == FASTQ_FILE && QUALITY))
+  else if (INPUT_MODE == FASTQ_FILE && QUALITY)
     RUN_MODE = RUN_MODE_WEIGHT_MATRIX;
   
   if (VERBOSE)
@@ -586,7 +582,8 @@ get_run_mode(const bool VERBOSE, const size_t INPUT_MODE,
 static void
 load_reads(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_MODE,
 	   const size_t max_mismatches, const string &adaptor,
-	   const string &reads_file, const string &prb_file,
+	   const string &reads_file,
+	   const size_t read_start_index, const size_t n_reads_to_process,
 	   vector<FastRead> &fast_reads, vector<FastReadWC> &fast_reads_wc,
 	   vector<FastReadQuality> &fast_reads_q,
 	   vector<unsigned int> &read_index, vector<size_t> &read_words,
@@ -598,22 +595,23 @@ load_reads(const bool VERBOSE, const size_t INPUT_MODE, const size_t RUN_MODE,
   vector<string> reads;
   if (INPUT_MODE == FASTQ_FILE) {
     if (RUN_MODE == RUN_MODE_WILDCARD)
-      load_reads_from_fastq_file(reads_file, adaptor, max_mismatches, read_width,
+      load_reads_from_fastq_file(reads_file, 
+				 read_start_index, n_reads_to_process, 
+				 adaptor, max_mismatches, read_width,
 				 fast_reads_wc, read_words, read_index);
     else if (RUN_MODE == RUN_MODE_WEIGHT_MATRIX)
-      load_reads_from_fastq_file(reads_file, adaptor, max_mismatches, read_width,
+      load_reads_from_fastq_file(reads_file, 
+				 read_start_index, n_reads_to_process, 
+				 adaptor, max_mismatches, read_width,
 				 fast_reads_q, read_words, read_index);
-    else load_reads_from_fastq_file(reads_file, adaptor, max_mismatches, read_width,
+    else load_reads_from_fastq_file(reads_file, 
+				    read_start_index, n_reads_to_process, 
+				    adaptor, max_mismatches, read_width,
 				    fast_reads, read_words, read_index);
   }
-  else if (INPUT_MODE == FASTA_AND_PRB) {
-    if (RUN_MODE == RUN_MODE_WILDCARD)
-      load_reads_from_prb_file(prb_file, adaptor, max_mismatches, read_width,
-			       fast_reads_wc, read_words, read_index);
-    else load_reads_from_prb_file(prb_file, adaptor, max_mismatches, read_width,
-				  fast_reads_q, read_words, read_index);
-  }
-  else load_reads_from_fasta_file(reads_file, adaptor, max_mismatches, read_width,
+  else load_reads_from_fasta_file(reads_file, 
+				  read_start_index, n_reads_to_process, 
+				  adaptor, max_mismatches, read_width,
 				  fast_reads, read_words, read_index);
   if (VERBOSE)
     cerr << "[DONE]" << endl
@@ -734,7 +732,6 @@ main(int argc, const char **argv) {
     string chrom_file;
     string filenames_file;
     string outfile;
-    string prb_file;
     string ambiguous_file;
     string fasta_suffix = "fa";
     string adaptor_sequence;
@@ -745,6 +742,9 @@ main(int argc, const char **argv) {
     size_t max_mismatches = 10;
     size_t max_mappings = 1;
     double wildcard_cutoff = numeric_limits<double>::max();
+
+    size_t read_start_index = 0;
+    size_t n_reads_to_process = std::numeric_limits<size_t>::max();
     
     bool VERBOSE = false;
     bool QUALITY = false;
@@ -755,18 +755,20 @@ main(int argc, const char **argv) {
     bool ORIGINAL_OUTPUT = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
-    OptionParser opt_parse("rmap", "The rmap tool for mapping short reads",
+    OptionParser opt_parse(strip_path(argv[0]), "The rmap tool for mapping short reads",
 			   "<fast[a/q]-reads-file>");
     opt_parse.add_opt("output", 'o', "Name of output file (default: stdout)", 
 		      false , outfile);
     opt_parse.add_opt("chrom", 'c', "FASTA file or dir containing chromosome(s)", 
 		      false , chrom_file);
+    opt_parse.add_opt("start", 'T', "index of first read to map", 
+		      false , read_start_index);
+    opt_parse.add_opt("number", 'N', "number of reads to map", 
+		      false , n_reads_to_process);
     opt_parse.add_opt("suffix", 's', "suffix of FASTA files "
 		      "(assumes -c indicates dir)", false , fasta_suffix);
     opt_parse.add_opt("filenames", 'F', "file listing names of "
 		      "chromosome files", false , filenames_file);
-    opt_parse.add_opt("prb", 'p', "file with quality scores (prb format)", 
-		      false, prb_file);
     opt_parse.add_opt("seeds", 'S', "number of seeds", false , n_seeds);
     opt_parse.add_opt("hit", 'h', "weight of hit", false , seed_weight);
     opt_parse.add_opt("width", 'w', "width of reads", false, read_width);
@@ -824,7 +826,7 @@ main(int argc, const char **argv) {
     //////////////////////////////////////////////////////////////
     //  CHECK HOW QUALITY SCORES ARE USED
     //
-    const size_t INPUT_MODE = get_input_mode(VERBOSE, reads_file, prb_file);
+    const size_t INPUT_MODE = get_input_mode(VERBOSE, reads_file);
     const size_t RUN_MODE = get_run_mode(VERBOSE, INPUT_MODE, WILDCARD, QUALITY);
     
     //////////////////////////////////////////////////////////////
@@ -843,7 +845,9 @@ main(int argc, const char **argv) {
     vector<size_t> read_words;
     load_reads(VERBOSE, INPUT_MODE, RUN_MODE,
 	       max_mismatches, adaptor_sequence,
-	       reads_file, prb_file, fast_reads, fast_reads_wc,
+	       reads_file, 
+	       read_start_index, n_reads_to_process,
+	       fast_reads, fast_reads_wc,
 	       fast_reads_q, read_index, read_words, 
 	       read_width);
     
