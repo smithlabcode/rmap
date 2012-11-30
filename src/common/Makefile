@@ -22,6 +22,10 @@
 SOURCES = $(wildcard *.cpp)
 OBJECTS = $(patsubst %.cpp,%.o,$(SOURCES))
 
+ifndef SMITHLAB_CPP
+SMITHLAB_CPP=../../smithlab_cpp
+endif
+
 CXX = g++
 CXXFLAGS = -Wall
 OPTFLAGS = -O2
@@ -42,7 +46,7 @@ endif
 all: $(OBJECTS)
 
 %.o: %.cpp %.hpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -c -o $@ $< -I$(SMITHLAB_CPP)
 
 clean: 
 	@-rm -f *.o *~
