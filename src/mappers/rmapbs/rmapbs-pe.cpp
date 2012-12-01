@@ -1336,18 +1336,7 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
            const string &adaptor_sequence, const string &outfile, 
 	   const bool VERBOSE) {
 
-///// FOR DEBUG PURPOSE ONLY
-  vector<size_t> count_freqs(501, 0);
-  for (size_t i = 0; i < t_best_maps.size(); ++i)
-    ++count_freqs[t_best_maps[i].mr.size()];
-  for (size_t i = 0; i < a_best_maps.size(); ++i)
-    ++count_freqs[a_best_maps[i].mr.size()];
-  std::ofstream ambig_count_f((outfile + smithlab::toa(getpid())).c_str());
-  std::copy(count_freqs.begin(), count_freqs.end(),
-            std::ostream_iterator<double>(ambig_count_f, "\n")); 
-/////
-
-  // extract adatpers
+// extract adatpers
   string T_adaptor, A_adaptor;
   extract_adaptors(adaptor_sequence, T_adaptor, A_adaptor);
   
