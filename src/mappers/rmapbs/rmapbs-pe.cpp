@@ -860,6 +860,19 @@ map_reads(const string &chrom_file, const string &filenames_file,
 }
 
 static bool
+fast_forward_fastq(std::istream &in, const size_t n_entries)
+{
+  const size_t INPUT_BUFFER_SIZE = 10000;
+  char buffer[INPUT_BUFFER_SIZE + 1];
+
+  // fast forward 
+  for (size_t i = 0; i < n_entries && in.good(); ++i)
+    for (size_t line_count = 0; line_count < 4 && in.good(); ++line_count)
+      in.getline(buffer, INPUT_BUFFER_SIZE);
+  return in;
+}
+
+static bool
 get_entry_fastq(std::istream &in,
                 const size_t curr_idx,  // the first unread entry index
                 const size_t target_idx, // the entry index to be read
@@ -900,32 +913,6 @@ get_entry_fastq(std::istream &in,
   
   return in;
 }
-
-// static bool 
-// get_entry_fastq(std::istream &in, string &name, string &seq, string &scr) {
-//   static const size_t INPUT_BUFFER_SIZE = 10000;
-//   for (size_t line_count = 0; line_count < 4 && in.good(); ++line_count) {
-//     char buffer[INPUT_BUFFER_SIZE + 1];
-//     in.getline(buffer, INPUT_BUFFER_SIZE);
-//     if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
-//       throw SMITHLABException("Line exceeds max length: " +
-// 			      toa(INPUT_BUFFER_SIZE));
-    
-//     if (line_count % 4 == 0) {
-//       name = string(buffer + 1);
-//       const size_t name_end = name.find_first_of(" \t");
-//       if (name_end != string::npos)
-// 	name.erase(name.begin() + name_end, name.end());
-//     }
-//     else if (line_count % 4 == 1) {
-//       seq = string(buffer);
-//     }
-//     else if (line_count % 4 == 3) {
-//       scr = string(buffer);
-//     }
-//   }
-//   return in;
-// }
 
 inline static bool
 same_read(const size_t suffix_len, 
@@ -1126,6 +1113,7 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
            vector<MultiMapResult> &t_best_maps,
            const string &A_reads_file, vector<unsigned int> &a_read_index,
            vector<MultiMapResult> &a_best_maps, 
+           const size_t read_start_index,
            const size_t suffix_len, const size_t MAX_SEGMENT_LENGTH,
            const string &adaptor_sequence, const string &outfile, 
 	   const bool VERBOSE) {
@@ -1141,11 +1129,11 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
   extract_adaptors(adaptor_sequence, T_adaptor, A_adaptor);
   
   std::ifstream t_in(T_reads_file.c_str());
-  if (!t_in)
+  if (!(t_in.good() && fast_forward_fastq(t_in, read_start_index)))
     throw SMITHLABException("cannot open input file " + T_reads_file);
   
   std::ifstream a_in(A_reads_file.c_str());
-  if (!a_in)
+  if (!(a_in.good() && fast_forward_fastq(a_in, read_start_index)))
     throw SMITHLABException("cannot open input file " + A_reads_file);
   
   std::ofstream out(outfile.c_str());
@@ -1374,11 +1362,15 @@ main(int argc, const char **argv)
         
       const string T_reads_file = leftover_args.front();
       const string A_reads_file = leftover_args.back();
-        
+      
+      // the index user gives is 1-based, rmap internal representation
+      // is 0-based
+      read_start_index = read_start_index == 0 ? 0 : read_start_index - 1;
+      
       /****************** END COMMAND LINE OPTIONS *****************/
       //////////////////////////////////////////////////////////////
-      //  DETERMINE WHICH CHROMOSOMES WILL USED IN MAPPING
-      //
+
+
       if (VERBOSE)
 	cerr << "[MAPPING T-RICH MATES] " << T_reads_file << endl;
       vector<unsigned int> t_read_index;
@@ -1413,6 +1405,7 @@ main(int argc, const char **argv)
 	cerr << "[JOINING MATES]" << endl;
       clip_mates(T_reads_file, t_read_index, t_best_maps,
 		 A_reads_file, a_read_index, a_best_maps, 
+         read_start_index,        
 		 suffix_len, MAX_SEGMENT_LENGTH, adaptor_sequence, 
 		 outfile, VERBOSE);
       if (VERBOSE)
