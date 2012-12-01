@@ -970,7 +970,7 @@ merge_mates(const size_t suffix_len,
 	    const MappedRead &one, const MappedRead &two,
             MappedRead &merged) {
 
-  if (!(one.r.same_chrom(two.r) && one.r.same_strand(two.r)))
+  if (!(one.r.same_chrom(two.r) && one.r.get_strand() == two.r.get_strand()))
     return false;
   
   merged = one;
