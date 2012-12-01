@@ -859,31 +859,73 @@ map_reads(const string &chrom_file, const string &filenames_file,
   MapResult::chrom_sizes = chrom_sizes;
 }
 
-static bool 
-get_entry_fastq(std::istream &in, string &name, string &seq, string &scr) {
+static bool
+get_entry_fastq(std::istream &in,
+                const size_t curr_idx,  // the first unread entry index
+                const size_t target_idx, // the entry index to be read
+                string &name, string &seq, string &scr)
+{
   static const size_t INPUT_BUFFER_SIZE = 10000;
-  for (size_t line_count = 0; line_count < 4 && in.good(); ++line_count) {
-    char buffer[INPUT_BUFFER_SIZE + 1];
+  static char buffer[INPUT_BUFFER_SIZE + 1];
+
+  // fast forward 
+  for (size_t i = curr_idx; i < target_idx && in.good(); ++i)
+    for (size_t line_count = 0; line_count < 4 && in.good(); ++line_count)
+      in.getline(buffer, INPUT_BUFFER_SIZE);
+
+  // read and parse the target read
+  for (size_t line_count = 0; line_count < 4 && in.good(); ++line_count)
+  {
     in.getline(buffer, INPUT_BUFFER_SIZE);
     if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
       throw SMITHLABException("Line exceeds max length: " +
-			      toa(INPUT_BUFFER_SIZE));
+                              toa(INPUT_BUFFER_SIZE));
     
-    if (line_count % 4 == 0) {
+    if (line_count % 4 == 0) 
+    {
       name = string(buffer + 1);
       const size_t name_end = name.find_first_of(" \t");
       if (name_end != string::npos)
-	name.erase(name.begin() + name_end, name.end());
+        name.erase(name.begin() + name_end, name.end());
     }
-    else if (line_count % 4 == 1) {
+    else if (line_count % 4 == 1) 
+    {
       seq = string(buffer);
     }
-    else if (line_count % 4 == 3) {
+    else if (line_count % 4 == 3) 
+    {
       scr = string(buffer);
     }
   }
+  
   return in;
 }
+
+// static bool 
+// get_entry_fastq(std::istream &in, string &name, string &seq, string &scr) {
+//   static const size_t INPUT_BUFFER_SIZE = 10000;
+//   for (size_t line_count = 0; line_count < 4 && in.good(); ++line_count) {
+//     char buffer[INPUT_BUFFER_SIZE + 1];
+//     in.getline(buffer, INPUT_BUFFER_SIZE);
+//     if (in.gcount() == static_cast<int>(INPUT_BUFFER_SIZE))
+//       throw SMITHLABException("Line exceeds max length: " +
+// 			      toa(INPUT_BUFFER_SIZE));
+    
+//     if (line_count % 4 == 0) {
+//       name = string(buffer + 1);
+//       const size_t name_end = name.find_first_of(" \t");
+//       if (name_end != string::npos)
+// 	name.erase(name.begin() + name_end, name.end());
+//     }
+//     else if (line_count % 4 == 1) {
+//       seq = string(buffer);
+//     }
+//     else if (line_count % 4 == 3) {
+//       scr = string(buffer);
+//     }
+//   }
+//   return in;
+// }
 
 inline static bool
 same_read(const size_t suffix_len, 
@@ -1047,26 +1089,27 @@ purge_remaining(const bool A_RICH,
 		const vector<unsigned int> &read_index,
 		vector<MultiMapResult> &best_maps,
 		string &adaptor, size_t read_idx, size_t curr_idx,
-		string &name, string &seq, string &scr, string &prev_name,
+        string &name, string &seq, string &scr, string &prev_name,
 		std::ifstream &in, std::ofstream &out) {
   
   while (curr_idx < read_index.size()) {
     const vector<MultiMapResult>::const_iterator bm(best_maps.begin() + curr_idx);
     if (bm->mr.size() == 1) {
       const size_t curr_idx_val = read_index[curr_idx];
-      while (read_idx != curr_idx_val && in.good()) {
-	string name, seq, scr, prev_name;
-	if (get_entry_fastq(in, name, seq, scr)) {
-	  if (!adaptor.empty())
-	    clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, seq);
-	  if (A_RICH) {
-	    revcomp_inplace(seq);
-	    std::reverse(scr.begin(), scr.end());
-	  }
-	  ++read_idx;
-	}
-	else throw SMITHLABException("Error reading " + reads_file);
-      }
+      
+      if (read_idx != curr_idx_val) 
+        if (get_entry_fastq(in, read_idx == 0 ? 0 : read_idx + 1,
+                            curr_idx_val, name, seq, scr)) {
+          if (!adaptor.empty())
+            clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, seq);
+          read_idx = curr_idx_val;
+          if (A_RICH) {
+            revcomp_inplace(seq);
+            std::reverse(scr.begin(), scr.end());
+          }
+        }
+        else throw SMITHLABException("Error reading " + reads_file);
+
       out << MapResult_to_MappedRead(bm->mr.front(), name, 
 				     seq, scr, bm->score) << endl;
     }
@@ -1094,12 +1137,11 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
   string T_adaptor, A_adaptor;
   extract_adaptors(adaptor_sequence, T_adaptor, A_adaptor);
   
-  // Why are these files binary?
-  std::ifstream t_in(T_reads_file.c_str(), std::ios::binary);
+  std::ifstream t_in(T_reads_file.c_str());
   if (!t_in)
     throw SMITHLABException("cannot open input file " + T_reads_file);
   
-  std::ifstream a_in(A_reads_file.c_str(), std::ios::binary);
+  std::ifstream a_in(A_reads_file.c_str());
   if (!a_in)
     throw SMITHLABException("cannot open input file " + A_reads_file);
   
@@ -1109,17 +1151,8 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
   
   size_t t_read_idx = 0, t_curr_idx = 0;
   string t_name, t_seq, t_scr, prev_t_name;
-  get_entry_fastq(t_in, t_name, t_seq, t_scr); 
-  if (!T_adaptor.empty())
-    clip_adaptor_from_read(T_adaptor, MIN_ADAPTOR_MATCH_SCORE, t_seq);
-  
   size_t a_read_idx = 0, a_curr_idx = 0;
   string a_name, a_seq, a_scr, prev_a_name;
-  get_entry_fastq(a_in, a_name, a_seq, a_scr); 
-  if (!A_adaptor.empty())
-    clip_adaptor_from_read(A_adaptor, MIN_ADAPTOR_MATCH_SCORE, a_seq);
-  revcomp_inplace(a_seq);
-  std::reverse(a_scr.begin(), a_scr.end());
   
   /* Looping over both the T-rich and A-rich reads in parallel
    */
@@ -1127,27 +1160,27 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
     
     // Move to the appropriate T-rich read
     const size_t t_curr_idx_val = t_read_index[t_curr_idx];
-    while (t_read_idx != t_curr_idx_val && t_in.good()) {
-      if (get_entry_fastq(t_in, t_name, t_seq, t_scr)) {
-	if (!T_adaptor.empty())
-	  clip_adaptor_from_read(T_adaptor, MIN_ADAPTOR_MATCH_SCORE, t_seq);
-      	++t_read_idx;
+    if (t_read_idx != t_curr_idx_val) 
+      if (get_entry_fastq(t_in, t_read_idx == 0 ? 0 : t_read_idx + 1,
+                          t_curr_idx_val, t_name, t_seq, t_scr)) {
+        if (!T_adaptor.empty())
+          clip_adaptor_from_read(T_adaptor, MIN_ADAPTOR_MATCH_SCORE, t_seq);
+        t_read_idx = t_curr_idx_val;
       }
       else throw SMITHLABException("Error reading " + T_reads_file);
-    }
     
     // Move to the appropriate A-rich read
     const size_t a_curr_idx_val = a_read_index[a_curr_idx];
-    while (a_read_idx != a_curr_idx_val && a_in.good()) {
-      if (get_entry_fastq(a_in, a_name, a_seq, a_scr)) {
-	if (!A_adaptor.empty())
-	  clip_adaptor_from_read(A_adaptor, MIN_ADAPTOR_MATCH_SCORE, a_seq);
-	revcomp_inplace(a_seq);
-	std::reverse(a_scr.begin(), a_scr.end());
-	++a_read_idx;
+    if (a_read_idx != a_curr_idx_val) 
+      if (get_entry_fastq(a_in,  a_read_idx == 0 ? 0 : a_read_idx + 1 ,
+                          a_curr_idx_val, a_name, a_seq, a_scr)) {
+        if (!A_adaptor.empty())
+          clip_adaptor_from_read(A_adaptor, MIN_ADAPTOR_MATCH_SCORE, a_seq);
+        revcomp_inplace(a_seq);
+        std::reverse(a_scr.begin(), a_scr.end());
+        a_read_idx = a_curr_idx_val;
       }
-      else throw SMITHLABException("Error reading " + A_reads_file);
-    }
+      else throw SMITHLABException("Error reading " + T_reads_file);
     
     const vector<MultiMapResult>::const_iterator 
       tbm(t_best_maps.begin() + t_curr_idx);
@@ -1219,11 +1252,11 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
   }
   
   purge_remaining(false, T_reads_file, t_read_index, t_best_maps,
-		  T_adaptor, t_read_idx, t_curr_idx,
-		  t_name, t_seq, t_scr, prev_t_name, t_in, out);
+    	  T_adaptor, t_read_idx, t_curr_idx,
+          t_name, t_seq, t_scr, prev_t_name, t_in, out);
   purge_remaining(true, A_reads_file, a_read_index, a_best_maps,
-		  A_adaptor, a_read_idx, a_curr_idx,
-		  a_name, a_seq, a_scr, prev_a_name, a_in, out);
+    	  A_adaptor, a_read_idx, a_curr_idx,
+    	  a_name, a_seq, a_scr, prev_a_name, a_in, out);
 }
 
 
