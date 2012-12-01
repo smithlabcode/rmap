@@ -969,6 +969,9 @@ merge_mates(const size_t suffix_len,
 	    const size_t MAX_SEGMENT_LENGTH,
 	    const MappedRead &one, const MappedRead &two,
             MappedRead &merged) {
+
+  if (!(one.r.same_chrom(two.r) && one.r.same_strand(two.r)))
+    return false;
   
   merged = one;
   size_t start_one = 0, end_one = 0, start_two = 0, 
