@@ -1088,8 +1088,7 @@ purge_remaining(const bool A_RICH,
       const size_t curr_idx_val = read_index[curr_idx];
       
       if (read_idx != curr_idx_val) 
-        if (get_entry_fastq(in, read_idx == 0 ? 0 : read_idx + 1,
-                            curr_idx_val, name, seq, scr)) {
+        if (get_entry_fastq(in, read_idx + 1, curr_idx_val, name, seq, scr)) {
           if (!adaptor.empty())
             clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, seq);
           read_idx = curr_idx_val;
@@ -1135,15 +1134,28 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
   std::ifstream a_in(A_reads_file.c_str());
   if (!(a_in.good() && fast_forward_fastq(a_in, read_start_index)))
     throw SMITHLABException("cannot open input file " + A_reads_file);
-  
+
   std::ofstream out(outfile.c_str());
   if (!out)
     throw SMITHLABException("cannot open output file " + outfile);
   
   size_t t_read_idx = 0, t_curr_idx = 0;
   string t_name, t_seq, t_scr, prev_t_name;
+  if (get_entry_fastq(t_in, 0, 0, t_name, t_seq, t_scr)) {
+    if (!T_adaptor.empty())
+      clip_adaptor_from_read(T_adaptor, MIN_ADAPTOR_MATCH_SCORE, t_seq);
+  }
+  else throw SMITHLABException("Error reading " + T_reads_file);
+
   size_t a_read_idx = 0, a_curr_idx = 0;
   string a_name, a_seq, a_scr, prev_a_name;
+  if (get_entry_fastq(a_in, 0, 0, a_name, a_seq, a_scr)) {
+    if (!A_adaptor.empty())
+      clip_adaptor_from_read(A_adaptor, MIN_ADAPTOR_MATCH_SCORE, a_seq);
+    revcomp_inplace(a_seq);
+    std::reverse(a_scr.begin(), a_scr.end());
+  }
+  else throw SMITHLABException("Error reading " + A_reads_file);
   
   /* Looping over both the T-rich and A-rich reads in parallel
    */
@@ -1152,8 +1164,8 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
     // Move to the appropriate T-rich read
     const size_t t_curr_idx_val = t_read_index[t_curr_idx];
     if (t_read_idx != t_curr_idx_val) 
-      if (get_entry_fastq(t_in, t_read_idx == 0 ? 0 : t_read_idx + 1,
-                          t_curr_idx_val, t_name, t_seq, t_scr)) {
+      if (get_entry_fastq(t_in, t_read_idx + 1, t_curr_idx_val,
+                          t_name, t_seq, t_scr)) {
         if (!T_adaptor.empty())
           clip_adaptor_from_read(T_adaptor, MIN_ADAPTOR_MATCH_SCORE, t_seq);
         t_read_idx = t_curr_idx_val;
@@ -1163,8 +1175,8 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
     // Move to the appropriate A-rich read
     const size_t a_curr_idx_val = a_read_index[a_curr_idx];
     if (a_read_idx != a_curr_idx_val) 
-      if (get_entry_fastq(a_in,  a_read_idx == 0 ? 0 : a_read_idx + 1 ,
-                          a_curr_idx_val, a_name, a_seq, a_scr)) {
+      if (get_entry_fastq(a_in,  a_read_idx + 1, a_curr_idx_val,
+                          a_name, a_seq, a_scr)) {
         if (!A_adaptor.empty())
           clip_adaptor_from_read(A_adaptor, MIN_ADAPTOR_MATCH_SCORE, a_seq);
         revcomp_inplace(a_seq);
@@ -1249,7 +1261,6 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
     	  A_adaptor, a_read_idx, a_curr_idx,
     	  a_name, a_seq, a_scr, prev_a_name, a_in, out);
 }
-
 
 int 
 main(int argc, const char **argv) 
