@@ -19,12 +19,15 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+// #define NDEBUG
+
 #include <string>
 #include <vector>
 #include <iostream>
 #include <iterator>
 #include <fstream>
 #include <cmath>
+#include <unistd.h>
 #include <functional>
 #include <tr1/unordered_map>
 
@@ -1091,50 +1094,6 @@ private:
 };
 
 
-// struct ReadOrderChecker : public std::binary_function<string, string, bool> {
-//   bool operator()(string &prev, string &curr) const {
-//     if (prev > curr) 
-//       throw SMITHLABException("READS NOT SORTED:\n" + prev
-// 			      + "\n" + curr + "\n");
-//     prev = curr;
-//     return true;
-//   }
-// };
-
-
-// static void
-// purge_remaining(const bool A_RICH,
-// 		const string &reads_file, 
-// 		const vector<unsigned int> &read_index,
-// 		vector<MultiMapResult> &best_maps,
-// 		string &adaptor, size_t read_idx, size_t curr_idx,
-//         string &name, string &seq, string &scr, string &prev_name,
-// 		std::ifstream &in, std::ofstream &out) {
-  
-//   while (curr_idx < read_index.size()) {
-//     const vector<MultiMapResult>::const_iterator bm(best_maps.begin() + curr_idx);
-//     if (bm->mr.size() == 1) {
-//       const size_t curr_idx_val = read_index[curr_idx];
-      
-//       if (read_idx != curr_idx_val) 
-//         if (get_entry_fastq(in, read_idx + 1, curr_idx_val, name, seq, scr)) {
-//           if (!adaptor.empty())
-//             clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, seq);
-//           read_idx = curr_idx_val;
-//           if (A_RICH) {
-//             revcomp_inplace(seq);
-//             std::reverse(scr.begin(), scr.end());
-//           }
-//         }
-//         else throw SMITHLABException("Error reading " + reads_file);
-
-//       out << MapResult_to_MappedRead(bm->mr.front(), name, 
-// 				     seq, scr, bm->score) << endl;
-//     }
-//     ++curr_idx;
-//   }
-// }
-
 static void
 purge_remaining(const bool A_RICH,
 		const string &reads_file, 
@@ -1150,7 +1109,7 @@ purge_remaining(const bool A_RICH,
     if (bm->mr.size() == 1) {
       const size_t curr_idx_val = read_index[curr_idx];
       
-      if (read_idx != curr_idx_val) 
+      if (read_idx != curr_idx_val) {
         if (get_entry_fastq(in, read_idx + 1, curr_idx_val, name, seq, scr)) {
           if (!adaptor.empty())
             clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, seq);
@@ -1161,168 +1120,14 @@ purge_remaining(const bool A_RICH,
           }
         }
         else throw SMITHLABException("Error reading " + reads_file);
-
+      }
+      
       out << MapResult_to_MappedRead(bm->mr.front(), name, 
 				     seq, scr, bm->score) << endl;
     }
     ++curr_idx;
   }
 }
-
-// static void
-// clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
-//            vector<MultiMapResult> &t_best_maps,
-//            const string &A_reads_file, vector<unsigned int> &a_read_index,
-//            vector<MultiMapResult> &a_best_maps, 
-//            const size_t read_start_index,
-//            const size_t suffix_len, const size_t MAX_SEGMENT_LENGTH,
-//            const string &adaptor_sequence, const string &outfile, 
-// 	   const bool VERBOSE) {
-//   if (VERBOSE)
-//     cerr << "[T-RICH CANDIDATES: ] " << t_read_index.size() << endl
-// 	 << "[A-RICH CANDIDATES: ] " << a_read_index.size() << endl;
-  
-//   invert_bests_list(t_read_index, t_best_maps);
-//   invert_bests_list(a_read_index, a_best_maps);
-  
-//   // extract adatpers
-//   string T_adaptor, A_adaptor;
-//   extract_adaptors(adaptor_sequence, T_adaptor, A_adaptor);
-  
-//   std::ifstream t_in(T_reads_file.c_str());
-//   if (!(t_in.good() && fast_forward_fastq(t_in, read_start_index)))
-//     throw SMITHLABException("cannot open input file " + T_reads_file);
-  
-//   std::ifstream a_in(A_reads_file.c_str());
-//   if (!(a_in.good() && fast_forward_fastq(a_in, read_start_index)))
-//     throw SMITHLABException("cannot open input file " + A_reads_file);
-
-//   std::ofstream out(outfile.c_str());
-//   if (!out)
-//     throw SMITHLABException("cannot open output file " + outfile);
-  
-//   size_t t_read_idx = 0, t_curr_idx = 0;
-//   string t_name, t_seq, t_scr, prev_t_name;
-//   if (get_entry_fastq(t_in, 0, 0, t_name, t_seq, t_scr)) {
-//     if (!T_adaptor.empty())
-//       clip_adaptor_from_read(T_adaptor, MIN_ADAPTOR_MATCH_SCORE, t_seq);
-//   }
-//   else throw SMITHLABException("Error reading " + T_reads_file);
-
-//   size_t a_read_idx = 0, a_curr_idx = 0;
-//   string a_name, a_seq, a_scr, prev_a_name;
-//   if (get_entry_fastq(a_in, 0, 0, a_name, a_seq, a_scr)) {
-//     if (!A_adaptor.empty())
-//       clip_adaptor_from_read(A_adaptor, MIN_ADAPTOR_MATCH_SCORE, a_seq);
-//     revcomp_inplace(a_seq);
-//     std::reverse(a_scr.begin(), a_scr.end());
-//   }
-//   else throw SMITHLABException("Error reading " + A_reads_file);
-  
-//   /* Looping over both the T-rich and A-rich reads in parallel
-//    */
-//   while (t_curr_idx < t_read_index.size() && a_curr_idx < a_read_index.size()) {
-    
-//     // Move to the appropriate T-rich read
-//     const size_t t_curr_idx_val = t_read_index[t_curr_idx];
-//     if (t_read_idx != t_curr_idx_val) 
-//       if (get_entry_fastq(t_in, t_read_idx + 1, t_curr_idx_val,
-//                           t_name, t_seq, t_scr)) {
-//         if (!T_adaptor.empty())
-//           clip_adaptor_from_read(T_adaptor, MIN_ADAPTOR_MATCH_SCORE, t_seq);
-//         t_read_idx = t_curr_idx_val;
-//       }
-//       else throw SMITHLABException("Error reading " + T_reads_file);
-    
-//     // Move to the appropriate A-rich read
-//     const size_t a_curr_idx_val = a_read_index[a_curr_idx];
-//     if (a_read_idx != a_curr_idx_val) 
-//       if (get_entry_fastq(a_in,  a_read_idx + 1, a_curr_idx_val,
-//                           a_name, a_seq, a_scr)) {
-//         if (!A_adaptor.empty())
-//           clip_adaptor_from_read(A_adaptor, MIN_ADAPTOR_MATCH_SCORE, a_seq);
-//         revcomp_inplace(a_seq);
-//         std::reverse(a_scr.begin(), a_scr.end());
-//         a_read_idx = a_curr_idx_val;
-//       }
-//       else throw SMITHLABException("Error reading " + T_reads_file);
-    
-//     const vector<MultiMapResult>::const_iterator 
-//       tbm(t_best_maps.begin() + t_curr_idx);
-//     const vector<MultiMapResult>::iterator 
-//       abm(a_best_maps.begin() + a_curr_idx);
-    
-//     /*
-//       (1) THE A-RICH AND T-RICH READS CORRESPOND
-//      */
-//     if (same_read(suffix_len, t_name, a_name)) {
-      
-//       std::for_each(abm->mr.begin(), abm->mr.end(), SwitchStrand(a_seq.size()));
-      
-//       const size_t t_map_count = tbm->mr.size();
-//       const size_t a_map_count = abm->mr.size();
-
-//       /// TODO: in this loop we should only be CHECKING if the merging
-//       /// can happen, not actually doing the merging
-//       vector<MappedRead> valid_frags;
-//       for (size_t i = 0; i < t_map_count && valid_frags.size() <= 1; ++i) {
-// 	const MappedRead 
-// 	  one(MapResult_to_MappedRead(tbm->mr[i], t_name, t_seq, t_scr, tbm->score));
-	
-// 	for (size_t j = 0; j < a_map_count && valid_frags.size() <= 1; ++j) {
-// 	  const MappedRead 
-// 	    two(MapResult_to_MappedRead(abm->mr[j], a_name, a_seq, a_scr, abm->score));
-	  
-// 	  MappedRead merged;
-// 	  if (merge_mates(suffix_len, MAX_SEGMENT_LENGTH, one, two, merged))
-// 	    valid_frags.push_back(merged);
-// 	}
-//       }
-      
-//       if (valid_frags.size() == 1)
-// 	out << valid_frags.front() << endl;
-//       else {
-// 	if (t_map_count == 1)
-// 	  out << MapResult_to_MappedRead(tbm->mr.front(), t_name, t_seq, t_scr, 
-// 					 tbm->score) << endl;
-// 	if (a_map_count == 1)
-// 	  out << MapResult_to_MappedRead(abm->mr.front(), a_name, a_seq, a_scr, 
-// 					 abm->score) << endl;
-//       }
-//       ++t_curr_idx;
-//       ++a_curr_idx;
-//     }
-    
-//     /*
-//       (2) THE T-RICH READ COMES FIRST
-//      */
-//     else if (name_smaller(suffix_len, t_name, a_name)) {
-//       if (tbm->mr.size() == 1)
-// 	out << MapResult_to_MappedRead(tbm->mr.front(), t_name, t_seq, t_scr, 
-// 				       tbm->score) << endl;
-//       ++t_curr_idx;
-//     }
-//     /*
-//       (3) THE A-RICH READ COMES FIRST
-//      */
-//     else { // if (name_smaller(suffix_len, a_name, t_name))
-//       if (abm->mr.size() == 1) {
-// 	const SwitchStrand switcher(a_seq.size());
-// 	std::for_each(abm->mr.begin(), abm->mr.end(), switcher);
-// 	out << MapResult_to_MappedRead(abm->mr.front(), a_name, a_seq, a_scr, 
-// 				       abm->score) << endl;
-//       }
-//       ++a_curr_idx;
-//     }
-//   }
-  
-//   purge_remaining(false, T_reads_file, t_read_index, t_best_maps,
-//     	  T_adaptor, t_read_idx, t_curr_idx,
-//           t_name, t_seq, t_scr, prev_t_name, t_in, out);
-//   purge_remaining(true, A_reads_file, a_read_index, a_best_maps,
-//     	  A_adaptor, a_read_idx, a_curr_idx,
-//     	  a_name, a_seq, a_scr, prev_a_name, a_in, out);
-// }
 
 static void
 clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
@@ -1334,7 +1139,7 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
            const size_t read_start_index,
            const size_t suffix_len, const size_t MAX_SEGMENT_LENGTH,
            const string &adaptor_sequence, const string &outfile, 
-	   const bool VERBOSE) {
+           const bool VERBOSE) {
 
 // extract adatpers
   string T_adaptor, A_adaptor;
@@ -1376,7 +1181,7 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
     
     // Move to the appropriate T-rich read
     const size_t t_curr_idx_val = t_read_index[t_curr_idx];
-    if (t_read_idx != t_curr_idx_val) 
+    if (t_read_idx != t_curr_idx_val) {
       if (get_entry_fastq(t_in, t_read_idx + 1, t_curr_idx_val,
                           t_name, t_seq, t_scr)) {
         if (!T_adaptor.empty())
@@ -1384,10 +1189,11 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
         t_read_idx = t_curr_idx_val;
       }
       else throw SMITHLABException("Error reading " + T_reads_file);
+    }
     
     // Move to the appropriate A-rich read
     const size_t a_curr_idx_val = a_read_index[a_curr_idx];
-    if (a_read_idx != a_curr_idx_val) 
+    if (a_read_idx != a_curr_idx_val) {
       if (get_entry_fastq(a_in,  a_read_idx + 1, a_curr_idx_val,
                           a_name, a_seq, a_scr)) {
         if (!A_adaptor.empty())
@@ -1397,6 +1203,7 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
         a_read_idx = a_curr_idx_val;
       }
       else throw SMITHLABException("Error reading " + T_reads_file);
+    }
     
     const vector<MultiMapResult>::const_iterator tbm(t_best_itrs[t_curr_idx]);
     const vector<MultiMapResult>::iterator abm(a_best_itrs[a_curr_idx]);
@@ -1404,8 +1211,9 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
     /*
       (1) THE A-RICH AND T-RICH READS CORRESPOND
      */
-    if (same_read(suffix_len, t_name, a_name)) {
-      
+    if (t_curr_idx_val == a_curr_idx_val) {
+
+      assert(same_read(suffix_len, t_name, a_name));
       std::for_each(abm->mr.begin(), abm->mr.end(), SwitchStrand(a_seq.size()));
       
       const size_t t_map_count = tbm->mr.size();
@@ -1445,7 +1253,7 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
     /*
       (2) THE T-RICH READ COMES FIRST
      */
-    else if (name_smaller(suffix_len, t_name, a_name)) {
+    else if (t_curr_idx_val < a_curr_idx_val) {
       if (tbm->mr.size() == 1)
 	out << MapResult_to_MappedRead(tbm->mr.front(), t_name, t_seq, t_scr, 
 				       tbm->score) << endl;
@@ -1454,7 +1262,7 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
     /*
       (3) THE A-RICH READ COMES FIRST
      */
-    else { // if (name_smaller(suffix_len, a_name, t_name))
+    else { // if (a_curr_idx_val < t_curr_idx_val)
       if (abm->mr.size() == 1) {
 	const SwitchStrand switcher(a_seq.size());
 	std::for_each(abm->mr.begin(), abm->mr.end(), switcher);
@@ -1633,7 +1441,7 @@ main(int argc, const char **argv)
       clean_and_invert_bests_list(a_read_index, a_best_maps, a_best_itrs);
       if (VERBOSE)
         cerr << "[A-RICH CANDIDATES: ] " << a_read_index.size() << endl;
-      
+
       if (VERBOSE)
 	cerr << "[JOINING MATES]" << endl;
       clip_mates(
