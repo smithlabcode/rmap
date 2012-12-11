@@ -509,7 +509,10 @@ iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD,
 	  eliminate_ambigs(1, best_maps, read_index, read_words, ambigs, fast_reads);
 	  if (VERBOSE)
 	    cerr << "[AMBIG=" << ambigs.size() << "] " << endl;
-        }
+        } else {
+          for (size_t x = 0; x < best_maps.size(); ++x)
+              best_maps[x].collapse();          
+      }
     }
   if (VERBOSE)
     cerr << "[FINAL CLEANING] ";
@@ -864,7 +867,7 @@ iterate_over_reads(const bool VERBOSE,
     curr_idx = 0, n_reads_mapped = 0;
   string name, sequence;
   
-  while (!in.eof()) 
+  while (!in.eof() && curr_idx < reads_index.size()) 
     {
 
       char buffer[INPUT_BUFFER_SIZE + 1];

@@ -514,7 +514,10 @@ iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD,
 	  eliminate_ambigs(1, best_maps, read_index, read_words, ambigs, fast_reads);
 	  if (VERBOSE)
 	    cerr << "[AMBIG=" << ambigs.size() << "] " << endl;
-        }
+        } else {
+          for (size_t x = 0; x < best_maps.size(); ++x)
+              best_maps[x].collapse();          
+      }
     }
   if (VERBOSE)
     cerr << "[FINAL CLEANING] ";
@@ -1237,7 +1240,7 @@ clip_mates(const string &T_reads_file, vector<unsigned int> &t_read_index,
       }
       
       if (valid_frags.size() == 1)
-	out << valid_frags.front() << endl;
+          out << valid_frags.front() << endl;
       else {
 	if (t_map_count == 1)
 	  out << MapResult_to_MappedRead(tbm->mr.front(), t_name, t_seq, t_scr, 
@@ -1439,6 +1442,7 @@ main(int argc, const char **argv)
 
       vector<vector<MultiMapResult>::iterator > a_best_itrs;
       clean_and_invert_bests_list(a_read_index, a_best_maps, a_best_itrs);
+
       if (VERBOSE)
         cerr << "[A-RICH CANDIDATES: ] " << a_read_index.size() << endl;
 
