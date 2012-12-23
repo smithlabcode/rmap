@@ -25,46 +25,16 @@
 
 #include "smithlab_utils.hpp"
 #include "FastRead.hpp"
-#include "FastReadQuality.hpp"
-#include "FastReadWC.hpp"
-#include "FastReadWildN.hpp"
 
 #include <vector>
 #include <string>
 
 void
-load_reads_from_fasta_file(const std::string &filename,
-			   const size_t read_start_idx, const size_t n_reads_to_process,
-			   const std::string &adaptor, const size_t max_diffs,
-			   size_t &read_width, std::vector<FastRead> &fast_reads,
-			   std::vector<size_t> &read_words, std::vector<unsigned int> &read_index);
-
-void
 load_reads_from_fastq_file(const std::string &filename, 
 			   const size_t read_start_idx, const size_t n_reads_to_process,
 			   const std::string &adaptor, const size_t max_diffs,
 			   size_t &read_width, std::vector<FastRead> &fast_reads,
 			   std::vector<size_t> &read_words, std::vector<unsigned int> &read_index);
 
-void
-load_reads_from_fastq_file(const std::string &filename, 
-			   const size_t read_start_idx, const size_t n_reads_to_process,
-			   const std::string &adaptor, const size_t max_diffs,
-			   size_t &read_width, std::vector<FastReadWildN> &fast_reads,
-			   std::vector<size_t> &read_words, std::vector<unsigned int> &read_index);
-
-void
-load_reads_from_fastq_file(const std::string &filename, 
-			   const size_t read_start_idx, const size_t n_reads_to_process,
-			   const std::string &adaptor, const size_t max_diffs,
-			   size_t &read_width, std::vector<FastReadWC> &fast_reads,
-			   std::vector<size_t> &read_words, std::vector<unsigned int> &read_index);
-
-void
-load_reads_from_fastq_file(const std::string &filename, 
-			   const size_t read_start_idx, const size_t n_reads_to_process,
-			   const std::string &adaptor, const size_t max_diffs,
-			   size_t &read_width, std::vector<FastReadQuality> &fast_reads,
-			   std::vector<size_t> &read_words, std::vector<unsigned int> &read_index);
 
 #endif
