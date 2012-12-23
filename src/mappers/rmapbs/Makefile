@@ -54,13 +54,11 @@ all:	$(PROGS)
 %.o: %.cpp %.hpp
 	$(CXX) $(CFLAGS) -c -o $@ $< -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
 
-rmapbs: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastReadWC.o FastRead.o \
-	FastReadQuality.o load_reads.o) \
+rmapbs: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastRead.o load_reads.o) \
 	$(addprefix $(SMITHLAB_CPP)/, GenomicRegion.o smithlab_os.o smithlab_utils.o \
 	OptionParser.o QualityScore.o clip_adaptor_from_reads.o)
 
-rmapbs-pe: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastReadWC.o FastRead.o \
-	FastReadQuality.o load_reads.o) \
+rmapbs-pe: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastRead.o load_reads.o) \
 	$(addprefix $(SMITHLAB_CPP)/, GenomicRegion.o smithlab_os.o smithlab_utils.o \
 	OptionParser.o QualityScore.o clip_adaptor_from_reads.o MappedRead.o)
 
