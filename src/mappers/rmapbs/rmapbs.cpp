@@ -712,9 +712,6 @@ main(int argc, const char **argv) {
     }
     const string reads_file = leftover_args.front();
     /****************** END COMMAND LINE OPTIONS *****************/
-
-    if (read_start_index > 0)
-      read_start_index -= 1;
     
     //////////////////////////////////////////////////////////////
     //  DETERMINE WHICH CHROMOSOMES WILL USED IN MAPPING
