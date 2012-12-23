@@ -521,9 +521,12 @@ load_read_names(string filename, vector<string> &names) {
   while (!in.eof()) {
     getline(in, buffer);
     if (in.good()) {
-      if (line_count % 4 == 0)
-	names.push_back(string(buffer.begin() + 1, 
-			       buffer.begin() + buffer.find_first_of(" \t")));
+      if (line_count % 4 == 0) {
+	const size_t truncpos = buffer.find_first_of(" \t");
+	names.push_back(string(buffer.begin() + 1,
+			       (truncpos != string::npos) ?
+			       buffer.begin() + truncpos : buffer.end()));
+      }
       ++line_count;
     }
   }
