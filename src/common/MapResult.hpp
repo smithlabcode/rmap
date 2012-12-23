@@ -35,7 +35,7 @@ struct MapResult {
 	    bool str = true) : site(ste), chrom(chr), strand(str) {}
   void set(size_t ste, size_t chr, bool str);
   unsigned site   : 32;
-  unsigned chrom  : 31;
+  unsigned chrom  : 21;
   unsigned strand : 1;
   bool operator<(const MapResult& rhs) const {
     return (chrom < rhs.chrom || (chrom == rhs.chrom && site < rhs.site));
@@ -44,10 +44,10 @@ struct MapResult {
     return site == rhs.site && chrom == rhs.chrom;
   }
   std::string tostring() const {
-    return smithlab::toa(site) + "\t" + smithlab::toa(chrom) + "\t" 
+    return smithlab::toa(site) + "\t" + smithlab::toa(chrom) + "\t"
       + smithlab::toa(strand);
   }
-
+  
   static std::vector<size_t> chrom_sizes;
   static std::vector<std::string> chrom_names;
 };
@@ -55,16 +55,8 @@ struct MapResult {
 std::vector<size_t> MapResult::chrom_sizes;
 std::vector<std::string> MapResult::chrom_names;
 
-inline void 
-MapResult::set(size_t ste, size_t chr, bool str) {
-  site = ste;
-  chrom = chr;
-  strand = str;
-}
-
 class MultiMapResult {
 public:
-  MultiMapResult(size_t scr) : score(scr) {}
   bool empty() const {return mr.empty();}
   void sort() {std::sort(mr.begin(), mr.end());}
   void clear() {std::vector<MapResult>().swap(mr);}
@@ -73,15 +65,12 @@ public:
     std::swap(score, rhs.score);
   }
   void add(size_t scr, size_t chr, size_t ste, bool str) {
-    if (scr < score) {
+    if (mr.empty() || scr < score) {
       mr.resize(0);
       mr.push_back(MapResult(ste, chr, str));
-      score = scr;
+      scr = score;
     }
-    // The "<=" below is not because we want to keep one more than
-    // "max_count" but because we need to be able to determine when we
-    // have too many. Probably a better way to do this.
-    else if (mr.size() <= twice_max_count)
+    else if (scr == score && mr.size() <= twice_max_count)
       mr.push_back(MapResult(ste, chr, str));
   }
   size_t score;
@@ -90,6 +79,8 @@ public:
   void collapse() {
     std::sort(mr.begin(), mr.end());
     mr.erase(std::unique(mr.begin(), mr.end()), mr.end());
+    if (mr.size() > max_count + 1)
+      mr.erase(mr.begin() + max_count + 1, mr.end());
   }
   static size_t max_count;
   static size_t twice_max_count;
