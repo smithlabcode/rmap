@@ -178,7 +178,6 @@ map_reads_tc(const U &specialized_score,
 	const typename vector<T>::const_iterator limit(tmp.second);
 	for (typename vector<T>::const_iterator to_test(tmp.first); 
 	     to_test != limit; ++to_test) {
-	  // const size_t score = to_test->score_tc(fast_read);
 	  const size_t score = specialized_score.score_tc(to_test, fast_read);
 	  if (score <= max_diffs) {
 	    const vector<MultiMapResult>::iterator 
@@ -246,7 +245,6 @@ map_reads_ag(const U &specialized_score,
 	const typename vector<T>::const_iterator limit(tmp.second);
 	for (typename vector<T>::const_iterator to_test(tmp.first); 
 	     to_test != limit; ++to_test) {
-	  // const size_t score = to_test->score_ag(fast_read);
 	  const size_t score = specialized_score.score_ag(to_test, fast_read);
 	  if (score <= max_diffs) {
 	    const vector<MultiMapResult>::iterator 
@@ -364,6 +362,37 @@ b2i_rc(char c) {
 }
 
 
+template <class T> void
+eliminate_ambigs(const size_t max_mismatches, vector<MultiMapResult> &best_maps, 
+                 vector<unsigned int> &read_index, vector<size_t> &reads, 
+                 vector<pair<unsigned int, unsigned int> > &ambigs, vector<T> &fast_reads) 
+{
+  size_t j = 0;
+  for (size_t i = 0; i < best_maps.size(); ++i) 
+    {
+      best_maps[i].collapse();
+      if (best_maps[i].ambiguous() && best_maps[i].score <= max_mismatches)
+	ambigs.push_back(make_pair(read_index[i], best_maps[i].score));
+      else 
+        {
+	  best_maps[j] = best_maps[i];
+	  read_index[j] = read_index[i];
+	  reads[j] = reads[i];
+	  fast_reads[j] = fast_reads[i];
+	  ++j;
+        }
+    }
+  best_maps.erase(best_maps.begin() + j, best_maps.end());
+  vector<MultiMapResult>(best_maps).swap(best_maps);
+  read_index.erase(read_index.begin() + j, read_index.end());
+  vector<unsigned int>(read_index).swap(read_index);
+  reads.erase(reads.begin() + j, reads.end());
+  vector<size_t>(reads).swap(reads);
+  fast_reads.erase(fast_reads.begin() + j, fast_reads.end());
+  vector<T>(fast_reads).swap(fast_reads);
+}
+
+
 template <class T, class U> void
 iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD, 
                    const U &specialized_score,
@@ -443,6 +472,10 @@ iterate_over_seeds(const bool VERBOSE, const bool AG_WILDCARD,
     for (size_t x = 0; x < best_maps.size(); ++x)
       best_maps[x].collapse();
   }
+  eliminate_ambigs(max_mismatches, best_maps, read_index, 
+		   read_words, ambigs, fast_reads);
+  if (VERBOSE)
+    cerr << "[AMBIG=" << ambigs.size() << "] " << endl;
   vector<T>().swap(fast_reads);
   vector<size_t>().swap(read_words);
 }
@@ -508,7 +541,6 @@ load_reads(const bool VERBOSE, const bool AG_WILDCARD,
   //////////////////////////////////////////////////////////////
   // LOAD THE READS (AS SEQUENCES OR PROBABILITIES) FROM DISK
   if (VERBOSE) cerr << "[LOADING READ SEQUENCES] ";
-  vector<string> reads;
   load_reads_from_fastq_file(reads_file, read_start_index, n_reads_to_process,
 			     adaptor, max_mismatches, read_width,
 			     fast_reads, read_words, read_index);
