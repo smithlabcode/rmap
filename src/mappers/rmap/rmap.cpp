@@ -265,25 +265,23 @@ comp(char c) {
 
 
 template <class T> void
-eliminate_ambigs(const size_t max_mismatches, vector<MultiMapResult> &best_maps, 
+eliminate_ambigs(const size_t max_mismatches, vector<MultiMapResult> &best_maps,
                  vector<unsigned int> &read_index, vector<size_t> &reads, 
-                 vector<pair<unsigned int, unsigned int> > &ambigs, vector<T> &fast_reads) 
-{
+                 vector<pair<unsigned int, unsigned int> > &ambigs, 
+		 vector<T> &fast_reads) {
   size_t j = 0;
-  for (size_t i = 0; i < best_maps.size(); ++i) 
-    {
-      best_maps[i].collapse();
-      if (best_maps[i].ambiguous() && best_maps[i].score <= max_mismatches)
-	ambigs.push_back(make_pair(read_index[i], best_maps[i].score));
-      else 
-        {
-	  best_maps[j] = best_maps[i];
-	  read_index[j] = read_index[i];
-	  reads[j] = reads[i];
-	  fast_reads[j] = fast_reads[i];
-	  ++j;
-        }
+  for (size_t i = 0; i < best_maps.size(); ++i) {
+    best_maps[i].collapse();
+    if (best_maps[i].ambiguous() && best_maps[i].score <= max_mismatches)
+      ambigs.push_back(make_pair(read_index[i], best_maps[i].score));
+    else {
+      best_maps[j] = best_maps[i];
+      read_index[j] = read_index[i];
+      reads[j] = reads[i];
+      fast_reads[j] = fast_reads[i];
+      ++j;
     }
+  }
   best_maps.erase(best_maps.begin() + j, best_maps.end());
   vector<MultiMapResult>(best_maps).swap(best_maps);
   read_index.erase(read_index.begin() + j, read_index.end());
@@ -411,9 +409,12 @@ load_read_names(string filename, vector<string> &names) {
   while (!in.eof()) {
     getline(in, buffer);
     if (in.good()) {
-      if (line_count % 4 == 0)
-	names.push_back(string(buffer.begin() + 1, 
-			       buffer.begin() + buffer.find_first_of(" \t")));
+      if (line_count % 4 == 0) {
+	const size_t truncpos = buffer.find_first_of(" \t");
+	names.push_back(string(buffer.begin() + 1,
+			       (truncpos != string::npos) ?
+			       buffer.begin() + truncpos : buffer.end()));
+      }
       ++line_count;
     }
   }
