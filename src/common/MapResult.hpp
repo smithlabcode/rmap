@@ -28,7 +28,6 @@
 #include <limits>
 #include <vector>
 
-
 struct MapResult {
   MapResult(size_t ste = std::numeric_limits<size_t>::max(),
 	    size_t chr = 0,
@@ -65,12 +64,13 @@ public:
     std::swap(score, rhs.score);
   }
   void add(size_t scr, size_t chr, size_t ste, bool str) {
-    if (mr.empty() || scr < score) {
+    const size_t mr_size = mr.size();
+    if (mr_size == 0 || scr < score) {
       mr.resize(0);
       mr.push_back(MapResult(ste, chr, str));
-      scr = score;
+      score = scr;
     }
-    else if (scr == score && mr.size() <= twice_max_count)
+    else if (scr == score && mr_size < twice_max_count_lim)
       mr.push_back(MapResult(ste, chr, str));
   }
   size_t score;
@@ -83,14 +83,14 @@ public:
       mr.erase(mr.begin() + max_count + 1, mr.end());
   }
   static size_t max_count;
-  static size_t twice_max_count;
+  static size_t twice_max_count_lim;
   static void init(const size_t mc) {
     max_count = mc;
-    twice_max_count = 2*mc;
+    twice_max_count_lim = 2*mc + 1;
   }
 };
 
 size_t MultiMapResult::max_count;
-size_t MultiMapResult::twice_max_count;
+size_t MultiMapResult::twice_max_count_lim;
 
 #endif
