@@ -27,6 +27,8 @@
 #include <fstream>
 #include <cmath>
 #include <tr1/unordered_map>
+#include <unistd.h>
+#include <ios>
 
 #include "FastRead.hpp"
 #include "smithlab_os.hpp"
@@ -85,36 +87,24 @@ typedef vector<pair<size_t, unsigned int> > SeedHashSorter;
 static void
 load_seeds(const bool VERBOSE, vector<size_t> &the_seeds) {
   /* ORIGINAL SEEDS */
-  // // 0b1111110011000011111100110000111111001100001111110011000000111100
-  // the_seeds.push_back(18213668567193169980ul);
-  // // 0b0011111100110000111111001100001111110011000011111100110000001111
+  // 0b1111110011000011111100110000111111001100001111110011000000111100
+  the_seeds.push_back(18213668567193169980ul);
+  // 0b0011111100110000111111001100001111110011000011111100110000001111
   // the_seeds.push_back(4553417141798292495ul);
-  // // 0b0000111111001100001111110011000011111100110000111111001111111111
-  // the_seeds.push_back(1138354285449573375ul);
-  // // 0b1100001111110011000011111100110000111111001100001111110000110011
+  // 0b0000111111001100001111110011000011111100110000111111001111111111
+  the_seeds.push_back(1138354285449573375ul);
+  // 0b1100001111110011000011111100110000111111001100001111110000110011
   // the_seeds.push_back(14119646626644556851ul);
-  // // 0b0011000011111100110000111111001100001111110011000011111111110000
-  // the_seeds.push_back(3529911656661139440ul);
-  // // 0b1100110000111111001100001111110011000011111100110000111111001100
+  // 0b0011000011111100110000111111001100001111110011000011111111110000
+  the_seeds.push_back(3529911656661139440ul);
+  // 0b1100110000111111001100001111110011000011111100110000111111001100
   // the_seeds.push_back(14717535969447448524ul);
-  // // 0b1111001100001111110011000011111100110000111111001100001111000011
-  // the_seeds.push_back(17514442047644025795ul);
+  // 0b1111001100001111110011000011111100110000111111001100001111000011
+  the_seeds.push_back(17514442047644025795ul);
   
-  // 0b11111100110000111111001100001111110011000011111100110000
-  // 0b00111111001100001111110011000011111100110000111111001100
-  // 0b00111111001100001111110011000011111100110000111111001100
-  // 0b00001111110011000011111100110000111111001100001111110011
-  // 0b11000011111100110000111111001100001111110011000011111100
-  // 0b00110000111111001100001111110011000011111100110000111111
-  // 0b11001100001111110011000011111100110000111111001100001111
-  // 0b11110011000011111100110000111111001100001111110011000011
-  the_seeds.push_back(71147142840598320ul);
-  // the_seeds.push_back(17786785710149580ul);
-  the_seeds.push_back(4446696427537395ul);
-  // the_seeds.push_back(55154869635330300ul);
-  the_seeds.push_back(13788717408832575ul);
-  // the_seeds.push_back(57490374880654095ul);
-  the_seeds.push_back(68415789248609475ul);
+  for (size_t i = 0; i < the_seeds.size(); ++i)
+    the_seeds[i] >>= 8ul;
+  
   if (VERBOSE) {
     cerr << endl << "SEED STRUCTURES:" << endl;
     for (size_t i = 0; i < the_seeds.size(); ++i)
@@ -301,12 +291,22 @@ sort_by_key(const SeedHashSorter &sh, vector<T> &in) {
     in[j] = tmp[i->second];
 }
 
+template <class T> void
+swap_sort_by_key(const SeedHashSorter &sh, vector<T> &in) {
+  vector<T> tmp(in.size()); 
+  size_t j = 0;
+  for (SeedHashSorter::const_iterator i(sh.begin()); i != sh.end(); ++i, ++j)
+    std::swap(tmp[j], in[i->second]);
+  std::swap(tmp, in);
+}
+
 
 template <class T> void
 sort_by_key(SeedHashSorter &sh_sorter, vector<MultiMapResult> &best_maps,
             vector<size_t> &reads, vector<unsigned int> &read_index, 
             vector<T> &fast_reads) {
-  sort_by_key(sh_sorter, best_maps);
+  swap_sort_by_key(sh_sorter, best_maps);
+  // sort_by_key(sh_sorter, best_maps);
   sort_by_key(sh_sorter, reads);
   sort_by_key(sh_sorter, read_index);
   sort_by_key(sh_sorter, fast_reads);
@@ -513,9 +513,9 @@ invert_bests_list(vector<unsigned int> &read_index,
   vector<MultiMapResult> tmp(bests.size());
   for (size_t i = 0; i < sorter.size(); ++i) {
     read_index[i] = sorter[i].first;
-    swap(tmp[i], bests[sorter[i].second]);
+    std::swap(tmp[i], bests[sorter[i].second]);
   }
-  swap(tmp, bests);
+  std::swap(tmp, bests);
 }
 
 
@@ -815,10 +815,11 @@ process_single_read(const vector<MappedRead> &mr, std::ostream &out) {
 
 
 static void
-get_mapped_reads_one(const size_t read_len, const string &adaptor,
-		     const size_t target_read, const vector<MapResult> &r,
-		     std::ifstream &in, size_t &line_count,
-		     vector<MappedRead> &mr) {
+get_mapped_reads(const bool SECOND_END,
+		 const size_t read_len, const string &adaptor,
+		 const size_t target_read, const vector<MapResult> &r,
+		 std::ifstream &in, size_t &line_count,
+		 vector<MappedRead> &mr) {
   // move to the correct position
   const size_t target_line = 4*target_read;
   assert(line_count <= target_line);
@@ -837,55 +838,22 @@ get_mapped_reads_one(const size_t read_len, const string &adaptor,
   string sequence(buffer);
   if (!adaptor.empty())
     clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, sequence);
+  if (SECOND_END)
+    revcomp_inplace(sequence);
   in.ignore(numeric_limits<std::streamsize>::max(), '\n');
   getline(in, buffer);
   string scores(buffer);
+  if (SECOND_END)
+    reverse(scores.begin(), scores.end());
   
-  line_count += 4;
-  
-  // convert to mapped reads
-  mr.clear();
-  for (size_t i = 0; i < r.size(); ++i)
-    mr.push_back(make_mapped_read(read_len, r[i], name, sequence, scores));
-}
-
-
-static void
-get_mapped_reads_two(const size_t read_len, const string &adaptor,
-		     const size_t target_read, const vector<MapResult> &r,
-		     std::ifstream &in, size_t &line_count,
-		     vector<MappedRead> &mr) {
-  // move to the correct position
-  const size_t target_line = 4*target_read;
-  assert(line_count <= target_line);
-  
-  string buffer;
-  while (!in.eof() && line_count < target_line) {
-    in.ignore(numeric_limits<std::streamsize>::max(), '\n');
-    ++line_count;
-  }
-  assert(!in.eof());
-  
-  // load the read info
-  getline(in, buffer);
-  const string name(read_name_from_fastq(buffer));
-  getline(in, buffer);
-  string sequence(buffer);
-  if (!adaptor.empty())
-    clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, sequence);
-  revcomp_inplace(sequence);
-  in.ignore(numeric_limits<std::streamsize>::max(), '\n');
-  getline(in, buffer);
-  string scores(buffer);
-  reverse(scores.begin(), scores.end());
-
   line_count += 4;
   
   // convert to mapped reads
   mr.clear();
   for (size_t i = 0; i < r.size(); ++i) {
     mr.push_back(make_mapped_read(read_len, r[i], name, sequence, scores));
-    mr.back().r.set_strand(mr.back().r.pos_strand() ? '-' : '+');
+    if (SECOND_END)
+      mr.back().r.set_strand(mr.back().r.pos_strand() ? '-' : '+');
   }
 }
 
@@ -924,38 +892,38 @@ clip_and_output(const bool VERBOSE, const size_t range,
     
     // if they are the same
     if (read_index_one[one_idx] == read_index_two[two_idx]) {
-      get_mapped_reads_one(read_len, adaptor_one, read_index_one[one_idx],
-			   bests_one[one_idx].mr, in_one, line_count_one, one);
-      get_mapped_reads_two(read_len, adaptor_two, read_index_two[two_idx],
-			   bests_two[two_idx].mr, in_two, line_count_two, two);
+      get_mapped_reads(false, read_len, adaptor_one, read_index_one[one_idx],
+		       bests_one[one_idx].mr, in_one, line_count_one, one);
+      get_mapped_reads(true, read_len, adaptor_two, read_index_two[two_idx],
+		       bests_two[two_idx].mr, in_two, line_count_two, two);
       process_same_read(range, suffix_len, mrl, one, two, out);
       get_next(bests_one, one_idx);
       get_next(bests_two, two_idx);
     }
     else if (read_index_one[one_idx] < read_index_two[two_idx]) {
-      get_mapped_reads_one(read_len, adaptor_one, read_index_one[one_idx],
-			   bests_one[one_idx].mr, in_one, line_count_one, one);
+      get_mapped_reads(false, read_len, adaptor_one, read_index_one[one_idx],
+		       bests_one[one_idx].mr, in_one, line_count_one, one);
       process_single_read(one, out);
       get_next(bests_one, one_idx);
     }
     else {
-      get_mapped_reads_two(read_len, adaptor_two, read_index_two[two_idx],
-			   bests_two[two_idx].mr, in_two, line_count_two, two);
+      get_mapped_reads(true, read_len, adaptor_two, read_index_two[two_idx],
+		       bests_two[two_idx].mr, in_two, line_count_two, two);
       process_single_read(two, out);
       get_next(bests_two, two_idx);
     }
   }
   
   while (one_idx < bests_one.size()) {
-    get_mapped_reads_one(read_len, adaptor_one, read_index_one[one_idx],
-			 bests_one[one_idx].mr, in_one, line_count_one, one);
+    get_mapped_reads(false, read_len, adaptor_one, read_index_one[one_idx],
+		     bests_one[one_idx].mr, in_one, line_count_one, one);
     process_single_read(one, out);
     get_next(bests_one, one_idx);
   }
   
   while (two_idx < bests_two.size()) {
-    get_mapped_reads_two(read_len, adaptor_two, read_index_two[two_idx],
-			 bests_two[two_idx].mr, in_two, line_count_two, two);
+    get_mapped_reads(true, read_len, adaptor_two, read_index_two[two_idx],
+		     bests_two[two_idx].mr, in_two, line_count_two, two);
     process_single_read(two, out);
     get_next(bests_two, two_idx);
   }
@@ -991,7 +959,7 @@ main(int argc, const char **argv) {
     string adaptor_sequence;
     
     size_t max_mismatches = numeric_limits<size_t>::max();
-    size_t max_mappings = 1;
+    size_t max_mappings = 100;
     size_t read_start_index = 0;
     size_t n_reads_to_process = numeric_limits<size_t>::max();
     
@@ -1073,7 +1041,7 @@ main(int argc, const char **argv) {
     map_reads(VERBOSE, false, T_adaptor, chrom_files,
     	      reads_file_one, read_start_index, n_reads_to_process, the_seeds, 
     	      max_mismatches, read_index_one, best_maps_one, read_width);
-    
+
     if (VERBOSE)
       cerr << endl << "[STARTING END TWO]" << endl;
     AG_WILDCARD = true;
