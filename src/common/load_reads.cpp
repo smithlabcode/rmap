@@ -67,7 +67,7 @@ check_and_add(const size_t read_count, string &read,
     throw SMITHLABException("Incorrect read width:\n" + read + "\n");
   else read.erase(read_width);
   
-  if (read_count == 0)
+  if (fast_reads.empty())
     FastRead::set_read_width(read_width);
   
   // clean the read
@@ -80,7 +80,6 @@ check_and_add(const size_t read_count, string &read,
   const bool good_read = 
     (read_width - (count(read.begin(), read.end(), 'N')) >= 
      MIN_NON_N_IN_READS);
-  
   
   if (good_read) {
     fast_reads.push_back(FastRead(read));
@@ -125,18 +124,20 @@ load_reads_from_fastq_file(const string &filename,
     throw SMITHLABException("cannot open input file " + filename);
 
   size_t line_count = 0;
-  string line;
   const size_t lim1 = read_start_idx*4;
-  while (line_count < lim1 && getline(in, line))
+  while (line_count < lim1) {
+    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     ++line_count;
+  }
   
-  size_t read_count = 0; //read_start_idx;
+  size_t read_count = read_start_idx;
   
   const size_t lim2 =
     (n_reads_to_process != std::numeric_limits<size_t>::max()) ?
     (read_start_idx + n_reads_to_process)*4 :
     std::numeric_limits<size_t>::max();
   
+  string line;
   while (line_count < lim2 && getline(in, line)) {
     if (is_fastq_sequence_line(line_count)) {
       check_and_add(read_count, line, adaptor, max_diffs, 
@@ -146,7 +147,7 @@ load_reads_from_fastq_file(const string &filename,
     }
     ++line_count;
   }
+
   if (fast_reads.empty())
     throw SMITHLABException("no high-quality reads in file:\"" + filename + "\"");
 }
-
