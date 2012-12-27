@@ -656,7 +656,8 @@ merge_mates(const size_t suffix_len, const size_t range,
   
   const int len = pos_str ? (two_right - one_left) : (one_right - two_left);
   
-  assert(len > 0 && one_left <= one_right && two_left <= two_right);
+  assert(len > 0);
+  assert(one_left <= one_right && two_left <= two_right);
   assert(overlap_start >= overlap_end || static_cast<size_t>(len) == 
 	 ((one_right - one_left) + (two_right - two_left) + (overlap_end - overlap_start)));
   
@@ -717,7 +718,7 @@ merge_score(const int max_fraglen, const MappedRead &a, const MappedRead &b) {
   if (!a.r.same_chrom(a.r) || a.r.get_strand() != b.r.get_strand())
     return numeric_limits<double>::max();
   int frag_size = get_fragment_length(a, b);
-  if (frag_size < 0 || frag_size > max_fraglen)
+  if (frag_size <= 0 || frag_size > max_fraglen)
     return numeric_limits<double>::max();
   return a.r.get_score() + b.r.get_score(); 
 }
@@ -793,15 +794,15 @@ process_same_read(const size_t range, const size_t suffix_len,
   if (best_score < numeric_limits<double>::max()) {
     MappedRead merged;
     merge_mates(suffix_len, range, one[one_best], two[two_best], merged);
-    out << merged << endl;
+    out << merged << '\n';
   }
   else {
     one_best = find_best(one);
     if (one_best != numeric_limits<size_t>::max())
-      out << one[one_best] << endl;
+      out << one[one_best] << '\n';
     two_best = find_best(two);
     if (two_best != numeric_limits<size_t>::max())
-      out << two[two_best] << endl;
+      out << two[two_best] << '\n';
   }
 }
 
@@ -810,7 +811,7 @@ static void
 process_single_read(const vector<MappedRead> &mr, std::ostream &out) {
   const size_t best = find_best(mr);
   if (best != numeric_limits<size_t>::max())
-    out << mr[best] << endl;
+    out << mr[best] << '\n';
 }
 
 
