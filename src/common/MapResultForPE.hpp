@@ -78,7 +78,6 @@ public:
       }
     }
   }
-
   std::vector<MapResult> mr;
   
   void collapse() {
@@ -101,5 +100,9 @@ public:
 size_t MultiMapResult::max_count;
 size_t MultiMapResult::twice_max_count;
 mr_score_less MultiMapResult::mr_sl;
+
+void swap(MultiMapResult &a, MultiMapResult &b) {
+  swap(a.mr, b.mr);
+}
 
 #endif
