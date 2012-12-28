@@ -54,13 +54,12 @@ all:	$(PROGS)
 %.o: %.cpp %.hpp
 	$(CXX) $(CFLAGS) -c -o $@ $< -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
 
-rmapbs: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastRead.o load_reads.o) \
+rmapbs rmapbs-pe : $(addprefix $(COMMON_DIR)/, SeedMaker.o FastRead.o load_reads.o \
+	clip_adaptor_from_reads.o) \
 	$(addprefix $(SMITHLAB_CPP)/, GenomicRegion.o smithlab_os.o smithlab_utils.o \
-	OptionParser.o QualityScore.o clip_adaptor_from_reads.o)
+	OptionParser.o QualityScore.o)
 
-rmapbs-pe: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastRead.o load_reads.o) \
-	$(addprefix $(SMITHLAB_CPP)/, GenomicRegion.o smithlab_os.o smithlab_utils.o \
-	OptionParser.o QualityScore.o clip_adaptor_from_reads.o MappedRead.o)
+rmapbs-pe: $(addprefix $(SMITHLAB_CPP)/, MappedRead.o)
 
 install: all
 	@mkdir -p $(SRC_ROOT)/bin
