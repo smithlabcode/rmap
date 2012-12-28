@@ -28,11 +28,7 @@
 #include <string>
 #include <limits>
 
-
-const size_t MIN_ADAPTOR_MATCH_SCORE = 10;
-
 size_t 
-clip_adaptor_from_read(const std::string &adaptor, 
-		       const size_t min_match_score, std::string &s);
+clip_adaptor_from_read(const std::string &adaptor, std::string &s);
 
 #endif

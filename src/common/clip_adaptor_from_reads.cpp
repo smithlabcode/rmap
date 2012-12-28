@@ -1,7 +1,7 @@
 /*
  *    Part of SMITHLAB software
  *
- *    Copyright (C) 2010 University of Southern California and
+ *    Copyright (C) 2012 University of Southern California and
  *                       Andrew D. Smith
  *
  *    Authors: Andrew D. Smith
@@ -25,10 +25,17 @@
 using std::string;
 using std::min;
 
+// We are using a conservative approach to clip that adaptors in which
+// the adaptor sequence is only required to match some at some initial
+// portion, and then the rest of the read is not examined.
+
+const size_t head_length = 14;
+const size_t sufficient_head_match = 11;
+const size_t min_overlap = 5;
+
 size_t
 similarity(const string &s, const size_t pos, const string &adaptor) {
-  const size_t lim = min(min(s.length() - pos, adaptor.length()), 
-			 MIN_ADAPTOR_MATCH_SCORE + static_cast<size_t>(3));
+  const size_t lim = min(min(s.length() - pos, adaptor.length()), head_length);
   size_t count = 0;
   for (size_t i = 0; i < lim; ++i)
     count += (s[pos + i] == adaptor[i]);
@@ -36,15 +43,18 @@ similarity(const string &s, const size_t pos, const string &adaptor) {
 }
 
 size_t 
-clip_adaptor_from_read(const string &adaptor, 
-		       const size_t min_match_score, string &s) {
-  const size_t lim = s.length() - min_match_score + 1;
-  for (size_t i = 0; i < lim; ++i) {
-    const size_t score = similarity(s, i, adaptor);
-    if (score >= min_match_score) {
+clip_adaptor_from_read(const string &adaptor, string &s) {
+  size_t lim1 = s.length() - head_length + 1;
+  for (size_t i = 0; i < lim1; ++i)
+    if (similarity(s, i, adaptor) >= sufficient_head_match) {
       fill(s.begin() + i, s.end(), 'N');
       return s.length() - i;
     }
-  }
+  const size_t lim2 = s.length() - min_overlap + 1;
+  for (size_t i = lim1; i < lim2; ++i)
+    if (similarity(s, i, adaptor) >= s.length() - i - 1) {
+      fill(s.begin() + i, s.end(), 'N');
+      return s.length() - i;
+    }
   return 0;
 }
