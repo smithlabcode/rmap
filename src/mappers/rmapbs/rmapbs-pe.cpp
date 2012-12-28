@@ -90,20 +90,20 @@ load_seeds(const bool VERBOSE, vector<size_t> &the_seeds) {
   // 0b1111110011000011111100110000111111001100001111110011000000111100
   the_seeds.push_back(18213668567193169980ul);
   // 0b0011111100110000111111001100001111110011000011111100110000001111
-  // the_seeds.push_back(4553417141798292495ul);
+  the_seeds.push_back(4553417141798292495ul);
   // 0b0000111111001100001111110011000011111100110000111111001111111111
   the_seeds.push_back(1138354285449573375ul);
   // 0b1100001111110011000011111100110000111111001100001111110000110011
-  // the_seeds.push_back(14119646626644556851ul);
+  the_seeds.push_back(14119646626644556851ul);
   // 0b0011000011111100110000111111001100001111110011000011111111110000
   the_seeds.push_back(3529911656661139440ul);
   // 0b1100110000111111001100001111110011000011111100110000111111001100
-  // the_seeds.push_back(14717535969447448524ul);
+  the_seeds.push_back(14717535969447448524ul);
   // 0b1111001100001111110011000011111100110000111111001100001111000011
   the_seeds.push_back(17514442047644025795ul);
   
-  for (size_t i = 0; i < the_seeds.size(); ++i)
-    the_seeds[i] >>= 8ul;
+  // for (size_t i = 0; i < the_seeds.size(); ++i)
+  //   the_seeds[i] >>= 8ul;
   
   if (VERBOSE) {
     cerr << endl << "SEED STRUCTURES:" << endl;
@@ -474,17 +474,16 @@ identify_chromosomes(const bool VERBOSE, const string fasta_suffix,
 
 static void
 load_reads(const bool VERBOSE, const bool AG_WILDCARD,
-           const size_t max_mismatches, const string &adaptor,
-           const string &reads_file, const size_t read_start_index, 
-	   const size_t n_reads_to_process, vector<FastRead> &fast_reads,
-           vector<unsigned int> &read_index, vector<size_t> &read_words,
-           size_t &read_width) {
+           const string &adaptor, const string &reads_file, 
+	   const size_t read_start_index, const size_t n_reads_to_process, 
+	   vector<FastRead> &fast_reads, vector<unsigned int> &read_index, 
+	   vector<size_t> &read_words, size_t &read_width) {
   
   //////////////////////////////////////////////////////////////
   // LOAD THE READS (AS SEQUENCES OR PROBABILITIES) FROM DISK
   if (VERBOSE) cerr << "[LOADING READ SEQUENCES] ";
   load_reads_from_fastq_file(reads_file, read_start_index, n_reads_to_process,
-			     adaptor, max_mismatches, read_width,
+			     adaptor, read_width,
 			     fast_reads, read_words, read_index);
   for (size_t i = 0; i < read_words.size(); ++i)
     bisulfite_treatment(AG_WILDCARD, read_words[i]);
@@ -558,14 +557,14 @@ map_reads(const bool VERBOSE, const bool AG_WILDCARD,
   vector<FastRead> fast_reads;
   vector<size_t> read_words;
   read_width = 0;
-  load_reads(VERBOSE, AG_WILDCARD, max_mismatches, adaptor_sequence, 
+  load_reads(VERBOSE, AG_WILDCARD, adaptor_sequence, 
 	     reads_file, read_start_index, n_reads_to_process,
 	     fast_reads, read_index, read_words, read_width);
   
   best_maps.resize(read_words.size());    
   
   if (max_mismatches == numeric_limits<size_t>::max())
-    max_mismatches = static_cast<size_t>(0.07*read_width);
+    max_mismatches = static_cast<size_t>(0.10*read_width);
   
   if (VERBOSE)
     cerr << "MAX MISMATCHES: " << max_mismatches << endl;
@@ -661,8 +660,8 @@ merge_mates(const size_t suffix_len, const size_t range,
   assert(overlap_start >= overlap_end || static_cast<size_t>(len) == 
 	 ((one_right - one_left) + (two_right - two_left) + (overlap_end - overlap_start)));
   
-  string seq = string(len, 'N');
-  string scr = string(len, 'B');
+  string seq(len, 'N');
+  string scr(len, 'B');
   if (len > 0 && len <= static_cast<int>(range)) {
     // lim_one: offset in merged sequence where overlap starts
     const size_t lim_one = one_right - one_left;
@@ -838,7 +837,7 @@ get_mapped_reads(const bool SECOND_END,
   getline(in, buffer);
   string sequence(buffer);
   if (!adaptor.empty())
-    clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, sequence);
+    clip_adaptor_from_read(adaptor, sequence);
   if (SECOND_END)
     revcomp_inplace(sequence);
   in.ignore(numeric_limits<std::streamsize>::max(), '\n');
