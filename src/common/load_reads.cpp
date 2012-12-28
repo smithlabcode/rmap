@@ -37,6 +37,7 @@ using std::min;
 using std::cerr;
 using std::endl;
 
+
 static const size_t MIN_NON_N_IN_READS = 17;
 
 static char
@@ -56,8 +57,7 @@ get_read_word(const string &read) {
 }
 
 static void
-check_and_add(const size_t read_count, string &read, 
-	      const string &adaptor, const int max_diffs,
+check_and_add(const size_t read_count, string &read, const string &adaptor, 
 	      size_t &read_width, vector<FastRead> &fast_reads, 
 	      vector<size_t> &read_words, vector<unsigned int> &read_index) {
   
@@ -74,7 +74,7 @@ check_and_add(const size_t read_count, string &read,
   transform(read.begin(), read.end(), read.begin(), ptr_fun(&to_base_symbol));
   
   if (!adaptor.empty())
-    clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, read);
+    clip_adaptor_from_read(adaptor, read);
   
   // check for quality
   const bool good_read = 
@@ -114,9 +114,8 @@ is_fastq_score_line(size_t line_count) {
 }
 
 void
-load_reads_from_fastq_file(const string &filename, 
-			   const size_t read_start_idx, const size_t n_reads_to_process,
-			   const string &adaptor, const size_t max_diffs,
+load_reads_from_fastq_file(const string &filename, const size_t read_start_idx, 
+			   const size_t n_reads_to_process, const string &adaptor, 
 			   size_t &read_width, vector<FastRead> &fast_reads,
 			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
   std::ifstream in(filename.c_str());
@@ -140,14 +139,16 @@ load_reads_from_fastq_file(const string &filename,
   string line;
   while (line_count < lim2 && getline(in, line)) {
     if (is_fastq_sequence_line(line_count)) {
-      check_and_add(read_count, line, adaptor, max_diffs, 
-		    read_width, fast_reads, read_words,
-		    read_index);
+      check_and_add(read_count, line, adaptor,read_width, fast_reads, 
+		    read_words, read_index);
       ++read_count;
     }
     ++line_count;
   }
-
+  
   if (fast_reads.empty())
-    throw SMITHLABException("no high-quality reads in file:\"" + filename + "\"");
+    throw SMITHLABException("no good reads between " +
+			    toa(read_start_idx) + " and " +
+			    toa(read_start_idx + n_reads_to_process) + " in " +
+			    filename);
 }

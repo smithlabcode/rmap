@@ -30,11 +30,9 @@
 #include <string>
 
 void
-load_reads_from_fastq_file(const std::string &filename, 
-			   const size_t read_start_idx, const size_t n_reads_to_process,
-			   const std::string &adaptor, const size_t max_diffs,
+load_reads_from_fastq_file(const std::string &filename, const size_t read_start_idx, 
+			   const size_t n_reads_to_process, const std::string &adaptor, 
 			   size_t &read_width, std::vector<FastRead> &fast_reads,
 			   std::vector<size_t> &read_words, std::vector<unsigned int> &read_index);
-
 
 #endif
