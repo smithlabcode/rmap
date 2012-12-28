@@ -28,7 +28,7 @@ ifndef SMITHLAB_CPP
 SMITHLAB_CPP=../../smithlab_cpp
 endif
 
-PROGS = rmap
+PROGS = rmap rmap-pe
 
 CXX = g++
 CFLAGS = -Wall -fPIC -fmessage-length=50
@@ -57,9 +57,12 @@ all:	$(PROGS)
 %: %.cpp
 	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
 
-rmap: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastRead.o load_reads.o) \
+rmap rmap-pe: $(addprefix $(COMMON_DIR)/, SeedMaker.o FastRead.o load_reads.o \
+	clip_adaptor_from_reads.o) \
 	$(addprefix $(SMITHLAB_CPP)/, GenomicRegion.o smithlab_os.o smithlab_utils.o \
-	OptionParser.o QualityScore.o clip_adaptor_from_reads.o)
+	OptionParser.o QualityScore.o)
+
+rmap-pe: $(addprefix $(SMITHLAB_CPP)/, MappedRead.o)
 
 install: all
 	@mkdir -p $(SRC_ROOT)/bin
