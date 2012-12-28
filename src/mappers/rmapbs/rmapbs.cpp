@@ -545,8 +545,8 @@ load_reads(const bool VERBOSE, const bool AG_WILDCARD,
   // LOAD THE READS (AS SEQUENCES OR PROBABILITIES) FROM DISK
   if (VERBOSE) cerr << "[LOADING READ SEQUENCES] ";
   load_reads_from_fastq_file(reads_file, read_start_index, n_reads_to_process,
-			     adaptor, max_mismatches, read_width,
-			     fast_reads, read_words, read_index);
+			     adaptor, read_width, fast_reads, 
+			     read_words, read_index);
   for (size_t i = 0; i < read_words.size(); ++i)
     bisulfite_treatment(AG_WILDCARD, read_words[i]);
   if (VERBOSE)
@@ -614,7 +614,7 @@ iterate_over_reads(const bool VERBOSE, const string &adaptor,
       else if (line_count % 4 == 3) {
 	if (!bests[curr_idx].empty()) {
 	  if (!adaptor.empty())
-	    clip_adaptor_from_read(adaptor, MIN_ADAPTOR_MATCH_SCORE, sequence);
+	    clip_adaptor_from_read(adaptor, sequence);
 	  
 	  bests[curr_idx].sort();
 	  for (size_t j = 0; j < bests[curr_idx].mr.size(); ++j) {
@@ -668,8 +668,7 @@ main(int argc, const char **argv) {
     bool AG_WILDCARD = false;
     
     /****************** COMMAND LINE OPTIONS ********************/
-    OptionParser opt_parse("rmapbs", "The rmapbs mapping tool for Solexa reads"
-			   " following bisulfite treatment",
+    OptionParser opt_parse(strip_path(argv[0]), "map Illumina BS-seq reads",
 			   "<fastq-reads-file>");
     opt_parse.add_opt("output", 'o', "output file name", 
 		      true , outfile);
