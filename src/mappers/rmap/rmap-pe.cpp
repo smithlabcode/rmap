@@ -587,7 +587,7 @@ merge_mates(const size_t range,
   merged.r.set_score(one.r.get_score() + two.r.get_score());
   merged.seq = seq;
   merged.scr = scr;  
-  merged.r.set_name(one.r.get_name());
+  merged.r.set_name("FRAG:" + one.r.get_name());
 }
 
 
