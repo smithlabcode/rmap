@@ -39,6 +39,7 @@
 #include "load_reads.hpp"
 #include "clip_adaptor_from_reads.hpp"
 
+
 using std::tr1::unordered_map;
 
 using std::string;
@@ -528,7 +529,7 @@ fill_overlap(const bool pos_str, const MappedRead &mr, const size_t start,
 }
 
 static void
-merge_mates(const size_t suffix_len, const size_t range,
+merge_mates(const size_t range,
 	    const MappedRead &one, const MappedRead &two, MappedRead &merged) {
   
   const bool pos_str = one.r.pos_strand();
@@ -586,8 +587,7 @@ merge_mates(const size_t suffix_len, const size_t range,
   merged.r.set_score(one.r.get_score() + two.r.get_score());
   merged.seq = seq;
   merged.scr = scr;  
-  const string name(one.r.get_name());
-  merged.r.set_name("FRAG:" + name.substr(0, name.size() - suffix_len));
+  merged.r.set_name(one.r.get_name());
 }
 
 
@@ -672,7 +672,7 @@ find_best(const vector<MappedRead> &a) {
 
 
 static void
-process_same_read(const size_t range, const size_t suffix_len, 
+process_same_read(const size_t range,
 		  const MappedReadLess mrl, vector<MappedRead> &one, 
 		  vector<MappedRead> &two, std::ostream &out) {
   sort(one.begin(), one.end(), mrl);
@@ -684,7 +684,7 @@ process_same_read(const size_t range, const size_t suffix_len,
   
   if (best_score < numeric_limits<double>::max()) {
     MappedRead merged;
-    merge_mates(suffix_len, range, one[one_best], two[two_best], merged);
+    merge_mates(range, one[one_best], two[two_best], merged);
     out << merged << '\n';
   }
   else {
@@ -759,7 +759,7 @@ get_next(const vector<MultiMapResult> &bests, size_t &idx) {
 
 static void
 clip_and_output(const bool VERBOSE, const size_t range, 
-		const size_t read_len, const size_t suffix_len, 
+		const size_t read_len,
 		const string &end_one_file, const string &end_two_file, 
 		const string &adaptor_one, const string &adaptor_two, 
 		vector<unsigned int> &read_index_one, vector<unsigned int> &read_index_two,
@@ -788,7 +788,7 @@ clip_and_output(const bool VERBOSE, const size_t range,
 		       bests_one[one_idx].mr, in_one, line_count_one, one);
       get_mapped_reads(true, read_len, adaptor_two, read_index_two[two_idx],
 		       bests_two[two_idx].mr, in_two, line_count_two, two);
-      process_same_read(range, suffix_len, mrl, one, two, out);
+      process_same_read(range, mrl, one, two, out);
       get_next(bests_one, one_idx);
       get_next(bests_two, two_idx);
     }
@@ -820,7 +820,6 @@ clip_and_output(const bool VERBOSE, const size_t range,
     get_next(bests_two, two_idx);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
@@ -857,7 +856,6 @@ main(int argc, const char **argv) {
     
     bool VERBOSE = false;
     size_t range = 1000;
-    size_t suffix_len = 1;
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse(strip_path(argv[0]), "map Illumina reads",
@@ -879,8 +877,6 @@ main(int argc, const char **argv) {
     opt_parse.add_opt("clip", 'C', "clip the specified adaptor",
 		      false, adaptor_sequence);
     opt_parse.add_opt("fraglen", 'L', "max fragment length", false, range);
-    opt_parse.add_opt("suffix-len", '\0', "Suffix length of reads name", 
-		      false, suffix_len);
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
     vector<string> leftover_args;
     opt_parse.parse(argc, argv, leftover_args);
@@ -941,10 +937,9 @@ main(int argc, const char **argv) {
 	      reads_file_two, read_start_index, n_reads_to_process, the_seeds, 
 	      max_mismatches, read_index_two, best_maps_two, read_width);
     
-    clip_and_output(VERBOSE, range, read_width, suffix_len, reads_file_one, 
+    clip_and_output(VERBOSE, range, read_width, reads_file_one, 
 		    reads_file_two, adaptor_one, adaptor_two, read_index_one, 
 		    read_index_two, best_maps_one, best_maps_two, outfile);
-    
   }
   catch (const SMITHLABException &e) {
     cerr << endl << e.what() << endl;
