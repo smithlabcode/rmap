@@ -60,8 +60,8 @@ get_read_word(const string &read) {
 
 static void
 check_and_add(const size_t read_count, string &read, const string &adaptor, 
-	      size_t &read_width, vector<FastRead> &fast_reads, 
-	      vector<size_t> &read_words, vector<unsigned int> &read_index) {
+        size_t &read_width, vector<FastRead> &fast_reads, 
+        vector<size_t> &read_words, vector<unsigned int> &read_index) {
   
   if (read_width == 0) 
     read_width = read.length();
@@ -115,31 +115,51 @@ is_fastq_score_line(size_t line_count) {
   return ((line_count & 3ul) == 3ul);
 }
 
+inline bool
+meet_new_read(std::fstream& in) {
+  bool flag = false;
+  string line;
+
+  in.unget();
+  if (in.get() == '\n') {
+    getline(in, line);
+    size_t size_to_go_back = strlen(line.c_str())+1;
+    if (line[0] == '@') {
+      size_to_go_back++;
+      if (in.get() != '@') {
+        flag = true;
+      }
+    }
+    in.seekg(-size_to_go_back, std::ios::cur);
+  }
+  return flag;
+}
+
 void
 load_reads_from_fastq_file(const string &filename, const size_t cut, 
-			   const size_t piece, const string &adaptor, 
-			   size_t &read_width, vector<FastRead> &fast_reads,
-			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
+         const size_t piece, const string &adaptor, 
+         size_t &read_width, vector<FastRead> &fast_reads,
+         vector<size_t> &read_words, vector<unsigned int> &read_index) {
   std::fstream in(filename.c_str());
   if (!in) 
     throw SMITHLABException("cannot open input file " + filename);
 
    //get the size of the file
   in.seekg(0, std::ios::end);
-  int size_of_file = in.tellg();
+  size_t size_of_file = in.tellg();
    
   // shift
-  size_t shifting = round(static_cast<double>(size_of_file) * (piece-1) / cut);
-  size_t size_to_read = round(static_cast<double>(size_of_file)  / cut);
+  size_t shifting = floor(static_cast<double>(size_of_file) * (piece-1) / cut);
+  size_t size_to_read = ceil(static_cast<double>(size_of_file)  / cut);
   in.seekg(shifting, std::ios::beg);
 
   string line;
-  // locate the nearest read
-  while ( in.get() != '@') {
-    getline(in, line);
+  // locate the begining of the next read
+  if (shifting != 0) {
+    while ( in.tellg() > 0 && !meet_new_read(in)) {
+      in.unget();
+    }
   }
-  // go back to the begining of this read
-  in.seekg(-1, std::ios::cur);
 
   size_t size_readed = 0;
   size_t read_count = 0;
@@ -148,7 +168,7 @@ load_reads_from_fastq_file(const string &filename, const size_t cut,
   while (size_readed < size_to_read && getline(in, line)) {
     if (is_fastq_sequence_line(line_count)) {
       check_and_add(read_count, line, adaptor,read_width, fast_reads, 
-		    read_words, read_index);
+        read_words, read_index);
       ++read_count;
     }
     size_readed += strlen(line.c_str()) + 1;
@@ -156,10 +176,11 @@ load_reads_from_fastq_file(const string &filename, const size_t cut,
   }
  
   // finish reading the final read
+  --line_count;
   while ( line[0] != '@' && !in.eof()) {
     if (is_fastq_sequence_line(line_count)) {
       check_and_add(read_count, line, adaptor,read_width, fast_reads, 
-		    read_words, read_index);
+        read_words, read_index);
       ++read_count;
     }
     getline(in, line);
@@ -169,5 +190,5 @@ load_reads_from_fastq_file(const string &filename, const size_t cut,
   if (fast_reads.empty())
     throw SMITHLABException("no good reads in the " +
           toa(piece) + "/" + toa(cut) + " part of the file " +
-			    filename);
+          filename);
 }
