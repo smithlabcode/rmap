@@ -28,8 +28,6 @@
 
 #include <cstring>
 #include <fstream>
-#include <iostream>
-#include <tr1/cmath>
 
 using std::vector;
 using std::string;
@@ -38,7 +36,7 @@ using std::not1;
 using std::min;
 using std::cerr;
 using std::endl;
-using std::tr1::round;
+
 
 static const size_t MIN_NON_N_IN_READS = 17;
 
@@ -60,8 +58,8 @@ get_read_word(const string &read) {
 
 static void
 check_and_add(const size_t read_count, string &read, const string &adaptor, 
-        size_t &read_width, vector<FastRead> &fast_reads, 
-        vector<size_t> &read_words, vector<unsigned int> &read_index) {
+	      size_t &read_width, vector<FastRead> &fast_reads, 
+	      vector<size_t> &read_words, vector<unsigned int> &read_index) {
   
   if (read_width == 0) 
     read_width = read.length();
@@ -115,80 +113,42 @@ is_fastq_score_line(size_t line_count) {
   return ((line_count & 3ul) == 3ul);
 }
 
-inline bool
-meet_new_read(std::fstream& in) {
-  bool flag = false;
-  string line;
-
-  in.unget();
-  if (in.get() == '\n') {
-    getline(in, line);
-    size_t size_to_go_back = strlen(line.c_str())+1;
-    if (line[0] == '@') {
-      size_to_go_back++;
-      if (in.get() != '@') {
-        flag = true;
-      }
-    }
-    in.seekg(-size_to_go_back, std::ios::cur);
-  }
-  return flag;
-}
-
 void
-load_reads_from_fastq_file(const string &filename, const size_t cut, 
-         const size_t piece, const string &adaptor, 
-         size_t &read_width, vector<FastRead> &fast_reads,
-         vector<size_t> &read_words, vector<unsigned int> &read_index) {
-  std::fstream in(filename.c_str());
+load_reads_from_fastq_file(const string &filename, const size_t read_start_idx, 
+			   const size_t n_reads_to_process, const string &adaptor, 
+			   size_t &read_width, vector<FastRead> &fast_reads,
+			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
+  std::ifstream in(filename.c_str());
   if (!in) 
     throw SMITHLABException("cannot open input file " + filename);
 
-   //get the size of the file
-  in.seekg(0, std::ios::end);
-  size_t size_of_file = in.tellg();
-   
-  // shift
-  size_t shifting = floor(static_cast<double>(size_of_file) * (piece-1) / cut);
-  size_t size_to_read = ceil(static_cast<double>(size_of_file)  / cut);
-  in.seekg(shifting, std::ios::beg);
-
-  string line;
-  // locate the begining of the next read
-  if (shifting != 0) {
-    while ( in.tellg() > 0 && !meet_new_read(in)) {
-      in.unget();
-    }
-  }
-
-  size_t size_readed = 0;
-  size_t read_count = 0;
   size_t line_count = 0;
-  // start to load reads
-  while (size_readed < size_to_read && getline(in, line)) {
-    if (is_fastq_sequence_line(line_count)) {
-      check_and_add(read_count, line, adaptor,read_width, fast_reads, 
-        read_words, read_index);
-      ++read_count;
-    }
-    size_readed += strlen(line.c_str()) + 1;
+  const size_t lim1 = read_start_idx*4;
+  while (line_count < lim1) {
+    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     ++line_count;
   }
- 
-  // finish reading the final read
-  --line_count;
-  while ( line[0] != '@' && !in.eof()) {
+  
+  size_t read_count = read_start_idx;
+  
+  const size_t lim2 =
+    (n_reads_to_process != std::numeric_limits<size_t>::max()) ?
+    (read_start_idx + n_reads_to_process)*4 :
+    std::numeric_limits<size_t>::max();
+  
+  string line;
+  while (line_count < lim2 && getline(in, line)) {
     if (is_fastq_sequence_line(line_count)) {
       check_and_add(read_count, line, adaptor,read_width, fast_reads, 
-        read_words, read_index);
+		    read_words, read_index);
       ++read_count;
     }
-    getline(in, line);
-    line_count++;
+    ++line_count;
   }
-
+  
   if (fast_reads.empty())
-    throw SMITHLABException("no good reads in the " +
-          toa(piece) + "/" + toa(cut) + " part of the file " +
-          filename);
+    throw SMITHLABException("no good reads between " +
+			    toa(read_start_idx) + " and " +
+			    toa(read_start_idx + n_reads_to_process) + " in " +
+			    filename);
 }

@@ -536,15 +536,15 @@ load_read_names(string filename, vector<string> &names) {
 static void
 load_reads(const bool VERBOSE, const bool AG_WILDCARD,
            const size_t max_mismatches, const string &adaptor,
-           const string &reads_file, const size_t cut, 
-	   const size_t piece, vector<FastRead> &fast_reads,
+           const string &reads_file, const size_t read_start_index, 
+	   const size_t n_reads_to_process, vector<FastRead> &fast_reads,
            vector<unsigned int> &read_index, vector<size_t> &read_words,
            size_t &read_width) {
   
   //////////////////////////////////////////////////////////////
   // LOAD THE READS (AS SEQUENCES OR PROBABILITIES) FROM DISK
   if (VERBOSE) cerr << "[LOADING READ SEQUENCES] ";
-  load_reads_from_fastq_file(reads_file, cut, piece,
+  load_reads_from_fastq_file(reads_file, read_start_index, n_reads_to_process,
 			     adaptor, read_width, fast_reads, 
 			     read_words, read_index);
   for (size_t i = 0; i < read_words.size(); ++i)
@@ -661,8 +661,8 @@ main(int argc, const char **argv) {
     
     size_t max_mismatches = numeric_limits<size_t>::max();
     size_t max_mappings = 1;
-    size_t cut = 1;
-    size_t piece = 1;
+    size_t read_start_index = 0;
+    size_t n_reads_to_process = std::numeric_limits<size_t>::max();
     
     bool VERBOSE = false;
     bool AG_WILDCARD = false;
@@ -674,10 +674,10 @@ main(int argc, const char **argv) {
 		      true , outfile);
     opt_parse.add_opt("chrom", 'c', "chromosomes in FASTA file or dir", 
 		      true , chrom_file);
-    opt_parse.add_opt("total", 'T', "divide the file into smaller parts", 
-          false , cut);
-    opt_parse.add_opt("number", 'N', "which part of reads to be mapped", 
-          false , piece);
+    opt_parse.add_opt("start", 'T', "index of first read to map", 
+		      false , read_start_index);
+    opt_parse.add_opt("number", 'N', "number of reads to map", 
+		      false , n_reads_to_process);
     opt_parse.add_opt("suffix", 's', "suffix of chrom files "
 		      "(assumes dir provided)", false , fasta_suffix);
     opt_parse.add_opt("mismatch", 'm', "maximum allowed mismatches", 
@@ -726,7 +726,7 @@ main(int argc, const char **argv) {
     vector<size_t> read_words;
     size_t read_width = 0;
     load_reads(VERBOSE, AG_WILDCARD, max_mismatches, adaptor_sequence, 
-	       reads_file, cut, piece,
+	       reads_file, read_start_index, n_reads_to_process,
 	       fast_reads, read_index, read_words, read_width);
     
     if (max_mismatches == numeric_limits<size_t>::max())
