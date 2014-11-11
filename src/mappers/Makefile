@@ -24,7 +24,7 @@ ifndef SMITHLAB_CPP
 SMITHLAB_CPP=$(RMAP)/src/smithlab_cpp/
 endif
 
-app_subdirs=rmap rmapbs
+app_subdirs=rmap rmapbs bsmapper
 
 all:
 	@for i in $(app_subdirs); do \
