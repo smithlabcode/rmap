@@ -98,18 +98,18 @@ ReadIndex::ReadIndex(const string& _index_file, Genome* _genome,
   FILE * fin = fopen(index_file.c_str(), "rb");
   FILE_OPEN_CHECK(fin);
   FREAD_CHECK(fread(&genome->num_of_chroms, sizeof(uint16_t), 1, fin), 1);
-  uint32_t tmp;
+  uint32_t chrom_name_len, chrom_size, chrom_start_pos;
   char chrom_name[256];
   genome->all_chroms_len = 0;
   for (uint16_t i = 0; i < genome->num_of_chroms; ++i) {
-    FREAD_CHECK(fread(&tmp, sizeof(uint32_t), 1, fin), 1);
-    FREAD_CHECK(fread(chrom_name, sizeof(char), tmp, fin), tmp);
-    chrom_name[tmp] = 0;
+    FREAD_CHECK(fread(&chrom_name_len, sizeof(uint32_t), 1, fin), 1);
+    FREAD_CHECK(fread(chrom_name, sizeof(char), chrom_name_len, fin), chrom_name_len);
+    chrom_name[chrom_name_len] = 0;
     genome->chrom_names.push_back(chrom_name);
-    FREAD_CHECK(fread(&tmp, sizeof(uint32_t), 1, fin), 1);
-    genome->chrom_sizes.push_back(tmp);
-    FREAD_CHECK(fread(&tmp, sizeof(uint32_t), 1, fin), 1);
-    genome->chrom_start_pos.push_back(tmp);
+    FREAD_CHECK(fread(&chrom_size, sizeof(uint32_t), 1, fin), 1);
+    genome->chrom_sizes.push_back(chrom_size);
+    FREAD_CHECK(fread(&chrom_start_pos, sizeof(uint32_t), 1, fin), 1);
+    genome->chrom_start_pos.push_back(chrom_start_pos);
     genome->all_chroms_len += genome->chrom_sizes[i];
   }
   MEMORY_ALLOCATE_CHECK(
