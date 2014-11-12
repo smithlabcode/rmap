@@ -1,7 +1,7 @@
 /* The detail description of each function please refer to head file */
 
 #include "reference.hpp"
-#include "./../../smithlab_cpp/smithlab_os.hpp"
+#include "smithlab_os.hpp"
 
 void ReadGenome::IdentifyChromosomes(const string& chrom_file) {
   cerr << "[IDENTIFYING CHROMS] ";

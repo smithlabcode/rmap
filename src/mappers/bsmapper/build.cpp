@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "./../../smithlab_cpp/smithlab_os.hpp"
-#include "./../../smithlab_cpp/OptionParser.hpp"
+#include "smithlab_os.hpp"
+#include "OptionParser.hpp"
 
 #include "index.hpp"
 #include "reference.hpp"
