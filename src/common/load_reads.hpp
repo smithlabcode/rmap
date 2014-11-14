@@ -35,4 +35,8 @@ load_reads_from_fastq_file(const std::string &filename, const size_t read_start_
 			   size_t &read_width, std::vector<FastRead> &fast_reads,
 			   std::vector<size_t> &read_words, std::vector<unsigned int> &read_index);
 
+size_t
+divide_and_skip_reads(const std::string &filename, std::istream& in, 
+		      const size_t n_reads_to_process, const size_t read_start_idx);
+
 #endif

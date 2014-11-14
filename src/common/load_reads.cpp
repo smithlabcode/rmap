@@ -31,6 +31,7 @@
 
 using std::vector;
 using std::string;
+using std::ios_base;
 using std::ptr_fun;
 using std::not1;
 using std::min;
@@ -58,8 +59,8 @@ get_read_word(const string &read) {
 
 static void
 check_and_add(const size_t read_count, string &read, const string &adaptor, 
-	      size_t &read_width, vector<FastRead> &fast_reads, 
-	      vector<size_t> &read_words, vector<unsigned int> &read_index) {
+        size_t &read_width, vector<FastRead> &fast_reads, 
+        vector<size_t> &read_words, vector<unsigned int> &read_index) {
   
   if (read_width == 0) 
     read_width = read.length();
@@ -113,42 +114,127 @@ is_fastq_score_line(size_t line_count) {
   return ((line_count & 3ul) == 3ul);
 }
 
+inline bool
+meet_new_read(std::istream& in) {
+  bool flag = false;
+  string line;
+
+  in.unget();
+  if (in.get() == '\n') {
+    getline(in, line);
+    size_t size_to_go_back = strlen(line.c_str())+1;
+    if (line[0] == '@') {
+      size_to_go_back++;
+      if (in.get() != '@') {
+        flag = true;
+      }
+    }
+    in.seekg(-size_to_go_back, std::ios::cur);
+  }
+  return flag;
+}
+
+static size_t
+get_approx_read_size(const string &filename,
+                      const size_t n_samples, size_t sample_size) {
+
+  static const size_t megabyte = (1ul << 20);
+
+  const size_t filesize = get_filesize(filename);
+
+  if (sample_size == 0)
+    sample_size = std::min(megabyte/10, filesize/n_samples);
+  
+  const size_t increment =
+    std::floor((filesize - sample_size*n_samples)/
+               (n_samples - 1.0)) + sample_size;
+
+  assert(filesize > n_samples && filesize > sample_size &&
+         filesize > n_samples*sample_size);
+
+  std::ifstream in(filename.c_str(), ios_base::binary);
+
+  vector<char> buffer(sample_size);
+  double total_lines = 0.0;
+  for (size_t i = 0; i < filesize && in.good(); i += increment) {
+    in.seekg(i, ios_base::beg);
+    in.read(&buffer.front(), sample_size);
+    if (in.good())
+      total_lines += (0.5 + count(buffer.begin(), buffer.end(), '\n'));
+  }
+  size_t read_size = (4*n_samples*sample_size)/total_lines;
+  return read_size;
+}
+
+
+size_t
+divide_and_skip_reads(const string &filename, std::istream& in, 
+                      const size_t n_reads_to_process, const size_t read_start_idx) {
+
+  // compute the size to read
+  size_t read_size = get_approx_read_size(filename, 10, 0);
+  size_t size_to_read = n_reads_to_process * read_size;
+  
+  // shift
+  size_t offset = read_start_idx * read_size;
+  in.seekg(offset, std::ios::beg);
+  
+  // locate the begining of the next read
+  string line;
+  size_t bytes_moved = 0;
+  if (offset != 0) {
+    while ( in.good() && !meet_new_read(in)) {
+      getline(in, line);
+      bytes_moved += strlen(line.c_str()) + 1;
+    }
+  }
+  size_to_read -= bytes_moved;
+  return size_to_read;
+}
+
 void
 load_reads_from_fastq_file(const string &filename, const size_t read_start_idx, 
-			   const size_t n_reads_to_process, const string &adaptor, 
-			   size_t &read_width, vector<FastRead> &fast_reads,
-			   vector<size_t> &read_words, vector<unsigned int> &read_index) {
-  std::ifstream in(filename.c_str());
+         const size_t n_reads_to_process, const string &adaptor, 
+         size_t &read_width, vector<FastRead> &fast_reads,
+         vector<size_t> &read_words, vector<unsigned int> &read_index) {
+  std::fstream in(filename.c_str());
   if (!in) 
     throw SMITHLABException("cannot open input file " + filename);
 
-  size_t line_count = 0;
-  const size_t lim1 = read_start_idx*4;
-  while (line_count < lim1) {
-    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    ++line_count;
-  }
+  in.seekg(0, std::ios::end);
+  size_t size_to_read;
   
-  size_t read_count = read_start_idx;
-  
-  const size_t lim2 =
-    (n_reads_to_process != std::numeric_limits<size_t>::max()) ?
-    (read_start_idx + n_reads_to_process)*4 :
-    std::numeric_limits<size_t>::max();
-  
+  size_to_read = divide_and_skip_reads(filename, in, n_reads_to_process, read_start_idx);
+
   string line;
-  while (line_count < lim2 && getline(in, line)) {
+  size_t size_readed = 0;
+  size_t read_count = 0;
+  size_t line_count = 0;
+  // start to load reads
+  while (size_readed < size_to_read && in.good() && getline(in, line)) {
     if (is_fastq_sequence_line(line_count)) {
       check_and_add(read_count, line, adaptor,read_width, fast_reads, 
-		    read_words, read_index);
+        read_words, read_index);
+      ++read_count;
+    }
+    size_readed += strlen(line.c_str()) + 1;
+    ++line_count;
+  }
+
+  // finish reading the last read
+  while(in.good() && !meet_new_read(in)) {
+    getline(in, line);
+    if (is_fastq_sequence_line(line_count)) {
+      check_and_add(read_count, line, adaptor,read_width, fast_reads, 
+        read_words, read_index);
       ++read_count;
     }
     ++line_count;
   }
-  
+
   if (fast_reads.empty())
     throw SMITHLABException("no good reads between " +
-			    toa(read_start_idx) + " and " +
-			    toa(read_start_idx + n_reads_to_process) + " in " +
-			    filename);
+                            toa(read_start_idx) + " and " +
+                            toa(read_start_idx + n_reads_to_process) + " in " +
+                            filename);
 }
