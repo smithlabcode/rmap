@@ -71,8 +71,8 @@ format_time(const clock_t start, const clock_t end) {
 template <typename T> struct SeedHash {
   typedef
   unordered_map<size_t,
-		pair<typename vector<T>::const_iterator,
-		     typename vector<T>::const_iterator> > type;
+    pair<typename vector<T>::const_iterator,
+         typename vector<T>::const_iterator> > type;
 };
 typedef vector<pair<size_t, unsigned int> > SeedHashSorter;
 
@@ -122,11 +122,11 @@ struct wildcard_score {
 ////
 template <class T, class U> void
 map_reads(const U &specialized_score,
-	  const string &chrom, const size_t chrom_id,
-	  const size_t profile, const size_t read_width, 
-	  const size_t max_diffs, const vector<T> &fast_reads, 
-	  /*const*/ typename SeedHash<T>::type &seed_hash, 
-	  const bool strand, vector<MultiMapResult> &best_maps) {
+    const string &chrom, const size_t chrom_id,
+    const size_t profile, const size_t read_width, 
+    const size_t max_diffs, const vector<T> &fast_reads, 
+    /*const*/ typename SeedHash<T>::type &seed_hash, 
+    const bool strand, vector<MultiMapResult> &best_maps) {
 
   MASK_t bad_bases = rmap_bits::all_ones;
   MASK_t read_word = rmap_bits::all_zeros;
@@ -156,21 +156,21 @@ map_reads(const U &specialized_score,
     SeedMaker::update_read_word(key_base, read_word);
     if ((bad_bases & profile) == 0) {
       typename SeedHash<T>::type::const_iterator 
-	bucket(seed_hash.find(read_word & profile));
+  bucket(seed_hash.find(read_word & profile));
       if (bucket != seed_hash.end()) {
-	pair<typename vector<T>::const_iterator, 
-	  typename vector<T>::const_iterator> tmp(bucket->second);
-	const typename vector<T>::const_iterator limit(tmp.second);
-	for (typename vector<T>::const_iterator to_test(tmp.first); 
-	     to_test != limit; ++to_test) {
-	  const size_t score = specialized_score.score(to_test, fast_read);
-	  if (score <= max_diffs) {
-	    const vector<MultiMapResult>::iterator 
-	      current(best_maps.begin() + (to_test - fast_reads.begin()));
-	    current->add(score, chrom_id, distance(chrom.begin(), chrom_pos)
-			 - read_width + 1, strand);
-	  }
-	}
+  pair<typename vector<T>::const_iterator, 
+    typename vector<T>::const_iterator> tmp(bucket->second);
+  const typename vector<T>::const_iterator limit(tmp.second);
+  for (typename vector<T>::const_iterator to_test(tmp.first); 
+       to_test != limit; ++to_test) {
+    const size_t score = specialized_score.score(to_test, fast_read);
+    if (score <= max_diffs) {
+      const vector<MultiMapResult>::iterator 
+        current(best_maps.begin() + (to_test - fast_reads.begin()));
+      current->add(score, chrom_id, distance(chrom.begin(), chrom_pos)
+       - read_width + 1, strand);
+    }
+  }
       }
     }
   }
@@ -296,45 +296,45 @@ iterate_over_seeds(const bool VERBOSE,
   for (size_t j = 0; j < the_seeds.size() && !fast_reads.empty(); ++j) {
     if (VERBOSE)
       cerr << "[SEED:" << j + 1 << "/" << the_seeds.size() << "] "
-	   << "[FORMATTING READS]" << endl;
+     << "[FORMATTING READS]" << endl;
     
     typename SeedHash<T>::type seed_hash;
     resort_reads(the_seeds[j], fast_reads, read_words, 
-		 read_index, best_maps, seed_hash);
+     read_index, best_maps, seed_hash);
     
     size_t prev_chrom_count = 0;
     for (size_t i = 0; i < chrom_files.size() && !fast_reads.empty(); ++i) {
       
       vector<string> tmp_chrom_names, chroms;
       if (VERBOSE)
-	cerr << "[SEED:" << j + 1 << "/" << the_seeds.size() << "] "
-	     << "[LOADING CHROM] ";
+  cerr << "[SEED:" << j + 1 << "/" << the_seeds.size() << "] "
+       << "[LOADING CHROM] ";
       read_fasta_file(chrom_files[i].c_str(), tmp_chrom_names, chroms);
       
       if (VERBOSE)
-	cerr << "[SCANNING=" << tmp_chrom_names.front() << "] ";
+  cerr << "[SCANNING=" << tmp_chrom_names.front() << "] ";
       
       const clock_t start(clock());
       for (size_t k = 0; k < chroms.size(); ++k) {
-	if (j == 0) {
-	  chrom_sizes.push_back(chroms[k].length());
-	  chrom_names.push_back(tmp_chrom_names[k]);
-	}
-	transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(), 
-		  ptr_fun(&toupper));
-	transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(),
-		  ptr_fun(&b2i));
-	
-	map_reads(specialized_score, chroms[k], prev_chrom_count + k, 
-		  the_seeds[j], read_width, max_mismatches, 
-		  fast_reads, seed_hash, true, best_maps);
-	transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(), 
-		  std::ptr_fun(&comp));
-	reverse(chroms[k].begin(), chroms[k].end());
-	map_reads(specialized_score, 
-		  chroms[k], prev_chrom_count + k, the_seeds[j], read_width,
-		  max_mismatches, fast_reads, seed_hash, false, best_maps);
-	string().swap(chroms[k]);
+  if (j == 0) {
+    chrom_sizes.push_back(chroms[k].length());
+    chrom_names.push_back(tmp_chrom_names[k]);
+  }
+  transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(), 
+      ptr_fun(&toupper));
+  transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(),
+      ptr_fun(&b2i));
+  
+  map_reads(specialized_score, chroms[k], prev_chrom_count + k, 
+      the_seeds[j], read_width, max_mismatches, 
+      fast_reads, seed_hash, true, best_maps);
+  transform(chroms[k].begin(), chroms[k].end(), chroms[k].begin(), 
+      std::ptr_fun(&comp));
+  reverse(chroms[k].begin(), chroms[k].end());
+  map_reads(specialized_score, 
+      chroms[k], prev_chrom_count + k, the_seeds[j], read_width,
+      max_mismatches, fast_reads, seed_hash, false, best_maps);
+  string().swap(chroms[k]);
       }
       const clock_t end(clock());
       if (VERBOSE) cerr << format_time(start, end) << endl;
@@ -350,7 +350,7 @@ iterate_over_seeds(const bool VERBOSE,
 
 static void
 identify_chromosomes(const bool VERBOSE, const string fasta_suffix, 
-		     const string chrom_file, vector<string> &chrom_files) {
+         const string chrom_file, vector<string> &chrom_files) {
   if (VERBOSE)
     cerr << "[IDENTIFYING CHROMS] ";
   if (isdir(chrom_file.c_str())) 
@@ -358,9 +358,9 @@ identify_chromosomes(const bool VERBOSE, const string fasta_suffix,
   else chrom_files.push_back(chrom_file);
   if (VERBOSE) {
     cerr << "[DONE]" << endl 
-	 << "chromosome files found (approx size):" << endl;
+   << "chromosome files found (approx size):" << endl;
     for (vector<string>::const_iterator i = chrom_files.begin();
-	 i != chrom_files.end(); ++i)
+   i != chrom_files.end(); ++i)
       cerr << *i << " (" << roundf(get_filesize(*i)/1e06) << "Mbp)" << endl;
     cerr << endl;
   }
@@ -370,26 +370,26 @@ identify_chromosomes(const bool VERBOSE, const string fasta_suffix,
 static void
 load_reads(const bool VERBOSE,
            const string &adaptor, const string &reads_file, 
-	   const size_t read_start_index, const size_t n_reads_to_process, 
-	   vector<FastRead> &fast_reads, vector<unsigned int> &read_index, 
-	   vector<size_t> &read_words, size_t &read_width) {
+     const size_t &read_start_index, const size_t &n_reads_to_process, 
+     vector<FastRead> &fast_reads, vector<unsigned int> &read_index, 
+     vector<size_t> &read_words, size_t &read_width) {
   
   //////////////////////////////////////////////////////////////
   // LOAD THE READS (AS SEQUENCES OR PROBABILITIES) FROM DISK
   if (VERBOSE) cerr << "[LOADING READ SEQUENCES] ";
   load_reads_from_fastq_file(reads_file, read_start_index, n_reads_to_process,
-			     adaptor, read_width, fast_reads, 
-			     read_words, read_index);
+           adaptor, read_width, fast_reads, 
+           read_words, read_index);
   if (VERBOSE)
     cerr << "[DONE]" << endl
-	 << "TOTAL HQ READS: " << read_index.size() << endl
-	 << "READ WIDTH: " << read_width << endl;
+   << "TOTAL HQ READS: " << read_index.size() << endl
+   << "READ WIDTH: " << read_width << endl;
 }
 
 
 struct indexed_best_less {
   bool operator()(const pair<unsigned int, MultiMapResult> &a,
-		  const pair<unsigned int, MultiMapResult> &b) const {
+      const pair<unsigned int, MultiMapResult> &b) const {
     return a.first < b.first;
   }
 };
@@ -438,11 +438,11 @@ get_average_maps(const vector<MultiMapResult> &best_maps) {
 
 static void
 map_reads(const bool VERBOSE,
-	  const string &adaptor_sequence, const vector<string> &chrom_files, 
-	  const string &reads_file, const size_t read_start_index, 
-	  const size_t n_reads_to_process, const vector<size_t> the_seeds, 
-	  size_t max_mismatches, vector<unsigned int> &read_index,
-	  vector<MultiMapResult> &best_maps, size_t &read_width) {
+    const string &adaptor_sequence, const vector<string> &chrom_files, 
+    const string &reads_file, const size_t &read_start_index, 
+    const size_t &n_reads_to_process, const vector<size_t> the_seeds, 
+    size_t max_mismatches, vector<unsigned int> &read_index,
+    vector<MultiMapResult> &best_maps, size_t &read_width) {
   
   //////////////////////////////////////////////////////////////
   // OBTAIN THE READS
@@ -451,8 +451,8 @@ map_reads(const bool VERBOSE,
   vector<size_t> read_words;
   read_width = 0;
   load_reads(VERBOSE, adaptor_sequence, 
-	     reads_file, read_start_index, n_reads_to_process,
-	     fast_reads, read_index, read_words, read_width);
+       reads_file, read_start_index, n_reads_to_process,
+       fast_reads, read_index, read_words, read_width);
   
   best_maps.resize(read_words.size());    
   
@@ -467,9 +467,9 @@ map_reads(const bool VERBOSE,
   
   const wildcard_score specialized_score;
   iterate_over_seeds(VERBOSE, specialized_score,
-		     the_seeds, chrom_files, chrom_names, 
-		     chrom_sizes, fast_reads, read_words, read_index,
-		     best_maps, max_mismatches, read_width);
+         the_seeds, chrom_files, chrom_names, 
+         chrom_sizes, fast_reads, read_words, read_index,
+         best_maps, max_mismatches, read_width);
   
   invert_bests_list(read_index, best_maps);
   
@@ -483,13 +483,13 @@ map_reads(const bool VERBOSE,
 
   if (VERBOSE)
     cerr << "MAPPED: " << count_mapped(best_maps) << endl
-	 << "AVERAGE MAPS: " << get_average_maps(best_maps) << endl;
+   << "AVERAGE MAPS: " << get_average_maps(best_maps) << endl;
 }
   
 
 static MappedRead
 make_mapped_read(const size_t read_len, const MapResult &mr, const string &name,
-		 const string &sequence, const string &scores) {
+     const string &sequence, const string &scores) {
   const size_t chrom_id = mr.chrom;
   size_t start = mr.strand ? mr.site :
     MapResult::chrom_sizes[chrom_id] - mr.site - read_len;
@@ -502,7 +502,7 @@ make_mapped_read(const size_t read_len, const MapResult &mr, const string &name,
     start = end - real_read_len;
   MappedRead r;
   r.r = GenomicRegion(MapResult::chrom_names[chrom_id], start, end, 
-		      name, mr.score, strand);
+          name, mr.score, strand);
   r.seq = sequence;
   r.scr = scores;
   return r;
@@ -512,7 +512,7 @@ static string
 read_name_from_fastq(const string &buffer) {
   const size_t truncpos = buffer.find_first_of(" \t");
   return string(buffer.begin() + 1, (truncpos != string::npos) ?
-		buffer.begin() + truncpos : buffer.end());
+    buffer.begin() + truncpos : buffer.end());
 }
 
 
@@ -521,7 +521,7 @@ read_name_from_fastq(const string &buffer) {
 
 static void
 fill_overlap(const bool pos_str, const MappedRead &mr, const size_t start, 
-	     const size_t end, const size_t offset, string &seq, string &scr) {
+       const size_t end, const size_t offset, string &seq, string &scr) {
   const size_t a = pos_str ? (start - mr.r.get_start()) : (mr.r.get_end() - end);
   const size_t b = pos_str ? (end -  mr.r.get_start()) : (mr.r.get_end() - start);
   copy(mr.seq.begin() + a, mr.seq.begin() + b, seq.begin() + offset);
@@ -530,7 +530,7 @@ fill_overlap(const bool pos_str, const MappedRead &mr, const size_t start,
 
 static void
 merge_mates(const size_t range,
-	    const MappedRead &one, const MappedRead &two, MappedRead &merged) {
+      const MappedRead &one, const MappedRead &two, MappedRead &merged) {
   
   const bool pos_str = one.r.pos_strand();
   const size_t overlap_start = max(one.r.get_start(), two.r.get_start());
@@ -551,7 +551,7 @@ merge_mates(const size_t range,
   assert(len > 0);
   assert(one_left <= one_right && two_left <= two_right);
   assert(overlap_start >= overlap_end || static_cast<size_t>(len) == 
-	 ((one_right - one_left) + (two_right - two_left) + (overlap_end - overlap_start)));
+   ((one_right - one_left) + (two_right - two_left) + (overlap_end - overlap_start)));
   
   string seq(len, 'N');
   string scr(len, 'B');
@@ -575,9 +575,9 @@ merge_mates(const size_t range,
       
       // use the mate with the most info to fill in the overlap
       if (info_one >= info_two)
-	fill_overlap(pos_str, one, overlap_start, overlap_end, lim_one, seq, scr);
+  fill_overlap(pos_str, one, overlap_start, overlap_end, lim_one, seq, scr);
       else
-	fill_overlap(pos_str, two, overlap_start, overlap_end, lim_one, seq, scr);
+  fill_overlap(pos_str, two, overlap_start, overlap_end, lim_one, seq, scr);
     }
   }
   
@@ -629,8 +629,8 @@ before_range(const MappedRead &a, const MappedRead &b, const size_t d) {
 
 static double
 find_best_mates(const size_t range, 
-		const vector<MappedRead> &one, const vector<MappedRead> &two,
-		size_t &one_best, size_t &two_best) {
+    const vector<MappedRead> &one, const vector<MappedRead> &two,
+    size_t &one_best, size_t &two_best) {
   double best_score = numeric_limits<double>::max();
   bool ambig = false;
   size_t k = 0;
@@ -640,13 +640,13 @@ find_best_mates(const size_t range,
     for (size_t j = k; j < two.size() && within_range(two[j], one[i], range); ++j) {
       const double score = merge_score(range, one[i], two[j]);
       if (score < best_score) {
-	one_best = i;
-	two_best = j;
-	best_score = score;
-	ambig = false;
-      }	
+  one_best = i;
+  two_best = j;
+  best_score = score;
+  ambig = false;
+      } 
       else if (score == best_score) 
-	ambig = true;
+  ambig = true;
     }
   }
   return ambig ? numeric_limits<double>::max() : best_score;
@@ -673,8 +673,8 @@ find_best(const vector<MappedRead> &a) {
 
 static void
 process_same_read(const size_t range,
-		  const MappedReadLess mrl, vector<MappedRead> &one, 
-		  vector<MappedRead> &two, std::ostream &out) {
+      const MappedReadLess mrl, vector<MappedRead> &one, 
+      vector<MappedRead> &two, std::ostream &out) {
   sort(one.begin(), one.end(), mrl);
   sort(two.begin(), two.end(), mrl);
   
@@ -708,10 +708,10 @@ process_single_read(const vector<MappedRead> &mr, std::ostream &out) {
 
 static void
 get_mapped_reads(const bool SECOND_END,
-		 const size_t read_len, const string &adaptor,
-		 const size_t target_read, const vector<MapResult> &r,
-		 std::ifstream &in, size_t &line_count,
-		 vector<MappedRead> &mr) {
+     const size_t read_len, const string &adaptor,
+     const size_t target_read, const vector<MapResult> &r,
+     std::ifstream &in, size_t &line_count,
+     vector<MappedRead> &mr) {
   // move to the correct position
   const size_t target_line = 4*target_read;
   assert(line_count <= target_line);
@@ -759,16 +759,21 @@ get_next(const vector<MultiMapResult> &bests, size_t &idx) {
 
 static void
 clip_and_output(const bool VERBOSE, const size_t range, 
-		const size_t read_len,
-		const string &end_one_file, const string &end_two_file, 
-		const string &adaptor_one, const string &adaptor_two, 
-		vector<unsigned int> &read_index_one, vector<unsigned int> &read_index_two,
-		vector<MultiMapResult> &bests_one, vector<MultiMapResult> &bests_two,
-		const string &outfile) {
+    const size_t read_len,
+    const string &end_one_file, const string &end_two_file, 
+    const string &adaptor_one, const string &adaptor_two, 
+    vector<unsigned int> &read_index_one, vector<unsigned int> &read_index_two,
+    vector<MultiMapResult> &bests_one, vector<MultiMapResult> &bests_two,
+    const string &outfile, const size_t &read_start_index, 
+    const size_t &n_reads_to_process) {
   
   std::ifstream in_one(end_one_file.c_str());
   std::ifstream in_two(end_two_file.c_str());
-  
+  divide_and_skip_reads(end_one_file, in_one, n_reads_to_process, 
+                        read_start_index);  
+  divide_and_skip_reads(end_two_file, in_two, n_reads_to_process,
+                        read_start_index);  
+
   std::ofstream of;
   if (!outfile.empty()) of.open(outfile.c_str());
   std::ostream out(outfile.empty() ? cout.rdbuf() : of.rdbuf());
@@ -785,22 +790,22 @@ clip_and_output(const bool VERBOSE, const size_t range,
     // if they are the same
     if (read_index_one[one_idx] == read_index_two[two_idx]) {
       get_mapped_reads(false, read_len, adaptor_one, read_index_one[one_idx],
-		       bests_one[one_idx].mr, in_one, line_count_one, one);
+           bests_one[one_idx].mr, in_one, line_count_one, one);
       get_mapped_reads(true, read_len, adaptor_two, read_index_two[two_idx],
-		       bests_two[two_idx].mr, in_two, line_count_two, two);
+           bests_two[two_idx].mr, in_two, line_count_two, two);
       process_same_read(range, mrl, one, two, out);
       get_next(bests_one, one_idx);
       get_next(bests_two, two_idx);
     }
     else if (read_index_one[one_idx] < read_index_two[two_idx]) {
       get_mapped_reads(false, read_len, adaptor_one, read_index_one[one_idx],
-		       bests_one[one_idx].mr, in_one, line_count_one, one);
+           bests_one[one_idx].mr, in_one, line_count_one, one);
       process_single_read(one, out);
       get_next(bests_one, one_idx);
     }
     else {
       get_mapped_reads(true, read_len, adaptor_two, read_index_two[two_idx],
-		       bests_two[two_idx].mr, in_two, line_count_two, two);
+           bests_two[two_idx].mr, in_two, line_count_two, two);
       process_single_read(two, out);
       get_next(bests_two, two_idx);
     }
@@ -808,14 +813,14 @@ clip_and_output(const bool VERBOSE, const size_t range,
   
   while (one_idx < bests_one.size()) {
     get_mapped_reads(false, read_len, adaptor_one, read_index_one[one_idx],
-		     bests_one[one_idx].mr, in_one, line_count_one, one);
+         bests_one[one_idx].mr, in_one, line_count_one, one);
     process_single_read(one, out);
     get_next(bests_one, one_idx);
   }
   
   while (two_idx < bests_two.size()) {
     get_mapped_reads(true, read_len, adaptor_two, read_index_two[two_idx],
-		     bests_two[two_idx].mr, in_two, line_count_two, two);
+         bests_two[two_idx].mr, in_two, line_count_two, two);
     process_single_read(two, out);
     get_next(bests_two, two_idx);
   }
@@ -859,23 +864,23 @@ main(int argc, const char **argv) {
     
     /****************** COMMAND LINE OPTIONS ********************/
     OptionParser opt_parse(strip_path(argv[0]), "map Illumina reads",
-			   "<fastq-reads-file>");
+         "<fastq-reads-file>");
     opt_parse.add_opt("output", 'o', "output file name", 
-		      true , outfile);
+          true , outfile);
     opt_parse.add_opt("chrom", 'c', "chromosomes in FASTA file or dir", 
-		      true , chrom_file);
+          true , chrom_file);
     opt_parse.add_opt("start", 'T', "index of first read to map", 
-		      false , read_start_index);
+          false , read_start_index);
     opt_parse.add_opt("number", 'N', "number of reads to map", 
-		      false , n_reads_to_process);
+          false , n_reads_to_process);
     opt_parse.add_opt("suffix", 's', "suffix of chrom files "
-		      "(assumes dir provided)", false , fasta_suffix);
+          "(assumes dir provided)", false , fasta_suffix);
     opt_parse.add_opt("mismatch", 'm', "maximum allowed mismatches", 
-		      false , max_mismatches);
+          false , max_mismatches);
     opt_parse.add_opt("max-map", 'M', "maximum allowed mappings for a read", 
-		      false, max_mappings);
+          false, max_mappings);
     opt_parse.add_opt("clip", 'C', "clip the specified adaptor",
-		      false, adaptor_sequence);
+          false, adaptor_sequence);
     opt_parse.add_opt("fraglen", 'L', "max fragment length", false, range);
     opt_parse.add_opt("verbose", 'v', "print more run info", false, VERBOSE);
     vector<string> leftover_args;
@@ -926,20 +931,21 @@ main(int argc, const char **argv) {
     vector<MultiMapResult> best_maps_one;
     size_t read_width = 0;
     map_reads(VERBOSE, adaptor_one, chrom_files,
-    	      reads_file_one, read_start_index, n_reads_to_process, the_seeds, 
-    	      max_mismatches, read_index_one, best_maps_one, read_width);
+            reads_file_one, read_start_index, n_reads_to_process, the_seeds, 
+            max_mismatches, read_index_one, best_maps_one, read_width);
 
     if (VERBOSE)
       cerr << endl << "[STARTING END TWO]" << endl;
     vector<unsigned int> read_index_two;
     vector<MultiMapResult> best_maps_two;
     map_reads(VERBOSE, adaptor_two, chrom_files,
-	      reads_file_two, read_start_index, n_reads_to_process, the_seeds, 
-	      max_mismatches, read_index_two, best_maps_two, read_width);
+        reads_file_two, read_start_index, n_reads_to_process, the_seeds, 
+        max_mismatches, read_index_two, best_maps_two, read_width);
     
     clip_and_output(VERBOSE, range, read_width, reads_file_one, 
-		    reads_file_two, adaptor_one, adaptor_two, read_index_one, 
-		    read_index_two, best_maps_one, best_maps_two, outfile);
+        reads_file_two, adaptor_one, adaptor_two, read_index_one, 
+        read_index_two, best_maps_one, best_maps_two, outfile, read_start_index,
+        n_reads_to_process);
   }
   catch (const SMITHLABException &e) {
     cerr << endl << e.what() << endl;

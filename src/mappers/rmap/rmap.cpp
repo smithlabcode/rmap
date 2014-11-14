@@ -29,7 +29,7 @@
 #include <tr1/unordered_map>
 
 #include "FastRead.hpp"
-#include "smithlab_os.hpp"
+#include "GenomicRegion.hpp"
 #include "SeedMaker.hpp"
 #include "MapResult.hpp"
 #include "OptionParser.hpp"
@@ -400,18 +400,20 @@ identify_chromosomes(const bool VERBOSE, const string fasta_suffix,
 
 
 static void
-load_read_names(string filename, vector<string> &names) {
+load_read_names(string filename, vector<string> &names,
+                const size_t &n_reads_to_process, const size_t &read_start_index) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in)
     throw SMITHLABException("cannot open input file " + string(filename));
+  divide_and_skip_reads(filename, in, n_reads_to_process, read_start_index);
   size_t line_count = 0;
   string buffer;
   while (!in.eof()) {
     getline(in, buffer);
     if (in.good()) {
       if (line_count % 4 == 0) {
-	const size_t truncpos = buffer.find_first_of(" \t");
-	names.push_back(string(buffer.begin() + 1,
+        const size_t truncpos = buffer.find_first_of(" \t");
+        names.push_back(string(buffer.begin() + 1,
 			       (truncpos != string::npos) ?
 			       buffer.begin() + truncpos : buffer.end()));
       }
@@ -424,8 +426,8 @@ load_read_names(string filename, vector<string> &names) {
 static void
 load_reads(const bool VERBOSE,
            const size_t max_mismatches, const string &adaptor,
-           const string &reads_file, const size_t read_start_index, 
-	   const size_t n_reads_to_process, vector<FastRead> &fast_reads,
+           const string &reads_file, const size_t &read_start_index, 
+           const size_t &n_reads_to_process, vector<FastRead> &fast_reads,
            vector<unsigned int> &read_index, vector<size_t> &read_words,
            size_t &read_width) {
   
@@ -469,12 +471,13 @@ iterate_over_reads(const bool VERBOSE, const string &adaptor,
                    const string &filename, const string &outfile,
                    const size_t read_len, const vector<unsigned int> &reads_index, 
                    vector<MultiMapResult> &bests, const vector<size_t> &chrom_sizes,
-                   const vector<string> &chrom) {
+                   const vector<string> &chrom, const size_t &read_start_index,
+                   const size_t &n_reads_to_process) {
   
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in)
     throw SMITHLABException("cannot open input file " + string(filename));
-
+  divide_and_skip_reads(filename, in, n_reads_to_process, read_start_index); 
   std::ofstream out(outfile.c_str());
   if (!out)
     throw SMITHLABException("cannot open output file " + outfile);
@@ -609,8 +612,8 @@ main(int argc, const char **argv) {
     vector<size_t> read_words;
     size_t read_width = 0;
     load_reads(VERBOSE, max_mismatches, adaptor_sequence, 
-	       reads_file, read_start_index, n_reads_to_process,
-	       fast_reads, read_index, read_words, read_width);
+	       reads_file, read_start_index, n_reads_to_process, fast_reads, read_index,
+         read_words, read_width);
     
     if (max_mismatches == numeric_limits<size_t>::max())
       max_mismatches = static_cast<size_t>(0.07*read_width);
@@ -653,8 +656,8 @@ main(int argc, const char **argv) {
     
     invert_bests_list(read_index, best_maps);
     iterate_over_reads(VERBOSE, adaptor_sequence, reads_file, outfile, 
-		       read_width, read_index, best_maps, 
-		       chrom_sizes, chrom_names);
+		       read_width, read_index, best_maps, chrom_sizes, chrom_names,
+           read_start_index, n_reads_to_process);
     
     //////////////////////////////////////////////////////////////
     // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
@@ -662,7 +665,7 @@ main(int argc, const char **argv) {
       //////////////////////////////////////////////////////////////
       // LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
       vector<string> read_names;
-      load_read_names(reads_file, read_names);
+      load_read_names(reads_file, read_names, n_reads_to_process, read_start_index);
       if (VERBOSE)
 	cerr << "[WRITING AMBIGS] ";
       write_non_uniques(ambiguous_file, ambigs, read_names);

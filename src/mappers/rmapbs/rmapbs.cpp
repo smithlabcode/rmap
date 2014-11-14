@@ -29,7 +29,7 @@
 #include <tr1/unordered_map>
 
 #include "FastRead.hpp"
-#include "smithlab_os.hpp"
+#include "GenomicRegion.hpp"
 #include "SeedMaker.hpp"
 #include "MapResult.hpp"
 #include "OptionParser.hpp"
@@ -512,11 +512,15 @@ identify_chromosomes(const bool VERBOSE, const string fasta_suffix,
 
 
 static void
-load_read_names(string filename, vector<string> &names) {
+load_read_names(string filename, vector<string> &names, const size_t &n_reads_to_process,
+    const size_t &read_start_index) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in)
     throw SMITHLABException("cannot open input file " + string(filename));
+  divide_and_skip_reads(filename, in, n_reads_to_process, read_start_index);
   size_t line_count = 0;
+  
+  
   string buffer;
   while (!in.eof()) {
     getline(in, buffer);
@@ -536,8 +540,8 @@ load_read_names(string filename, vector<string> &names) {
 static void
 load_reads(const bool VERBOSE, const bool AG_WILDCARD,
            const size_t max_mismatches, const string &adaptor,
-           const string &reads_file, const size_t read_start_index, 
-	   const size_t n_reads_to_process, vector<FastRead> &fast_reads,
+           const string &reads_file, const size_t &read_start_index, 
+           const size_t &n_reads_to_process, vector<FastRead> &fast_reads,
            vector<unsigned int> &read_index, vector<size_t> &read_words,
            size_t &read_width) {
   
@@ -583,11 +587,12 @@ iterate_over_reads(const bool VERBOSE, const string &adaptor,
                    const string &filename, const string &outfile,
                    const size_t read_len, const vector<unsigned int> &reads_index, 
                    vector<MultiMapResult> &bests, const vector<size_t> &chrom_sizes,
-                   const vector<string> &chrom) {
+                   const vector<string> &chrom, size_t &n_reads_to_process, size_t &read_start_index) {
   
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in)
     throw SMITHLABException("cannot open input file " + string(filename));
+  divide_and_skip_reads(filename, in, n_reads_to_process, read_start_index);
 
   std::ofstream out(outfile.c_str());
   if (!out)
@@ -595,7 +600,7 @@ iterate_over_reads(const bool VERBOSE, const string &adaptor,
   
   size_t read_idx = 0, line_count = 0, curr_idx = 0, n_reads_mapped = 0;
   string name, sequence;
-  
+
   while (!in.eof() && curr_idx < reads_index.size()) {
     
     string buffer;
@@ -661,8 +666,8 @@ main(int argc, const char **argv) {
     
     size_t max_mismatches = numeric_limits<size_t>::max();
     size_t max_mappings = 1;
-    size_t read_start_index = 0;
-    size_t n_reads_to_process = std::numeric_limits<size_t>::max();
+    size_t n_reads_to_process = 0;
+    size_t read_start_index = std::numeric_limits<size_t>::max();
     
     bool VERBOSE = false;
     bool AG_WILDCARD = false;
@@ -677,7 +682,7 @@ main(int argc, const char **argv) {
     opt_parse.add_opt("start", 'T', "index of first read to map", 
 		      false , read_start_index);
     opt_parse.add_opt("number", 'N', "number of reads to map", 
-		      false , n_reads_to_process);
+		      false , n_reads_to_process );
     opt_parse.add_opt("suffix", 's', "suffix of chrom files "
 		      "(assumes dir provided)", false , fasta_suffix);
     opt_parse.add_opt("mismatch", 'm', "maximum allowed mismatches", 
@@ -726,8 +731,8 @@ main(int argc, const char **argv) {
     vector<size_t> read_words;
     size_t read_width = 0;
     load_reads(VERBOSE, AG_WILDCARD, max_mismatches, adaptor_sequence, 
-	       reads_file, read_start_index, n_reads_to_process,
-	       fast_reads, read_index, read_words, read_width);
+	       reads_file, read_start_index, n_reads_to_process, fast_reads, read_index, read_words,
+         read_width);
     
     if (max_mismatches == numeric_limits<size_t>::max())
       max_mismatches = static_cast<size_t>(0.07*read_width);
@@ -771,7 +776,7 @@ main(int argc, const char **argv) {
     invert_bests_list(read_index, best_maps);
     iterate_over_reads(VERBOSE, adaptor_sequence, reads_file, outfile, 
 		       read_width, read_index, best_maps, 
-		       chrom_sizes, chrom_names);
+		       chrom_sizes, chrom_names, n_reads_to_process, read_start_index);
     
     //////////////////////////////////////////////////////////////
     // IF IDENTITIES OF AMBIGUOUS READS ARE DESIRED, WRITE THEM
@@ -779,7 +784,7 @@ main(int argc, const char **argv) {
       //////////////////////////////////////////////////////////////
       // LOAD THE NAMES OF READS AGAIN (THEY WILL BE NEEDED)
       vector<string> read_names;
-      load_read_names(reads_file, read_names);
+      load_read_names(reads_file, read_names, n_reads_to_process, read_start_index);
       if (VERBOSE)
 	cerr << "[WRITING AMBIGS] ";
       write_non_uniques(ambiguous_file, ambigs, read_names);
