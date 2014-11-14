@@ -25,6 +25,7 @@ SMITHLAB_CPP=$(RMAP)/src/smithlab_cpp/
 endif
 
 app_subdirs=mappers simulation utils
+all_subdirs=mappers simulation utils common
 
 all:
 	@for i in $(app_subdirs); do \
@@ -43,6 +44,6 @@ test:
 
 clean:
 	@make -C smithlab_cpp OPT=1 clean
-	@for i in $(app_subdirs); do \
+	@for i in $(all_subdirs); do \
 		make -C $${i} SMITHLAB_CPP=$(SMITHLAB_CPP) SRC_ROOT=$(RMAP) clean; \
 	done;
