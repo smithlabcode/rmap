@@ -58,30 +58,30 @@ get_read_word(const string &read) {
 }
 
 static void
-check_and_add(const size_t read_count, string &read, const string &adaptor, 
-        size_t &read_width, vector<FastRead> &fast_reads, 
+check_and_add(const size_t read_count, string &read, const string &adaptor,
+        size_t &read_width, vector<FastRead> &fast_reads,
         vector<size_t> &read_words, vector<unsigned int> &read_index) {
-  
-  if (read_width == 0) 
+
+  if (read_width == 0)
     read_width = read.length();
   else if (read.length() < read_width)
     throw SMITHLABException("Incorrect read width:\n" + read + "\n");
   else read.erase(read_width);
-  
+
   if (fast_reads.empty())
     FastRead::set_read_width(read_width);
-  
+
   // clean the read
   transform(read.begin(), read.end(), read.begin(), ptr_fun(&to_base_symbol));
-  
+
   if (!adaptor.empty())
     clip_adaptor_from_read(adaptor, read);
-  
+
   // check for quality
-  const bool good_read = 
-    (read_width - (count(read.begin(), read.end(), 'N')) >= 
+  const bool good_read =
+    (read_width - (count(read.begin(), read.end(), 'N')) >=
      MIN_NON_N_IN_READS);
-  
+
   if (good_read) {
     fast_reads.push_back(FastRead(read));
     read_words.push_back(get_read_word(read));
@@ -144,13 +144,13 @@ get_approx_read_size(const string &filename,
 
   if (sample_size == 0)
     sample_size = std::min(megabyte/10, filesize/n_samples);
-  
+
   const size_t increment =
     std::floor((filesize - sample_size*n_samples)/
                (n_samples - 1.0)) + sample_size;
 
   assert(filesize > n_samples && filesize > sample_size &&
-         filesize > n_samples*sample_size);
+         filesize >= n_samples*sample_size);
 
   std::ifstream in(filename.c_str(), ios_base::binary);
 
@@ -168,17 +168,17 @@ get_approx_read_size(const string &filename,
 
 
 size_t
-divide_and_skip_reads(const string &filename, std::istream& in, 
+divide_and_skip_reads(const string &filename, std::istream& in,
                       const size_t n_reads_to_process, const size_t read_start_idx) {
 
   // compute the size to read
   size_t read_size = get_approx_read_size(filename, 10, 0);
   size_t size_to_read = n_reads_to_process * read_size;
-  
+
   // shift
   size_t offset = read_start_idx * read_size;
   in.seekg(offset, std::ios::beg);
-  
+
   // locate the begining of the next read
   string line;
   size_t bytes_moved = 0;
@@ -193,17 +193,17 @@ divide_and_skip_reads(const string &filename, std::istream& in,
 }
 
 void
-load_reads_from_fastq_file(const string &filename, const size_t read_start_idx, 
-         const size_t n_reads_to_process, const string &adaptor, 
+load_reads_from_fastq_file(const string &filename, const size_t read_start_idx,
+         const size_t n_reads_to_process, const string &adaptor,
          size_t &read_width, vector<FastRead> &fast_reads,
          vector<size_t> &read_words, vector<unsigned int> &read_index) {
   std::fstream in(filename.c_str());
-  if (!in) 
+  if (!in)
     throw SMITHLABException("cannot open input file " + filename);
 
   in.seekg(0, std::ios::end);
   size_t size_to_read;
-  
+
   size_to_read = divide_and_skip_reads(filename, in, n_reads_to_process, read_start_idx);
 
   string line;
@@ -213,7 +213,7 @@ load_reads_from_fastq_file(const string &filename, const size_t read_start_idx,
   // start to load reads
   while (size_readed < size_to_read && in.good() && getline(in, line)) {
     if (is_fastq_sequence_line(line_count)) {
-      check_and_add(read_count, line, adaptor,read_width, fast_reads, 
+      check_and_add(read_count, line, adaptor,read_width, fast_reads,
         read_words, read_index);
       ++read_count;
     }
@@ -225,7 +225,7 @@ load_reads_from_fastq_file(const string &filename, const size_t read_start_idx,
   while(in.good() && !meet_new_read(in)) {
     getline(in, line);
     if (is_fastq_sequence_line(line_count)) {
-      check_and_add(read_count, line, adaptor,read_width, fast_reads, 
+      check_and_add(read_count, line, adaptor,read_width, fast_reads,
         read_words, read_index);
       ++read_count;
     }
