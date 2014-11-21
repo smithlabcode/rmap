@@ -1,0 +1,21 @@
+language: c
+compiler:
+ - clang
+ - gcc
+before_install:
+  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+  - sudo apt-get update -qq
+  - sudo apt-get install -y libyajl-dev libxml2-dev libxqilla-dev
+  - sudo apt-get install -y libstdc++-4.9-dev
+  - sudo apt-get install -y g++-4.9 
+  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 90
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 90
+  - gcc --version
+  - g++ --version
+install:
+ - make all && make install
+ - ls ${TRAVIS_BUILD_DIR}
+ - sudo mv ${TRAVIS_BUILD_DIR}/bin/* /usr/bin/
+
+script:
+ - rmapbs
