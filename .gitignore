@@ -1,0 +1,38 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+#TODO This is a bad hack. Ideally these binaries should go to bin/
+src/mappers/rmap/rmap
+src/mappers/rmap/rmap-pe
+src/mappers/rmapbs/rmapbs
+src/mappers/rmapbs/rmapbs-pe
+src/simulation/simreads/simreads
+src/simulation/simreadsbs/simreadsbs
+src/simulation/simreadspe/simreadspe
+

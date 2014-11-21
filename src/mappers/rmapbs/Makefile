@@ -31,28 +31,34 @@ endif
 PROGS = rmapbs rmapbs-pe
 
 CXX = g++
-CFLAGS = -Wall -fPIC -fmessage-length=50
+CXXFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O3
 DEBUGFLAGS = -g
 COMMON_DIR = ../../common
 TEST_DIR = $(SRC_ROOT)/test
 
+
+# Flags for Mavericks
 ifeq "$(shell uname)" "Darwin"
-CFLAGS += -arch x86_64
+CXXFLAGS += -arch x86_64
+ifeq "$(shell if [ `sysctl -n kern.osrelease | cut -d . -f 1` -ge 13 ];\
+              then echo 'true'; fi)" "true"
+CXXFLAGS += -stdlib=libstdc++
+endif
 endif
 
 ifdef DEBUG
-CFLAGS += $(DEBUGFLAGS)
+CXXFLAGS += $(DEBUGFLAGS)
 endif
 
 ifdef OPT
-CFLAGS += $(OPTFLAGS)
+CXXFLAGS += $(OPTFLAGS)
 endif
 
 all:	$(PROGS)
 
 %.o: %.cpp %.hpp
-	$(CXX) $(CFLAGS) -c -o $@ $< -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
+	$(CXX) $(CXXFLAGS) -c -o $@ $< -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
 
 rmapbs rmapbs-pe : $(addprefix $(COMMON_DIR)/, SeedMaker.o FastRead.o load_reads.o \
 	clip_adaptor_from_reads.o) \
@@ -66,7 +72,7 @@ install: all
 	@install -m 755 $(PROGS) $(SRC_ROOT)/bin
 
 %: %.cpp
-	$(CXX) $(CFLAGS) -o $@ $^ -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
+	$(CXX) $(CXXFLAGS) -o $@ $^ -I$(COMMON_DIR) -I$(SMITHLAB_CPP)
 
 test_%:	%
 	@$(TEST_DIR)/$@ $(TEST_DIR)
