@@ -30,21 +30,26 @@ endif
 PROGS = simreadspe
 
 CXX = g++
-CFLAGS = -Wall -fPIC -fmessage-length=50
+CXXFLAGS = -Wall -fPIC -fmessage-length=50
 OPTFLAGS = -O2
 DEBUGFLAGS = -g
 TEST_DIR = $(SRC_ROOT)/test
 
+# Flags for Mavericks
 ifeq "$(shell uname)" "Darwin"
-CFLAGS += -arch x86_64
+CXXFLAGS += -arch x86_64
+ifeq "$(shell if [ `sysctl -n kern.osrelease | cut -d . -f 1` -ge 13 ];\
+              then echo 'true'; fi)" "true"
+CXXFLAGS += -stdlib=libstdc++
+endif
 endif
 
 ifdef DEBUG
-CFLAGS += $(DEBUGFLAGS)
+CXXFLAGS += $(DEBUGFLAGS)
 endif
 
 ifdef OPT
-CFLAGS += $(OPTFLAGS)
+CXXFLAGS += $(OPTFLAGS)
 endif
 
 all:	$(PROGS)
@@ -54,13 +59,13 @@ install: all
 	@install -m 755 $(PROGS) $(SRC_ROOT)/bin
 
 %.o: %.cpp %.hpp
-	$(CXX) $(CFLAGS) -c -o $@ $< -I$(SMITHLAB_CPP)
+	$(CXX) $(CXXFLAGS) -c -o $@ $< -I$(SMITHLAB_CPP)
 
 $(PROGS): $(addprefix $(SMITHLAB_CPP)/, sim_utils.o GenomicRegion.o \
 	RNG.o smithlab_os.o smithlab_utils.o OptionParser.o QualityScore.o)
 
 %: %.cpp
-	$(CXX) $(CFLAGS) -o $@ $^ -I$(SMITHLAB_CPP)
+	$(CXX) $(CXXFLAGS) -o $@ $^ -I$(SMITHLAB_CPP)
 
 test_%:	%
 	@$(TEST_DIR)/$@ $(TEST_DIR)
