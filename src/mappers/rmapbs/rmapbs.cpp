@@ -666,8 +666,8 @@ main(int argc, const char **argv) {
     
     size_t max_mismatches = numeric_limits<size_t>::max();
     size_t max_mappings = 1;
-    size_t n_reads_to_process = 0;
-    size_t read_start_index = std::numeric_limits<size_t>::max();
+    size_t read_start_index = 0;
+    size_t n_reads_to_process = std::numeric_limits<size_t>::max();
     
     bool VERBOSE = false;
     bool AG_WILDCARD = false;
