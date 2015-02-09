@@ -19,7 +19,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SOURCES = $(wildcard *.cpp)
+SOURCES = $(filter-out load_paired_end_reads.cpp rmap_utils.cpp, $(wildcard *.cpp))
 OBJECTS = $(patsubst %.cpp,%.o,$(SOURCES))
 
 ifndef SMITHLAB_CPP
